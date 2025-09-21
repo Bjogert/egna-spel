@@ -49,11 +49,14 @@ class MovementSystem extends System {
                     const visionCone = entity.getComponent('VisionCone');
                     if (visionCone && renderable.mesh.visionConeMesh.material) {
                         if (visionCone.canSeePlayer) {
-                            renderable.mesh.visionConeMesh.material.color.setHex(0xff0000); // Red when player spotted
-                            renderable.mesh.visionConeMesh.material.opacity = 0.8;
+                            renderable.mesh.visionConeMesh.material.color.setHex(0xff0000); // Bright red when player spotted
+                            renderable.mesh.visionConeMesh.material.opacity = 0.9;
+                            // Make vision cone more visible when player is spotted
+                            renderable.mesh.visionConeMesh.material.linewidth = 3;
                         } else {
                             renderable.mesh.visionConeMesh.material.color.setHex(0xffaa00); // Orange when scanning
-                            renderable.mesh.visionConeMesh.material.opacity = 0.6;
+                            renderable.mesh.visionConeMesh.material.opacity = 0.4;
+                            renderable.mesh.visionConeMesh.material.linewidth = 1;
                         }
                     }
                 }

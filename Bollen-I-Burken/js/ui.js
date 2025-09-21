@@ -10,6 +10,7 @@ class UISystem extends System {
         this.elements = {
             gameTitle: null,
             gameStats: null,
+            gameTimer: null,
             playerList: null,
             controlsHelp: null,
             gameMessages: null,
@@ -23,6 +24,7 @@ class UISystem extends System {
     initializeUI() {
         this.createGameTitle();
         this.createGameStats();
+        this.createGameTimer();
         this.createPlayerList();
         this.createControlsHelp();
         this.createGameMessages();
@@ -77,6 +79,37 @@ class UISystem extends System {
         `;
 
         this.elements.gameStats = statsContainer;
+    }
+
+    createGameTimer() {
+        let timerContainer = document.getElementById('gameTimer');
+        if (!timerContainer) {
+            timerContainer = document.createElement('div');
+            timerContainer.id = 'gameTimer';
+            timerContainer.className = 'game-timer';
+
+            const gameUI = document.getElementById('gameUI');
+            if (gameUI) {
+                // Insert timer right after the title
+                const title = gameUI.querySelector('.game-title');
+                if (title) {
+                    title.insertAdjacentElement('afterend', timerContainer);
+                } else {
+                    gameUI.appendChild(timerContainer);
+                }
+            }
+        }
+
+        timerContainer.innerHTML = `
+            <div class="timer-display">
+                <div class="timer-label">🕒 Survive:</div>
+                <div class="timer-value" id="timerValue">60</div>
+                <div class="timer-unit">seconds</div>
+            </div>
+            <div class="game-status" id="gameStatus">Hide from the AI Hunter!</div>
+        `;
+
+        this.elements.gameTimer = timerContainer;
     }
 
     createPlayerList() {
@@ -145,8 +178,62 @@ class UISystem extends System {
 
     update(gameState) {
         this.updateGameStats(gameState);
+        this.updateGameTimer();
         this.updatePlayerList(gameState);
         this.updateGamePhase(gameState);
+    }
+
+    updateGameTimer() {
+        const timerValueElement = document.getElementById('timerValue');
+        const gameStatusElement = document.getElementById('gameStatus');
+
+        if (window.GameEngine) {
+            const remainingTime = window.GameEngine.getRemainingTime();
+            const gameStatus = window.GameEngine.gameStatus;
+
+            if (timerValueElement) {
+                timerValueElement.textContent = remainingTime;
+
+                // Change color based on time remaining
+                if (remainingTime <= 10 && gameStatus === 'playing') {
+                    timerValueElement.style.color = '#ff4444'; // Red when critical
+                    timerValueElement.style.fontWeight = 'bold';
+                } else if (remainingTime <= 30 && gameStatus === 'playing') {
+                    timerValueElement.style.color = '#ffaa00'; // Orange when warning
+                } else {
+                    timerValueElement.style.color = '#44ff44'; // Green when safe
+                    timerValueElement.style.fontWeight = 'normal';
+                }
+            }
+
+            if (gameStatusElement) {
+                if (gameStatus === 'won') {
+                    gameStatusElement.textContent = '🎉 YOU WON! Congratulations!';
+                    gameStatusElement.style.color = '#44ff44';
+                } else if (gameStatus === 'tagged') {
+                    gameStatusElement.textContent = '🏃‍♂️ TAGGED! Game Over!';
+                    gameStatusElement.style.color = '#ff4444';
+                } else if (gameStatus === 'playing') {
+                    // Check if AI is hunting
+                    const aiSystem = window.GameEngine.getSystem('AISystem');
+                    if (aiSystem) {
+                        const hunters = aiSystem.getHunters();
+                        const isHunting = hunters.some(hunter => {
+                            const ai = hunter.getComponent('AIHunter');
+                            return ai && ai.state === 'HUNTING';
+                        });
+
+                        if (isHunting) {
+                            gameStatusElement.textContent = '🚨 AI SPOTTED YOU! Run and hide!';
+                            gameStatusElement.style.color = '#ff4444';
+                        } else {
+                            gameStatusElement.textContent = '👁️ Stay hidden from the AI Hunter!';
+                            gameStatusElement.style.color = '#ffffff';
+                        }
+                    }
+                }
+            }
+        }
     }
 
     updateGameStats(gameState) {

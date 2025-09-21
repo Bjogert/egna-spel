@@ -344,7 +344,15 @@ class GameEngine {
         this.lastFpsTime = 0;
         this.currentFps = 0;
 
+        // Game timer and state
+        this.gameStartTime = 0;
+        this.gameDuration = 60000; // 60 seconds to survive
+        this.gameStatus = 'playing'; // 'playing', 'won', 'lost'
+
         Utils.log('Game engine initialized');
+
+        // Make game engine accessible globally for AI system
+        window.GameEngine = this;
     }
 
     addSystem(system) {
@@ -388,13 +396,20 @@ class GameEngine {
     }
 
     tick() {
-        // Update all systems with fixed timestep
-        for (const system of this.systems) {
-            if (system.enabled && system.update) {
-                try {
-                    system.update(this.gameState, this.tickInterval);
-                } catch (error) {
-                    Utils.error(`System ${system.name} update failed`, error);
+        // Check game timer (only if game is still playing)
+        if (this.gameStatus === 'playing') {
+            this.checkGameTimer();
+        }
+
+        // Update all systems with fixed timestep (only if game is playing)
+        if (this.gameStatus === 'playing') {
+            for (const system of this.systems) {
+                if (system.enabled && system.update) {
+                    try {
+                        system.update(this.gameState, this.tickInterval);
+                    } catch (error) {
+                        Utils.error(`System ${system.name} update failed`, error);
+                    }
                 }
             }
         }
@@ -426,7 +441,9 @@ class GameEngine {
 
     start() {
         this.gameState.setGamePhase(GAME_STATES.PLAYING);
-        Utils.log('Game engine started');
+        this.gameStartTime = Date.now();
+        this.gameStatus = 'playing';
+        Utils.log('🎮 Game Started - Survive for 60 seconds!');
     }
 
     pause() {
@@ -437,6 +454,54 @@ class GameEngine {
     resume() {
         this.gameState.setGamePhase(GAME_STATES.PLAYING);
         Utils.log('Game engine resumed');
+    }
+
+    checkGameTimer() {
+        if (this.gameStartTime === 0) return; // Game not started
+
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - this.gameStartTime;
+
+        // Check if player has survived long enough to win
+        if (elapsedTime >= this.gameDuration) {
+            this.gameOver('won');
+        }
+    }
+
+    gameOver(reason) {
+        if (this.gameStatus !== 'playing') return; // Already ended
+
+        this.gameStatus = reason; // 'won' or 'tagged'
+
+        if (reason === 'won') {
+            Utils.log('🎉 YOU WON! You survived for 60 seconds!');
+            alert('🎉 CONGRATULATIONS!\n\nYou survived for 60 seconds and won the game!\n\nWell done!');
+        } else if (reason === 'tagged') {
+            Utils.log('🏃‍♂️ GAME OVER! You were tagged!');
+            alert('🏃‍♂️ TAGGED!\n\nThe AI Hunter caught you!\n\nGame Over!');
+        }
+
+        // Stop all AI movement
+        const aiSystem = this.getSystem('AISystem');
+        if (aiSystem) {
+            for (const hunter of aiSystem.getHunters()) {
+                const transform = hunter.getComponent('Transform');
+                if (transform) {
+                    transform.velocity.x = 0;
+                    transform.velocity.z = 0;
+                }
+            }
+        }
+    }
+
+    getRemainingTime() {
+        if (this.gameStartTime === 0 || this.gameStatus !== 'playing') return 0;
+
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - this.gameStartTime;
+        const remainingTime = Math.max(0, this.gameDuration - elapsedTime);
+
+        return Math.ceil(remainingTime / 1000); // Return seconds
     }
 
     stop() {

@@ -36,6 +36,12 @@ class AIHunter {
         this.targetDirection = this.patrolDirection; // Target direction for smooth rotation
         this.patrolChangeTime = 2000;
         this.wallCollisionCooldown = 0; // Prevent rapid wall collision responses
+
+        // Hunting behavior properties
+        this.huntingStartTime = 0;
+        this.huntingSpeed = 0.12; // Faster when hunting
+        this.searchTimeout = 5000; // How long to search before returning to patrol
+
         this.speed = 0.08; // This should be in Movement component
     }
 }
@@ -143,6 +149,9 @@ class AISystem extends System {
             this.updateVision(hunter, visionCone, gameState);
         }
 
+        // Check for player collision (tagging)
+        this.checkPlayerCollision(hunter, gameState);
+
         // Apply movement with collision detection
         this.applyMovementWithCollision(transform);
     }
@@ -186,9 +195,50 @@ class AISystem extends System {
     }
 
     updateHuntingBehavior(aiComponent, transform, movement, deltaTime) {
-        // For now, just continue patrol behavior
-        // Will implement direct hunting in next phase
-        this.updatePatrolBehavior(aiComponent, transform, movement, deltaTime);
+        // Check if we should timeout and return to patrol
+        const huntingDuration = Date.now() - aiComponent.huntingStartTime;
+        if (huntingDuration > aiComponent.searchTimeout) {
+            aiComponent.state = 'PATROL';
+            Utils.log(`🔍 AI lost player, returning to PATROL mode`);
+            return;
+        }
+
+        // Get vision cone to check if we still see the player
+        const visionCone = this.getVisionConeFromAI(aiComponent);
+
+        if (visionCone && visionCone.lastSeenPosition) {
+            // Move toward last known player position
+            const dx = visionCone.lastSeenPosition.x - transform.position.x;
+            const dz = visionCone.lastSeenPosition.z - transform.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+
+            if (distance > 0.5) { // If not at target position yet
+                // Calculate direction to player
+                const huntingDirection = Math.atan2(dz, dx);
+
+                // Smooth rotation toward target (keeping 2.0 rad/sec limit)
+                let angleDiff = huntingDirection - aiComponent.patrolDirection;
+                while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+                const maxTurnSpeed = 3.0; // Slightly faster turning when hunting
+                const turnStep = maxTurnSpeed * (deltaTime / 1000);
+
+                if (Math.abs(angleDiff) > turnStep) {
+                    aiComponent.patrolDirection += Math.sign(angleDiff) * turnStep;
+                } else {
+                    aiComponent.patrolDirection = huntingDirection;
+                }
+
+                // Move faster when hunting
+                const huntingSpeed = aiComponent.huntingSpeed;
+                transform.velocity.x = Math.cos(aiComponent.patrolDirection) * huntingSpeed;
+                transform.velocity.z = Math.sin(aiComponent.patrolDirection) * huntingSpeed;
+            }
+        } else {
+            // No last known position, just patrol faster
+            this.updatePatrolBehavior(aiComponent, transform, movement, deltaTime);
+        }
     }
 
     updateSearchingBehavior(aiComponent, transform, movement, deltaTime) {
@@ -248,6 +298,15 @@ class AISystem extends System {
                 y: playerTransform.position.y,
                 z: playerTransform.position.z
             };
+            visionCone.lastSeenTime = Date.now(); // Track when player was last seen
+
+            // Trigger state change to hunting if not already hunting
+            const aiComponent = hunter.getComponent('AIHunter');
+            if (aiComponent && aiComponent.state === 'PATROL') {
+                aiComponent.state = 'HUNTING';
+                aiComponent.huntingStartTime = Date.now();
+                Utils.log(`🎯 AI SPOTTED PLAYER! Switching to HUNTING mode`);
+            }
 
             Utils.log(`AI can see player! Distance: ${distance.toFixed(2)}, Angle: ${(angleDiff * 180 / Math.PI).toFixed(1)}°`);
         }
@@ -330,6 +389,62 @@ class AISystem extends System {
             }
         }
         return null;
+    }
+
+    getVisionConeFromAI(aiComponent) {
+        // Find the hunter entity that has this AI component and get its vision cone
+        for (const hunter of this.hunters) {
+            if (hunter.getComponent('AIHunter') === aiComponent) {
+                return hunter.getComponent('VisionCone');
+            }
+        }
+        return null;
+    }
+
+    checkPlayerCollision(hunter, gameState) {
+        const aiTransform = hunter.getComponent('Transform');
+        if (!aiTransform) return;
+
+        // Find local player
+        const localPlayer = gameState.getLocalPlayer();
+        if (!localPlayer) return;
+
+        const playerTransform = localPlayer.getComponent('Transform');
+        if (!playerTransform) return;
+
+        // Calculate distance between AI and player
+        const dx = playerTransform.position.x - aiTransform.position.x;
+        const dz = playerTransform.position.z - aiTransform.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        // Check if AI is close enough to tag player
+        const tagDistance = 1.2; // Distance needed to tag player
+        if (distance <= tagDistance) {
+            // Player has been tagged!
+            this.triggerPlayerTagged(gameState);
+        }
+    }
+
+    triggerPlayerTagged(gameState) {
+        Utils.log(`🏃‍♂️ PLAYER TAGGED! Game Over!`);
+
+        // Trigger game over event
+        if (window.GameEngine && window.GameEngine.gameOver) {
+            window.GameEngine.gameOver('tagged');
+        } else {
+            // Fallback: alert for now
+            alert('🏃‍♂️ TAGGED! The AI Hunter caught you!\n\nGame Over!');
+
+            // Reset player position as fallback
+            const localPlayer = gameState.getLocalPlayer();
+            if (localPlayer) {
+                const playerTransform = localPlayer.getComponent('Transform');
+                if (playerTransform) {
+                    playerTransform.position.x = 0;
+                    playerTransform.position.z = 0;
+                }
+            }
+        }
     }
 
     getHunters() {
