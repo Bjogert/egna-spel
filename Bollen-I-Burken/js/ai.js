@@ -33,7 +33,9 @@ class AIHunter {
         this.lastKnownPosition = null;
         this.patrolTimer = 0;
         this.patrolDirection = Math.random() * Math.PI * 2;
+        this.targetDirection = this.patrolDirection; // Target direction for smooth rotation
         this.patrolChangeTime = 2000;
+        this.wallCollisionCooldown = 0; // Prevent rapid wall collision responses
         this.speed = 0.08; // This should be in Movement component
     }
 }
@@ -65,7 +67,7 @@ class AISystem extends System {
     }
 
     addEntity(entity) {
-        if (entity.hasComponent(AIHunter)) {
+        if (entity.hasComponent('AIHunter')) {
             this.hunters.add(entity);
             Utils.log(`AI hunter entity added: ${entity.id}`);
         }
@@ -110,15 +112,18 @@ class AISystem extends System {
     }
 
     updateHunter(hunter, gameState, deltaTime) {
-        const aiComponent = hunter.getComponent(AIHunter);
-        const transform = hunter.getComponent(Transform);
-        const movement = hunter.getComponent(Movement);
-        const visionCone = hunter.getComponent(VisionCone);
+        const aiComponent = hunter.getComponent('AIHunter');
+        const transform = hunter.getComponent('Transform');
+        const movement = hunter.getComponent('Movement');
+        const visionCone = hunter.getComponent('VisionCone');
 
         if (!aiComponent || !transform || !movement) return;
 
-        // Update patrol timer
+        // Update patrol timer and wall collision cooldown
         aiComponent.patrolTimer += deltaTime;
+        if (aiComponent.wallCollisionCooldown > 0) {
+            aiComponent.wallCollisionCooldown -= deltaTime;
+        }
 
         // Update AI based on current state
         switch (aiComponent.state) {
@@ -145,12 +150,36 @@ class AISystem extends System {
     updatePatrolBehavior(aiComponent, transform, movement, deltaTime) {
         // Change direction periodically
         if (aiComponent.patrolTimer >= aiComponent.patrolChangeTime) {
-            aiComponent.patrolDirection = Math.random() * Math.PI * 2;
+            aiComponent.targetDirection = Math.random() * Math.PI * 2;
             aiComponent.patrolTimer = 0;
             aiComponent.patrolChangeTime = 1500 + Math.random() * 2000; // Random between 1.5-3.5 seconds
         }
 
-        // Move in patrol direction using Movement component speed
+        // Smooth rotation towards target direction
+        if (!aiComponent.targetDirection) {
+            aiComponent.targetDirection = aiComponent.patrolDirection || 0;
+        }
+
+        // Calculate shortest rotation path
+        let angleDiff = aiComponent.targetDirection - aiComponent.patrolDirection;
+        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+        // Smooth rotation with limited turn speed
+        const maxTurnSpeed = 2.0; // radians per second
+        const turnStep = maxTurnSpeed * (deltaTime / 1000);
+
+        if (Math.abs(angleDiff) > turnStep) {
+            aiComponent.patrolDirection += Math.sign(angleDiff) * turnStep;
+        } else {
+            aiComponent.patrolDirection = aiComponent.targetDirection;
+        }
+
+        // Normalize angle
+        while (aiComponent.patrolDirection > Math.PI) aiComponent.patrolDirection -= 2 * Math.PI;
+        while (aiComponent.patrolDirection < -Math.PI) aiComponent.patrolDirection += 2 * Math.PI;
+
+        // Move in current direction using Movement component speed
         const speed = movement.speed || 0.08;
         transform.velocity.x = Math.cos(aiComponent.patrolDirection) * speed;
         transform.velocity.z = Math.sin(aiComponent.patrolDirection) * speed;
@@ -169,29 +198,138 @@ class AISystem extends System {
     }
 
     updateVision(hunter, visionCone, gameState) {
-        // Vision system will be implemented in Phase 2
-        // For now, just reset vision state
+        // Reset vision state
         visionCone.canSeePlayer = false;
+        visionCone.targetSeen = false;
+
+        // Get AI hunter's transform
+        const aiTransform = hunter.getComponent('Transform');
+        if (!aiTransform) return;
+
+        // Find local player
+        const localPlayer = gameState.getLocalPlayer();
+        if (!localPlayer) return;
+
+        const playerTransform = localPlayer.getComponent('Transform');
+        if (!playerTransform) return;
+
+        // Calculate distance and angle to player
+        const dx = playerTransform.position.x - aiTransform.position.x;
+        const dz = playerTransform.position.z - aiTransform.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        // Check if player is within range
+        if (distance > visionCone.range) {
+            return; // Player too far away
+        }
+
+        // Calculate angle to player
+        const angleToPlayer = Math.atan2(dx, dz);
+        const aiDirection = aiTransform.rotation.y;
+
+        // Calculate the difference between AI facing direction and direction to player
+        let angleDiff = angleToPlayer - aiDirection;
+
+        // Normalize angle difference to [-π, π]
+        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+        // Convert vision cone angle from degrees to radians
+        const visionAngleRad = (visionCone.angle * Math.PI) / 180;
+        const halfVisionAngle = visionAngleRad / 2;
+
+        // Check if player is within vision cone angle
+        if (Math.abs(angleDiff) <= halfVisionAngle) {
+            // Player is within vision cone - set vision state
+            visionCone.canSeePlayer = true;
+            visionCone.targetSeen = true;
+            visionCone.lastSeenPosition = {
+                x: playerTransform.position.x,
+                y: playerTransform.position.y,
+                z: playerTransform.position.z
+            };
+
+            Utils.log(`AI can see player! Distance: ${distance.toFixed(2)}, Angle: ${(angleDiff * 180 / Math.PI).toFixed(1)}°`);
+        }
     }
 
     applyMovementWithCollision(transform) {
-        // Get arena bounds from global config
-        const config = window.GameUtils ? window.GameUtils.GAME_CONFIG : { ARENA_SIZE: 15 };
-        const arenaLimit = (config.ARENA_SIZE / 2) - 0.8; // Leave space from walls
+        // Get arena bounds from ConfigManager
+        const configManager = window.ConfigManager ? ConfigManager.getInstance() : null;
+        const arenaSize = configManager ? configManager.get('arena.size') : 15;
+        const detectionLimit = arenaSize - 1.2; // Early detection to avoid wall grinding
+        const hardLimit = arenaSize - 0.5; // Hard boundary limit
 
-        // Check if AI would hit arena boundaries and reverse velocity if needed
+        // Check if AI would hit arena boundaries and adjust direction smoothly
         const nextPosX = transform.position.x + transform.velocity.x;
         const nextPosZ = transform.position.z + transform.velocity.z;
 
-        if (nextPosX > arenaLimit || nextPosX < -arenaLimit) {
-            transform.velocity.x *= -1; // Reverse direction
+        // Get AI component for direction adjustment
+        const aiComponent = this.getAIComponentFromTransform(transform);
+
+        // Only process wall collision if cooldown is over
+        if (aiComponent && aiComponent.wallCollisionCooldown <= 0) {
+            let wallHit = false;
+
+            // Handle X-axis wall collision with early detection
+            if (nextPosX > detectionLimit || nextPosX < -detectionLimit) {
+                wallHit = true;
+                // Calculate a direction that moves away from the wall at an angle
+                const centerDirection = Math.atan2(-transform.position.z, -transform.position.x); // Direction toward center
+                const randomOffset = (Math.random() - 0.5) * Math.PI; // Random component
+                const newDirection = centerDirection + randomOffset;
+
+                aiComponent.targetDirection = newDirection;
+                aiComponent.patrolDirection = newDirection; // Set current direction too to avoid conflict
+                aiComponent.patrolChangeTime = 1500; // Give time to get away from wall
+                aiComponent.patrolTimer = 0;
+                aiComponent.wallCollisionCooldown = 1000; // 1 second cooldown
+
+                // Set velocity in the new direction immediately
+                const speed = Math.sqrt(transform.velocity.x * transform.velocity.x + transform.velocity.z * transform.velocity.z);
+                transform.velocity.x = Math.cos(newDirection) * speed;
+                transform.velocity.z = Math.sin(newDirection) * speed;
+            }
+            // Handle Z-axis wall collision with early detection
+            else if (nextPosZ > detectionLimit || nextPosZ < -detectionLimit) {
+                wallHit = true;
+                // Calculate a direction that moves away from the wall at an angle
+                const centerDirection = Math.atan2(-transform.position.z, -transform.position.x); // Direction toward center
+                const randomOffset = (Math.random() - 0.5) * Math.PI; // Random component
+                const newDirection = centerDirection + randomOffset;
+
+                aiComponent.targetDirection = newDirection;
+                aiComponent.patrolDirection = newDirection; // Set current direction too to avoid conflict
+                aiComponent.patrolChangeTime = 1500; // Give time to get away from wall
+                aiComponent.patrolTimer = 0;
+                aiComponent.wallCollisionCooldown = 1000; // 1 second cooldown
+
+                // Set velocity in the new direction immediately
+                const speed = Math.sqrt(transform.velocity.x * transform.velocity.x + transform.velocity.z * transform.velocity.z);
+                transform.velocity.x = Math.cos(newDirection) * speed;
+                transform.velocity.z = Math.sin(newDirection) * speed;
+            }
         }
 
-        if (nextPosZ > arenaLimit || nextPosZ < -arenaLimit) {
-            transform.velocity.z *= -1; // Reverse direction
+        // Hard boundary enforcement (for safety)
+        if (Math.abs(transform.position.x) > hardLimit) {
+            transform.position.x = Math.sign(transform.position.x) * hardLimit;
+        }
+        if (Math.abs(transform.position.z) > hardLimit) {
+            transform.position.z = Math.sign(transform.position.z) * hardLimit;
         }
 
         // Note: MovementSystem will handle the actual position updates and boundary clamping
+    }
+
+    getAIComponentFromTransform(transform) {
+        // Find the AI entity that has this transform
+        for (const hunter of this.hunters) {
+            if (hunter.getComponent('Transform') === transform) {
+                return hunter.getComponent('AIHunter');
+            }
+        }
+        return null;
     }
 
     getHunters() {

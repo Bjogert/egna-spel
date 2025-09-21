@@ -121,7 +121,7 @@ class InputSystem extends System {
             return;
         }
 
-        const input = localPlayer.getComponent(PlayerInput);
+        const input = localPlayer.getComponent('PlayerInput');
         if (!input) {
             Utils.log('InputSystem: Local player has no PlayerInput component');
             return;
@@ -306,8 +306,8 @@ class InputSystem extends System {
 
     isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-               ('ontouchstart' in window) ||
-               (navigator.maxTouchPoints > 0);
+            ('ontouchstart' in window) ||
+            (navigator.maxTouchPoints > 0);
     }
 
     getInputState() {

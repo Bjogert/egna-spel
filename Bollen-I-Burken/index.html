@@ -441,7 +441,7 @@
         };
 
         // Professional debug commands
-        window.debugResources = function() {
+        window.debugResources = function () {
             if (resourceManager) {
                 resourceManager.debugLogResources();
             } else {
@@ -449,7 +449,7 @@
             }
         };
 
-        window.debugErrors = function() {
+        window.debugErrors = function () {
             if (errorHandler) {
                 console.log('=== ERROR HANDLER DEBUG ===');
                 console.log('Error Statistics:', errorHandler.getStats());
@@ -460,7 +460,7 @@
             }
         };
 
-        window.clearErrors = function() {
+        window.clearErrors = function () {
             if (errorHandler) {
                 errorHandler.clearErrors();
                 console.log('All stored errors cleared');
@@ -469,7 +469,7 @@
             }
         };
 
-        window.exportErrors = function() {
+        window.exportErrors = function () {
             if (errorHandler) {
                 const errorData = errorHandler.exportErrors();
                 console.log('Error export:', errorData);
@@ -480,7 +480,7 @@
             }
         };
 
-        window.debugConfig = function() {
+        window.debugConfig = function () {
             if (configManager) {
                 configManager.debugLogConfig();
             } else {
@@ -488,7 +488,7 @@
             }
         };
 
-        window.getConfig = function(path, defaultValue) {
+        window.getConfig = function (path, defaultValue) {
             if (configManager) {
                 return configManager.get(path, defaultValue);
             } else {
@@ -497,7 +497,7 @@
             }
         };
 
-        window.setConfig = function(path, value) {
+        window.setConfig = function (path, value) {
             if (configManager) {
                 const result = configManager.set(path, value);
                 console.log(`Config ${path} set to:`, value, result ? '✅' : '❌');
@@ -508,7 +508,7 @@
             }
         };
 
-        window.saveConfig = function() {
+        window.saveConfig = function () {
             if (configManager) {
                 configManager.saveToSource('localStorage').then(success => {
                     console.log('Config saved to localStorage:', success ? '✅' : '❌');
@@ -518,7 +518,7 @@
             }
         };
 
-        window.resetConfig = function(path) {
+        window.resetConfig = function (path) {
             if (configManager) {
                 configManager.reset(path);
                 console.log('Config reset:', path || 'all settings');
@@ -527,7 +527,7 @@
             }
         };
 
-        window.debugValidation = function() {
+        window.debugValidation = function () {
             if (componentValidator) {
                 componentValidator.debugLogSchemas();
             } else {
@@ -535,7 +535,7 @@
             }
         };
 
-        window.validateAllEntities = function() {
+        window.validateAllEntities = function () {
             if (gameEngine && componentValidator) {
                 const results = [];
                 gameEngine.gameState.entities.forEach(entity => {
@@ -555,7 +555,7 @@
             }
         };
 
-        window.testValidation = function() {
+        window.testValidation = function () {
             console.log('=== TESTING COMPONENT VALIDATION ===');
             console.log('ValidatedEntity available:', typeof ValidatedEntity !== 'undefined');
             console.log('ComponentValidator available:', typeof ComponentValidator !== 'undefined');
@@ -569,6 +569,62 @@
             }
 
             console.log('=== END VALIDATION TEST ===');
+        };
+
+        window.debugMovement = function () {
+            console.log('=== MOVEMENT SYSTEM DEBUG ===');
+
+            // Check systems
+            if (gameEngine && gameEngine.systems) {
+                console.log('Registered systems:', gameEngine.systems.map(s => s.name));
+                const inputSys = gameEngine.systems.find(s => s.name === 'InputSystem');
+                const moveSys = gameEngine.systems.find(s => s.name === 'MovementSystem');
+                console.log('InputSystem found:', !!inputSys);
+                console.log('MovementSystem found:', !!moveSys);
+            }
+
+            // Check local player
+            if (gameEngine && gameEngine.gameState) {
+                const localPlayer = gameEngine.gameState.getLocalPlayer();
+                if (localPlayer) {
+                    console.log('Local player entity ID:', localPlayer.id);
+                    console.log('Local player components:', Array.from(localPlayer.components.keys()));
+
+                    const transform = localPlayer.getComponent('Transform');
+                    const movement = localPlayer.getComponent('Movement');
+                    const playerInput = localPlayer.getComponent('PlayerInput');
+
+                    console.log('Transform component:', {
+                        exists: !!transform,
+                        position: transform ? transform.position : 'N/A'
+                    });
+                    console.log('Movement component:', {
+                        exists: !!movement,
+                        speed: movement ? movement.speed : 'N/A'
+                    });
+                    console.log('PlayerInput component:', {
+                        exists: !!playerInput,
+                        keys: playerInput ? playerInput.keys : 'N/A'
+                    });
+                } else {
+                    console.log('❌ No local player found');
+                }
+            }
+
+            console.log('=== END MOVEMENT DEBUG ===');
+        };
+
+        window.testKeyboard = function () {
+            console.log('Testing keyboard input...');
+            console.log('Press W, A, S, D keys and watch console');
+
+            document.addEventListener('keydown', (e) => {
+                console.log('🔥 RAW KEY DOWN:', e.code, e.key);
+            });
+
+            document.addEventListener('keyup', (e) => {
+                console.log('🔥 RAW KEY UP:', e.code, e.key);
+            });
         };
 
         // Start the game when page loads

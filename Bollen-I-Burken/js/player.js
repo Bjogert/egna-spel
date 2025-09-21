@@ -1,163 +1,125 @@
 /* ==========================================
    BOLLEN I BURKEN - PLAYER SYSTEM
-   Player entity management and movement
+   Simple working movement system
    ========================================== */
 
 class MovementSystem extends System {
     constructor() {
         super('MovementSystem');
-        // Use fallback values initially - will be updated when ConfigManager is available
-        this.configManager = null;
-        this.moveSpeed = 0.15; // Fallback speed from GAME_CONFIG
-        this.arenaSize = 15;   // Fallback arena size from GAME_CONFIG
-        this.configInitialized = false;
-    }
-
-    initializeConfig() {
-        // Initialize ConfigManager when it's available
-        if (typeof ConfigManager !== 'undefined' && !this.configInitialized) {
-            try {
-                this.configManager = ConfigManager.getInstance();
-                this.moveSpeed = this.configManager.get('player.speed', 0.15);
-                this.arenaSize = this.configManager.get('arena.size', 15);
-                this.configInitialized = true;
-                Utils.log('MovementSystem: ConfigManager initialized successfully');
-            } catch (error) {
-                Utils.warn('MovementSystem: ConfigManager not available, using fallback values');
-            }
-        }
+        this.moveSpeed = 0.15;
+        this.configManager = window.ConfigManager ? ConfigManager.getInstance() : null;
+        this.arenaSize = this.configManager ? this.configManager.get('arena.size') : 15;
     }
 
     update(gameState) {
-        // Initialize config if needed
-        this.initializeConfig();
-
         // Update all entities with movement components
-        gameState.entities.forEach(entity => {
-            const transform = entity.getComponent(Transform);
-            const movement = entity.getComponent(Movement);
+        for (const entity of gameState.entities.values()) {
+            const transform = entity.getComponent('Transform');
+            const input = entity.getComponent('PlayerInput');
 
-            // Handle player movement (with input)
-            const input = entity.getComponent(PlayerInput);
-            if (transform && input && movement) {
-                this.updatePlayerMovement(transform, input, movement);
+            // Handle player movement (with input) - no Movement component required
+            if (transform && input) {
+                this.updatePlayerMovement(transform, input);
             }
-            // Handle AI movement (without input - velocity set by AI system)
-            else if (transform && movement) {
-                this.updateAIMovement(transform, movement);
+            // Handle AI movement (check for AIHunter component)
+            else if (transform && entity.getComponent('AIHunter')) {
+                this.updateAIMovement(transform);
             }
 
-            // Update mesh position from transform for all entities with renderable
-            const renderable = entity.getComponent(Renderable);
-            if (transform && renderable) {
-                // Update mesh position from transform
+            // Update mesh position from transform
+            const renderable = entity.getComponent('Renderable');
+            if (transform && renderable && renderable.mesh) {
                 renderable.mesh.position.set(
                     transform.position.x,
                     transform.position.y,
                     transform.position.z
                 );
-
-                // Update mesh rotation
                 renderable.mesh.rotation.y = transform.rotation.y;
+
+                // Update vision cone position and rotation if it exists
+                if (renderable.mesh.visionConeMesh) {
+                    renderable.mesh.visionConeMesh.position.set(
+                        transform.position.x,
+                        transform.position.y,
+                        transform.position.z
+                    );
+                    renderable.mesh.visionConeMesh.rotation.y = transform.rotation.y;
+
+                    // Change vision cone color based on whether AI can see player
+                    const visionCone = entity.getComponent('VisionCone');
+                    if (visionCone && renderable.mesh.visionConeMesh.material) {
+                        if (visionCone.canSeePlayer) {
+                            renderable.mesh.visionConeMesh.material.color.setHex(0xff0000); // Red when player spotted
+                            renderable.mesh.visionConeMesh.material.opacity = 0.8;
+                        } else {
+                            renderable.mesh.visionConeMesh.material.color.setHex(0xffaa00); // Orange when scanning
+                            renderable.mesh.visionConeMesh.material.opacity = 0.6;
+                        }
+                    }
+                }
             }
-        });
+        }
     }
 
-    updatePlayerMovement(transform, input, movementComponent) {
-        // Enhanced debug logging for movement system
-        if (input.hasInput()) {
-            Utils.log(`Player movement - Input: forward=${input.keys.forward}, backward=${input.keys.backward}, left=${input.keys.left}, right=${input.keys.right}`);
-            Utils.log(`Player position before: (${transform.position.x.toFixed(3)}, ${transform.position.z.toFixed(3)})`);
+    updatePlayerMovement(transform, input) {
+        // Store previous position using proper method
+        if (transform.updatePrevious) {
+            transform.updatePrevious();
+        } else {
+            transform.previousPosition = { ...transform.position };
         }
-
-        // Store previous position for interpolation
-        transform.updatePrevious();
 
         // Reset velocity
-        transform.velocity = Utils.vector3();
+        transform.velocity.x = 0;
+        transform.velocity.y = 0;
+        transform.velocity.z = 0;
 
-        // Calculate movement vector based on input
-        const movementVector = Utils.vector3();
+        // Calculate movement based on input
+        const speed = this.moveSpeed;
 
-        if (input.keys.forward) movementVector.z -= 1;
-        if (input.keys.backward) movementVector.z += 1;
-        if (input.keys.left) movementVector.x -= 1;
-        if (input.keys.right) movementVector.x += 1;
-
-        // Normalize diagonal movement and use Movement component speed
-        if (Utils.vectorLength(movementVector) > 0) {
-            const normalizedMovement = Utils.vectorNormalize(movementVector);
-            const speed = movementComponent.speed || this.moveSpeed;
-            transform.velocity = Utils.vectorMultiply(normalizedMovement, speed);
-        }
+        if (input.keys.forward) transform.velocity.z -= speed;
+        if (input.keys.backward) transform.velocity.z += speed;
+        if (input.keys.left) transform.velocity.x -= speed;
+        if (input.keys.right) transform.velocity.x += speed;
 
         // Apply velocity to position
-        transform.position = Utils.vectorAdd(transform.position, transform.velocity);
+        transform.position.x += transform.velocity.x;
+        transform.position.z += transform.velocity.z;
 
-        // Apply square arena boundaries
-        const arenaLimit = (this.arenaSize / 2) - 0.5; // Leave some space from the wall
-        transform.position.x = Math.max(-arenaLimit, Math.min(arenaLimit, transform.position.x));
-        transform.position.z = Math.max(-arenaLimit, Math.min(arenaLimit, transform.position.z));
+        // Apply arena boundaries - match arena wall positions exactly
+        // Arena walls are positioned at ±arenaSize, so movement should go almost to the walls
+        const limit = this.arenaSize - 0.5; // Leave small buffer for player collision
+        transform.position.x = Math.max(-limit, Math.min(limit, transform.position.x));
+        transform.position.z = Math.max(-limit, Math.min(limit, transform.position.z));
 
-        // Debug logging for movement result
-        if (input.hasInput()) {
-            Utils.log(`Player position after: (${transform.position.x.toFixed(3)}, ${transform.position.z.toFixed(3)}), velocity: (${transform.velocity.x.toFixed(3)}, ${transform.velocity.z.toFixed(3)})`);
-        }
-
-        // Update rotation based on movement direction
-        if (Utils.vectorLength(transform.velocity) > 0) {
-            transform.rotation.y = Math.atan2(transform.velocity.x, transform.velocity.z);
-        }
-    }
-
-    updateAIMovement(transform, movementComponent) {
-        // Debug logging for AI movement
+        // Update rotation based on movement
         if (transform.velocity.x !== 0 || transform.velocity.z !== 0) {
-            Utils.log(`AI movement - velocity: (${transform.velocity.x.toFixed(3)}, ${transform.velocity.z.toFixed(3)}), position: (${transform.position.x.toFixed(2)}, ${transform.position.z.toFixed(2)})`);
-        }
-
-        // Store previous position for interpolation
-        transform.updatePrevious();
-
-        // Apply AI velocity to position (velocity set by AI system)
-        transform.position = Utils.vectorAdd(transform.position, transform.velocity);
-
-        // Apply square arena boundaries
-        const arenaLimit = (this.arenaSize / 2) - 0.5; // Leave some space from the wall
-        transform.position.x = Math.max(-arenaLimit, Math.min(arenaLimit, transform.position.x));
-        transform.position.z = Math.max(-arenaLimit, Math.min(arenaLimit, transform.position.z));
-
-        // Update rotation based on movement direction
-        if (Utils.vectorLength(transform.velocity) > 0) {
             transform.rotation.y = Math.atan2(transform.velocity.x, transform.velocity.z);
         }
     }
 
-    render(gameState, interpolationFactor) {
-        // Interpolate positions for smooth rendering
-        gameState.entities.forEach(entity => {
-            const transform = entity.getComponent(Transform);
-            const renderable = entity.getComponent(Renderable);
+    updateAIMovement(transform) {
+        // Store previous position using proper method
+        if (transform.updatePrevious) {
+            transform.updatePrevious();
+        } else {
+            transform.previousPosition = { ...transform.position };
+        }
 
-            if (transform && renderable && renderable.mesh) {
-                // Interpolate position between previous and current
-                const interpolatedPosition = Utils.lerpVector(
-                    transform.previousPosition,
-                    transform.position,
-                    interpolationFactor
-                );
+        // Apply AI velocity to position
+        transform.position.x += transform.velocity.x;
+        transform.position.z += transform.velocity.z;
 
-                // Update mesh position
-                renderable.mesh.position.set(
-                    interpolatedPosition.x,
-                    interpolatedPosition.y,
-                    interpolatedPosition.z
-                );
+        // Apply arena boundaries - match arena wall positions exactly
+        // Arena walls are positioned at ±arenaSize, so movement should go almost to the walls
+        const limit = this.arenaSize - 0.5; // Leave small buffer for player collision
+        transform.position.x = Math.max(-limit, Math.min(limit, transform.position.x));
+        transform.position.z = Math.max(-limit, Math.min(limit, transform.position.z));
 
-                // Update mesh rotation
-                renderable.mesh.rotation.y = transform.rotation.y;
-            }
-        });
+        // Update rotation based on movement
+        if (transform.velocity.x !== 0 || transform.velocity.z !== 0) {
+            transform.rotation.y = Math.atan2(transform.velocity.x, transform.velocity.z);
+        }
     }
 }
 
@@ -172,14 +134,11 @@ class PlayerFactory {
         });
         const mesh = new THREE.Mesh(geometry, material);
 
-        // Add shadow casting
         mesh.castShadow = true;
         mesh.receiveShadow = false;
-
-        // Add to scene
         scene.add(mesh);
 
-        // Create player entity components
+        // Create player entity
         const entity = new Entity(playerId);
         entity.addComponent(new Transform(0, 0.5, 0));
         entity.addComponent(new Renderable(mesh));
@@ -187,44 +146,14 @@ class PlayerFactory {
 
         if (isLocal) {
             entity.addComponent(new PlayerInput());
-            // Local player gets a different material
             material.color.setHex(0x00ff00);
             material.emissive.setHex(0x002200);
         } else {
-            // Remote players get different colors
             material.color.setHex(color);
         }
 
         Utils.log(`Created player: ${playerId} (local: ${isLocal})`);
         return entity;
-    }
-
-    static createPlayerNameTag(playerId, position) {
-        // Create a simple text sprite for player names
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.width = 256;
-        canvas.height = 64;
-
-        // Draw background
-        context.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        context.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Draw text
-        context.fillStyle = 'white';
-        context.font = '20px Arial';
-        context.textAlign = 'center';
-        context.fillText(playerId, canvas.width / 2, canvas.height / 2 + 7);
-
-        // Create texture and sprite
-        const texture = new THREE.CanvasTexture(canvas);
-        const material = new THREE.SpriteMaterial({ map: texture });
-        const sprite = new THREE.Sprite(material);
-
-        sprite.position.set(position.x, position.y + 1.5, position.z);
-        sprite.scale.set(2, 0.5, 1);
-
-        return sprite;
     }
 }
 
@@ -233,16 +162,16 @@ class PlayerManager {
         this.scene = scene;
         this.gameEngine = gameEngine;
         this.playerColors = [
-            0x4a90e2, // Neutral blue (local player)
-            0x7ed321, // Neutral green
-            0xf5a623, // Neutral orange
-            0xd0021b, // Neutral red
-            0x9013fe, // Neutral purple
-            0x50e3c2, // Neutral teal
-            0xb8e986, // Neutral lime
-            0xbd10e0  // Neutral magenta
+            0x4a90e2, // Blue (local)
+            0x7ed321, // Green
+            0xf5a623, // Orange
+            0xd0021b, // Red
+            0x9013fe, // Purple
+            0x50e3c2, // Teal
+            0xb8e986, // Lime
+            0xbd10e0  // Magenta
         ];
-        this.colorIndex = 1; // Start from 1 (0 is reserved for local player)
+        this.colorIndex = 1;
     }
 
     addLocalPlayer(playerId) {
@@ -260,8 +189,6 @@ class PlayerManager {
 
         // Create and add player to game state
         const gameEntity = this.gameEngine.gameState.addPlayer(playerId, true);
-
-        // Add renderable component
         gameEntity.addComponent(new Renderable(mesh));
 
         Utils.log(`Added local player: ${playerId}`);
@@ -286,8 +213,6 @@ class PlayerManager {
 
         // Create and add player to game state
         const gameEntity = this.gameEngine.gameState.addPlayer(playerId, false);
-
-        // Add renderable component
         gameEntity.addComponent(new Renderable(mesh));
 
         Utils.log(`Added remote player: ${playerId}`);
@@ -297,140 +222,105 @@ class PlayerManager {
     removePlayer(playerId) {
         const entity = this.gameEngine.gameState.getPlayerEntity(playerId);
         if (entity) {
-            const renderable = entity.getComponent(Renderable);
+            const renderable = entity.getComponent('Renderable');
             if (renderable && renderable.mesh) {
                 this.scene.remove(renderable.mesh);
-
-                // Dispose of geometry and material
-                if (renderable.mesh.geometry) {
-                    renderable.mesh.geometry.dispose();
-                }
-                if (renderable.mesh.material) {
-                    renderable.mesh.material.dispose();
-                }
+                if (renderable.mesh.geometry) renderable.mesh.geometry.dispose();
+                if (renderable.mesh.material) renderable.mesh.material.dispose();
             }
-
             this.gameEngine.gameState.removePlayer(playerId);
             Utils.log(`Removed player: ${playerId}`);
         }
     }
 
-    updatePlayerPositions(playerUpdates) {
-        // Update remote player positions (for multiplayer)
-        for (const update of playerUpdates) {
-            const entity = this.gameEngine.gameState.getPlayerEntity(update.playerId);
-            if (entity && !entity.getComponent(PlayerController).isLocal) {
-                const transform = entity.getComponent(Transform);
-                if (transform) {
-                    transform.position = Utils.vector3(update.x, update.y, update.z);
-                    transform.rotation.y = update.rotation || 0;
-                }
-            }
-        }
-    }
-
-    getPlayerList() {
-        const players = [];
-        for (const [playerId, entityId] of this.gameEngine.gameState.players) {
-            const entity = this.gameEngine.gameState.getEntity(entityId);
-            if (entity && entity.active) {
-                const controller = entity.getComponent(PlayerController);
-                const transform = entity.getComponent(Transform);
-
-                players.push({
-                    id: playerId,
-                    isLocal: controller.isLocal,
-                    position: transform.position,
-                    state: controller.state,
-                    health: controller.health,
-                    score: controller.score
-                });
-            }
-        }
-        return players;
-    }
-
-    getLocalPlayerPosition() {
-        const localPlayer = this.gameEngine.gameState.getLocalPlayer();
-        if (localPlayer) {
-            const transform = localPlayer.getComponent(Transform);
-            return transform ? transform.position : null;
-        }
-        return null;
-    }
-
-    setPlayerState(playerId, state) {
-        const entity = this.gameEngine.gameState.getPlayerEntity(playerId);
-        if (entity) {
-            const controller = entity.getComponent(PlayerController);
-            if (controller) {
-                controller.state = state;
-                Utils.log(`Player ${playerId} state: ${state}`);
-            }
-        }
-    }
-
-    respawnPlayer(playerId, position = null) {
-        const entity = this.gameEngine.gameState.getPlayerEntity(playerId);
-        if (entity) {
-            const transform = entity.getComponent(Transform);
-            if (transform) {
-                if (position) {
-                    transform.position = Utils.vector3(position.x, position.y, position.z);
-                } else {
-                    // Default spawn position
-                    transform.position = Utils.vector3(0, 0.5, 0);
-                }
-                transform.velocity = Utils.vector3();
-                transform.rotation.y = 0;
-
-                const controller = entity.getComponent(PlayerController);
-                if (controller) {
-                    controller.state = PLAYER_STATES.IDLE;
-                    controller.health = 100;
-                }
-
-                Utils.log(`Respawned player: ${playerId}`);
-            }
-        }
-    }
-
     addAIHunter(hunterId, position = null) {
-        // Create AI hunter mesh - different color and slightly larger
+        // Create AI hunter mesh
         const geometry = new THREE.BoxGeometry(0.9, 1.1, 0.9);
         const material = new THREE.MeshLambertMaterial({
-            color: 0xff4444, // Red color for AI hunter
+            color: 0xff4444,
             transparent: true,
             opacity: 0.9
         });
         const mesh = new THREE.Mesh(geometry, material);
         mesh.castShadow = true;
 
-        // Set initial position
-        const spawnPos = position || Utils.vector3(-5, 0.5, 5); // Corner spawn
+        const spawnPos = position || { x: -5, y: 0.5, z: 5 };
         mesh.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
         this.scene.add(mesh);
 
-        // Create AI entity using GameState's createEntity method (with validation)
+        // Create vision cone debug visualization
+        const visionCone = this.createVisionConeDebugMesh(60, 8);
+        visionCone.position.copy(mesh.position);
+        this.scene.add(visionCone);
+
+        // Create AI entity
         const aiEntity = this.gameEngine.gameState.createEntity();
         aiEntity.addComponent(new Transform(spawnPos.x, spawnPos.y, spawnPos.z));
-        aiEntity.addComponent(new Movement(0.08)); // AI hunter movement speed
+        aiEntity.addComponent(new Movement(0.08));
         aiEntity.addComponent(new Renderable(mesh));
         aiEntity.addComponent(new AIHunter());
-        aiEntity.addComponent(new VisionCone());
+        aiEntity.addComponent(new VisionCone(60, 8)); // 60 degree cone, 8 unit range
+
+        // Store vision cone mesh for updates
+        mesh.visionConeMesh = visionCone;
 
         // Register with AI system
-        const aiSystem = this.gameEngine.systems.find(system => system.name === 'AISystem');
+        const aiSystem = this.gameEngine.getSystem('AISystem');
         if (aiSystem) {
             aiSystem.addEntity(aiEntity);
+            Utils.log(`AI hunter ${hunterId} registered with AISystem`);
+        } else {
+            Utils.warn(`AISystem not found - AI hunter ${hunterId} will not move`);
         }
 
         Utils.log(`Added AI hunter: ${hunterId} at position (${spawnPos.x}, ${spawnPos.z})`);
         return aiEntity;
     }
+
+    createVisionConeDebugMesh(angleInDegrees, range) {
+        // Create a wireframe cone to visualize AI vision
+        const angleInRadians = (angleInDegrees * Math.PI) / 180;
+        const segments = 8;
+
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        const indices = [];
+
+        // Cone center (AI position)
+        vertices.push(0, 0, 0);
+
+        // Create cone arc vertices
+        for (let i = 0; i <= segments; i++) {
+            const angle = (-angleInRadians / 2) + (angleInRadians * i / segments);
+            const x = Math.sin(angle) * range;
+            const z = Math.cos(angle) * range;
+            vertices.push(x, 0, z);
+        }
+
+        // Create lines from center to arc points
+        for (let i = 1; i <= segments + 1; i++) {
+            indices.push(0, i);
+        }
+
+        // Create arc lines
+        for (let i = 1; i <= segments; i++) {
+            indices.push(i, i + 1);
+        }
+
+        geometry.setIndex(indices);
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+        const material = new THREE.LineBasicMaterial({
+            color: 0xffaa00, // Orange color for vision cone
+            transparent: true,
+            opacity: 0.6
+        });
+
+        return new THREE.LineSegments(geometry, material);
+    }
 }
 
-// Export for module systems or global access
+// Export
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { MovementSystem, PlayerFactory, PlayerManager };
 } else {

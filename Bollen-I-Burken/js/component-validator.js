@@ -148,14 +148,29 @@ class TypeValidationStrategy extends ValidationStrategy {
     validate(value, schema, path) {
         const errors = [];
 
-        if (schema.type && typeof value !== schema.type) {
-            errors.push(new ComponentValidationError(
-                `Expected type '${schema.type}' but got '${typeof value}' at ${path}`,
-                VALIDATION_ERROR_TYPES.TYPE_MISMATCH,
-                null,
-                path,
-                { expected: schema.type, actual: typeof value }
-            ));
+        if (schema.type) {
+            let actualType = typeof value;
+
+            // Handle array type properly
+            if (schema.type === 'array') {
+                if (!Array.isArray(value)) {
+                    errors.push(new ComponentValidationError(
+                        `Expected type 'array' but got '${actualType}' at ${path}`,
+                        VALIDATION_ERROR_TYPES.TYPE_MISMATCH,
+                        null,
+                        path,
+                        { expected: 'array', actual: actualType }
+                    ));
+                }
+            } else if (typeof value !== schema.type) {
+                errors.push(new ComponentValidationError(
+                    `Expected type '${schema.type}' but got '${actualType}' at ${path}`,
+                    VALIDATION_ERROR_TYPES.TYPE_MISMATCH,
+                    null,
+                    path,
+                    { expected: schema.type, actual: actualType }
+                ));
+            }
         }
 
         return errors;
@@ -201,23 +216,7 @@ class EnumValidationStrategy extends ValidationStrategy {
     }
 }
 
-class ArrayValidationStrategy extends ValidationStrategy {
-    validate(value, schema, path) {
-        const errors = [];
-
-        if (schema.type === 'array' && !Array.isArray(value)) {
-            errors.push(new ComponentValidationError(
-                `Expected array but got '${typeof value}' at ${path}`,
-                VALIDATION_ERROR_TYPES.TYPE_MISMATCH,
-                null,
-                path,
-                { expected: 'array', actual: typeof value }
-            ));
-        }
-
-        return errors;
-    }
-}
+// ArrayValidationStrategy removed - now handled by TypeValidationStrategy
 
 // ==========================================
 // COMPONENT VALIDATOR (Enterprise Foundation)
@@ -232,8 +231,7 @@ class ComponentValidator {
         this.strategies = [
             new TypeValidationStrategy(),
             new RangeValidationStrategy(),
-            new EnumValidationStrategy(),
-            new ArrayValidationStrategy()
+            new EnumValidationStrategy()
         ];
 
         this.errorHandler = null;

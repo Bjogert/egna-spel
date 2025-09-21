@@ -344,8 +344,8 @@ class AudioSystem extends System {
         const localPlayer = gameState.getLocalPlayer();
         if (!localPlayer) return;
 
-        const input = localPlayer.getComponent(PlayerInput);
-        const transform = localPlayer.getComponent(Transform);
+        const input = localPlayer.getComponent('PlayerInput');
+        const transform = localPlayer.getComponent('Transform');
 
         if (input && transform && input.hasInput()) {
             const velocity = Utils.vectorLength(transform.velocity);

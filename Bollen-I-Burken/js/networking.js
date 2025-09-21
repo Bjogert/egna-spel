@@ -183,7 +183,7 @@ class NetworkSystem extends System {
         for (const [playerId, entityId] of gameState.players) {
             const entity = gameState.getEntity(entityId);
             if (entity && entity.active) {
-                const transform = entity.getComponent(Transform);
+                const transform = entity.getComponent('Transform');
                 const controller = entity.getComponent(PlayerController);
 
                 if (transform && controller) {
@@ -206,7 +206,7 @@ class NetworkSystem extends System {
         for (const playerState of playerStates) {
             const entity = gameState.getPlayerEntity(playerState.playerId);
             if (entity) {
-                const transform = entity.getComponent(Transform);
+                const transform = entity.getComponent('Transform');
                 const controller = entity.getComponent(PlayerController);
 
                 if (transform && !controller.isLocal) {
@@ -272,7 +272,7 @@ class NetworkSystem extends System {
         const localPlayer = gameState.getLocalPlayer();
         if (!localPlayer) return;
 
-        const transform = localPlayer.getComponent(Transform);
+        const transform = localPlayer.getComponent('Transform');
         const controller = localPlayer.getComponent(PlayerController);
 
         if (transform && controller) {
