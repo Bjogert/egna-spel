@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bollen i Burken - 3D Arena Game</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/ui.css">
+    <link rel="stylesheet" href="css/responsive.css">
+
+    <!-- Three.js from CDN -->
+    <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+</head>
+
+<body>
+    <!-- Game Container -->
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Game UI -->
+    <div id="gameUI">
+        <!-- Game stats will be populated by UISystem -->
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading">
+        Loading Arena...
+    </div>
+
+    <!-- Game Scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/error-handler.js"></script>
+    <script src="js/config-manager.js"></script>
+    <script src="js/resource-manager.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/component-validator.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/arena.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/networking.js"></script>
+
+    <!-- Main Game Script -->
+    <script>
+        // ==========================================
+        // BOLLEN I BURKEN - MAIN GAME
+        // 3D Arena Hide and Seek Game
+        // ==========================================
+
+        // Global game variables
+        let scene, camera, renderer;
+        let gameEngine;
+        let arenaBuilder;
+        let playerManager;
+        let localPlayerId;
+        let resourceManager;
+        let errorHandler;
+        let configManager;
+        let componentValidator;
+
+        // Game systems
+        let inputSystem;
+        let movementSystem;
+        let uiSystem;
+        let audioSystem;
+        let networkSystem;
+        let aiSystem;
+
+        // Performance tracking
+        let lastTime = 0;
+        let frameCount = 0;
+        let lastFpsTime = 0;
+
+        // Initialize the game
+        async function initializeGame() {
+            try {
+                Utils.log('Starting Bollen i Burken...');
+
+                // Initialize Error Handler (Enterprise foundation)
+                errorHandler = new ErrorHandler();
+
+                // Initialize Configuration Manager (Enterprise foundation)
+                configManager = new ConfigManager();
+
+                // Add configuration sources
+                configManager.addSource('localStorage', new LocalStorageConfigSource());
+                configManager.addSource('url', new URLConfigSource());
+
+                // Load configuration from URL parameters and localStorage
+                await configManager.loadFromSource('url');
+                await configManager.loadFromSource('localStorage');
+
+                // Initialize Resource Manager (Enterprise foundation)
+                resourceManager = new ResourceManager();
+
+                // Initialize Component Validator (Enterprise foundation)
+                componentValidator = new ComponentValidator();
+                componentValidator.initialize(errorHandler, configManager);
+
+                // Initialize Three.js
+                await initializeThreeJS();
+
+                // Initialize game engine
+                initializeGameEngine();
+
+                // Initialize systems
+                initializeSystems();
+
+                // Create arena
+                createArena();
+
+                // Create local player
+                createLocalPlayer();
+
+                // Start the game
+                startGame();
+
+                Utils.log('Game initialization complete');
+
+            } catch (error) {
+                // Use ErrorHandler for professional error management
+                if (errorHandler) {
+                    errorHandler.handle(new GameError('Game initialization failed', ERROR_CATEGORIES.SYSTEM, {
+                        phase: 'initialization',
+                        originalError: error.message
+                    }), 'CRITICAL');
+                } else {
+                    Utils.error('Failed to initialize game', error);
+                }
+                showErrorMessage('Failed to initialize game: ' + error.message);
+            }
+        }
+
+        async function initializeThreeJS() {
+            Utils.log('Initializing Three.js...');
+
+            // Check if Three.js loaded
+            if (typeof THREE === 'undefined') {
+                throw new Error('Three.js failed to load from CDN');
+            }
+
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(configManager.get('graphics.backgroundColor'));
+
+            // Create camera with "emperor's view" using ConfigManager
+            const cameraHeight = configManager.get('camera.height');
+            const cameraDistance = configManager.get('camera.distance');
+            const cameraFov = configManager.get('camera.fov');
+            const lookAtOffset = configManager.get('camera.lookAtOffset');
+
+            camera = new THREE.PerspectiveCamera(
+                cameraFov, // field of view from config
+                window.innerWidth / window.innerHeight, // responsive aspect ratio
+                0.1, // near clipping plane
+                1000 // far clipping plane
+            );
+
+            // Position camera high above arena, looking down at angle
+            camera.position.set(0, cameraHeight, cameraDistance);
+            camera.lookAt(lookAtOffset.x, lookAtOffset.y, lookAtOffset.z);
+
+            // Create renderer
+            const canvas = document.getElementById('gameCanvas');
+            if (!canvas) {
+                throw new Error('Game canvas not found');
+            }
+
+            renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: true,
+                alpha: false
+            });
+
+            // Set initial size based on window
+            updateCanvasSize();
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+
+            Utils.log('Three.js initialized successfully');
+        }
+
+        function initializeGameEngine() {
+            Utils.log('Initializing game engine...');
+
+            // Create game engine
+            gameEngine = new GameEngine();
+
+            // Generate local player ID
+            localPlayerId = Utils.generatePlayerId();
+
+            Utils.log(`Game engine initialized - Local player: ${localPlayerId}`);
+        }
+
+        function initializeSystems() {
+            Utils.log('Initializing game systems...');
+
+            // Initialize all systems
+            inputSystem = new InputSystem();
+            movementSystem = new MovementSystem();
+            uiSystem = new UISystem();
+            // audioSystem = new AudioSystem(); // Disabled for now
+            networkSystem = new NetworkSystem();
+            aiSystem = new AISystem();
+
+            // Add systems to game engine
+            gameEngine.addSystem(inputSystem);
+            gameEngine.addSystem(movementSystem);
+            gameEngine.addSystem(uiSystem);
+            // gameEngine.addSystem(audioSystem); // Disabled for now
+            gameEngine.addSystem(networkSystem);
+            gameEngine.addSystem(aiSystem);
+
+            // Initialize networking in local mode
+            networkSystem.initializeNetwork('local');
+
+            // Initialize MovementSystem config after ConfigManager is available
+            if (movementSystem && typeof movementSystem.initializeConfig === 'function') {
+                movementSystem.initializeConfig();
+            }
+
+            Utils.log('All systems initialized');
+        }
+
+        function createArena() {
+            Utils.log('Creating arena...');
+
+            arenaBuilder = new ArenaBuilder(scene);
+            arenaBuilder.createBasicArena();
+
+            Utils.log('Arena created');
+        }
+
+        function createLocalPlayer() {
+            Utils.log('Creating local player...');
+
+            playerManager = new PlayerManager(scene, gameEngine);
+            playerManager.addLocalPlayer(localPlayerId);
+
+            // Add AI hunter
+            playerManager.addAIHunter('ai-hunter-1');
+
+            Utils.log('Local player and AI hunter created');
+        }
+
+        function startGame() {
+            Utils.log('Starting game...');
+
+            // Set game state to playing
+            gameEngine.start();
+
+            // Start audio (disabled for now)
+            // audioSystem.startAmbientMusic();
+
+            // Hide loading screen
+            hideLoadingScreen();
+
+            // Start game loop
+            requestAnimationFrame(gameLoop);
+
+            Utils.log('Game started successfully');
+        }
+
+        // Main game loop (wrapped with ErrorBoundary)
+        const gameLoop = ErrorBoundary.wrap(function gameLoop(currentTime) {
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            // Update game engine (handles tick-based updates)
+            gameEngine.update(deltaTime);
+
+            // Render the Three.js scene
+            renderer.render(scene, camera);
+
+            // Update FPS counter
+            updateFPS(currentTime);
+
+            // Update UI with current stats
+            updateGameUI();
+
+            // Continue the game loop
+            requestAnimationFrame(gameLoop);
+        }, {
+            system: 'GameLoop',
+            function: 'gameLoop'
+        }, {
+            level: 'ERROR',
+            suppressErrors: false,
+            returnDefault: null
+        });
+
+        function updateFPS(currentTime) {
+            frameCount++;
+
+            if (currentTime - lastFpsTime >= 1000) {
+                const fps = frameCount;
+                frameCount = 0;
+                lastFpsTime = currentTime;
+
+                // Update FPS in UI
+                uiSystem.updateFPS(fps);
+            }
+        }
+
+        function updateGameUI() {
+            // Get game stats
+            const stats = gameEngine.getStats();
+
+            // Update network status
+            const networkStats = networkSystem.getNetworkStats();
+            uiSystem.updateNetworkStatus(
+                networkStats.connected ? 'connected' : 'disconnected',
+                networkStats.latency
+            );
+        }
+
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+        }
+
+        function showErrorMessage(message) {
+            const gameUI = document.getElementById('gameUI');
+            if (gameUI) {
+                gameUI.innerHTML = `
+                    <div style="color: red; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 8px;">
+                        <h3>Error</h3>
+                        <p>${message}</p>
+                        <button onclick="location.reload()" style="margin-top: 10px; padding: 5px 10px;">
+                            Reload Game
+                        </button>
+                    </div>
+                `;
+            }
+
+            Utils.error('Game error displayed to user:', message);
+        }
+
+        // Update canvas size to be responsive
+        function updateCanvasSize() {
+            if (!camera || !renderer) return;
+
+            // Use full window size
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            // Update camera aspect ratio
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+
+            // Update renderer size
+            renderer.setSize(width, height, false); // false prevents setting CSS size
+
+            Utils.log(`Canvas resized to: ${width}x${height}`);
+        }
+
+        // Handle window resize
+        function handleResize() {
+            updateCanvasSize();
+        }
+
+        // Handle visibility change (pause when tab is hidden)
+        function handleVisibilityChange() {
+            if (document.hidden) {
+                if (gameEngine && gameEngine.gameState.gamePhase === GAME_STATES.PLAYING) {
+                    gameEngine.pause();
+                    uiSystem.showMessage('PAUSED', 'Game paused (tab hidden)');
+                }
+            } else {
+                if (gameEngine && gameEngine.gameState.gamePhase === GAME_STATES.PAUSED) {
+                    gameEngine.resume();
+                    uiSystem.hideMessage();
+                }
+            }
+        }
+
+        // Event listeners
+        window.addEventListener('resize', Utils.throttle(handleResize, 250));
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Handle errors globally with ErrorHandler
+        window.addEventListener('error', (event) => {
+            if (errorHandler) {
+                errorHandler.handle(new GameError('Uncaught global error', ERROR_CATEGORIES.SYSTEM, {
+                    filename: event.filename,
+                    lineno: event.lineno,
+                    colno: event.colno,
+                    stack: event.error?.stack
+                }), 'CRITICAL');
+            } else {
+                Utils.error('Global error caught', event.error);
+            }
+            showErrorMessage('An unexpected error occurred. Please reload the game.');
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            if (errorHandler) {
+                errorHandler.handle(new GameError('Unhandled promise rejection', ERROR_CATEGORIES.SYSTEM, {
+                    reason: event.reason,
+                    promise: event.promise
+                }), 'CRITICAL');
+            } else {
+                Utils.error('Unhandled promise rejection', event.reason);
+            }
+            showErrorMessage('An unexpected error occurred. Please reload the game.');
+        });
+
+        // Debug functions (available in console)
+        window.debugGame = function () {
+            return {
+                gameEngine: gameEngine,
+                scene: scene,
+                camera: camera,
+                renderer: renderer,
+                resourceManager: resourceManager,
+                errorHandler: errorHandler,
+                configManager: configManager,
+                componentValidator: componentValidator,
+                systems: {
+                    input: inputSystem,
+                    movement: movementSystem,
+                    ui: uiSystem,
+                    // audio: audioSystem, // Disabled for now
+                    network: networkSystem,
+                    ai: aiSystem
+                },
+                stats: gameEngine ? gameEngine.getStats() : null,
+                resources: resourceManager ? resourceManager.getStats() : null,
+                errors: errorHandler ? errorHandler.getStats() : null,
+                config: configManager ? configManager.getStats() : null
+            };
+        };
+
+        // Professional debug commands
+        window.debugResources = function() {
+            if (resourceManager) {
+                resourceManager.debugLogResources();
+            } else {
+                console.log('ResourceManager not initialized');
+            }
+        };
+
+        window.debugErrors = function() {
+            if (errorHandler) {
+                console.log('=== ERROR HANDLER DEBUG ===');
+                console.log('Error Statistics:', errorHandler.getStats());
+                console.log('Recent Errors:', errorHandler.getStoredErrors());
+                console.log('=== END ERROR DEBUG ===');
+            } else {
+                console.log('ErrorHandler not initialized');
+            }
+        };
+
+        window.clearErrors = function() {
+            if (errorHandler) {
+                errorHandler.clearErrors();
+                console.log('All stored errors cleared');
+            } else {
+                console.log('ErrorHandler not initialized');
+            }
+        };
+
+        window.exportErrors = function() {
+            if (errorHandler) {
+                const errorData = errorHandler.exportErrors();
+                console.log('Error export:', errorData);
+                return errorData;
+            } else {
+                console.log('ErrorHandler not initialized');
+                return '[]';
+            }
+        };
+
+        window.debugConfig = function() {
+            if (configManager) {
+                configManager.debugLogConfig();
+            } else {
+                console.log('ConfigManager not initialized');
+            }
+        };
+
+        window.getConfig = function(path, defaultValue) {
+            if (configManager) {
+                return configManager.get(path, defaultValue);
+            } else {
+                console.log('ConfigManager not initialized');
+                return null;
+            }
+        };
+
+        window.setConfig = function(path, value) {
+            if (configManager) {
+                const result = configManager.set(path, value);
+                console.log(`Config ${path} set to:`, value, result ? '✅' : '❌');
+                return result;
+            } else {
+                console.log('ConfigManager not initialized');
+                return false;
+            }
+        };
+
+        window.saveConfig = function() {
+            if (configManager) {
+                configManager.saveToSource('localStorage').then(success => {
+                    console.log('Config saved to localStorage:', success ? '✅' : '❌');
+                });
+            } else {
+                console.log('ConfigManager not initialized');
+            }
+        };
+
+        window.resetConfig = function(path) {
+            if (configManager) {
+                configManager.reset(path);
+                console.log('Config reset:', path || 'all settings');
+            } else {
+                console.log('ConfigManager not initialized');
+            }
+        };
+
+        window.debugValidation = function() {
+            if (componentValidator) {
+                componentValidator.debugLogSchemas();
+            } else {
+                console.log('ComponentValidator not initialized');
+            }
+        };
+
+        window.validateAllEntities = function() {
+            if (gameEngine && componentValidator) {
+                const results = [];
+                gameEngine.gameState.entities.forEach(entity => {
+                    if (entity.validateAllComponents) {
+                        const validationResults = entity.validateAllComponents();
+                        results.push({
+                            entityId: entity.id,
+                            componentValidations: validationResults
+                        });
+                    }
+                });
+                console.log('Entity Validation Results:', results);
+                return results;
+            } else {
+                console.log('GameEngine or ComponentValidator not initialized');
+                return [];
+            }
+        };
+
+        window.testValidation = function() {
+            console.log('=== TESTING COMPONENT VALIDATION ===');
+            console.log('ValidatedEntity available:', typeof ValidatedEntity !== 'undefined');
+            console.log('ComponentValidator available:', typeof ComponentValidator !== 'undefined');
+
+            if (gameEngine) {
+                console.log('Game entities count:', gameEngine.gameState.entities.size);
+                gameEngine.gameState.entities.forEach(entity => {
+                    console.log(`Entity ${entity.id}:`, entity.constructor.name);
+                    console.log('  Components:', Array.from(entity.components.keys()));
+                });
+            }
+
+            console.log('=== END VALIDATION TEST ===');
+        };
+
+        // Start the game when page loads
+        window.addEventListener('load', function () {
+            Utils.log('Page loaded, initializing game...');
+            initializeGame();
+        });
+
+        // Enable debug mode in development
+        window.DEBUG = true;
+
+    </script>
+</body>
+
+</html>

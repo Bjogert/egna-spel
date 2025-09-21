@@ -1,0 +1,5 @@
+# 3D model files directory
+# Future 3D model files will be placed here:
+# - player.glb - Player character model
+# - arena_props.glb - Arena decorations
+# - hiding_spots.glb - Objects to hide behind

@@ -1,0 +1,295 @@
+/* ==========================================
+   BOLLEN I BURKEN - RESPONSIVE STYLESHEET
+   Mobile and Touch Device Optimization
+   ========================================== */
+
+/* Mobile Devices (Portrait) */
+@media (max-width: 768px) and (orientation: portrait) {
+    #gameContainer {
+        padding: 1vh 1vw;
+    }
+
+    #gameCanvas {
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        border: none;
+    }
+
+    #gameUI {
+        top: 10px;
+        left: 10px;
+    }
+
+    #controlsHelp {
+        bottom: 10px;
+        left: 10px;
+        font-size: 10px;
+        padding: 8px;
+    }
+
+    .game-stats {
+        padding: 8px;
+        min-width: 120px;
+    }
+
+    .stat-row {
+        font-size: 10px;
+    }
+}
+
+/* Keep fixed positioning on mobile for consistent overlay */
+
+/* Touch Controls */
+.touch-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    border-top: 2px solid #8b4513;
+}
+
+.touch-dpad {
+    position: relative;
+    width: 120px;
+    height: 120px;
+}
+
+.touch-button {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: rgba(139, 69, 19, 0.7);
+    border: 2px solid #8b4513;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.touch-button:active {
+    background: rgba(139, 69, 19, 1);
+    transform: scale(0.95);
+}
+
+.touch-button.up {
+    top: 0;
+    left: 40px;
+}
+
+.touch-button.down {
+    bottom: 0;
+    left: 40px;
+}
+
+.touch-button.left {
+    top: 40px;
+    left: 0;
+}
+
+.touch-button.right {
+    top: 40px;
+    right: 0;
+}
+
+.touch-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.action-button {
+    width: 60px;
+    height: 60px;
+    background: rgba(0, 255, 0, 0.7);
+    border: 2px solid #00ff00;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.action-button:active {
+    background: rgba(0, 255, 0, 1);
+    transform: scale(0.95);
+}
+
+/* Mobile Devices (Landscape) */
+@media (max-width: 768px) and (orientation: landscape) {
+    #gameContainer {
+        padding: 1vh 1vw;
+    }
+
+    #gameCanvas {
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        border: none;
+    }
+
+    #gameUI {
+        top: 8px;
+        left: 8px;
+    }
+
+    .game-stats {
+        padding: 6px;
+        min-width: 140px;
+    }
+
+    #controlsHelp {
+        bottom: 8px;
+        left: 8px;
+        font-size: 9px;
+        padding: 6px;
+    }
+
+    .touch-controls {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 15px;
+        height: auto;
+    }
+
+    .touch-dpad {
+        width: 100px;
+        height: 100px;
+    }
+
+    .touch-button {
+        width: 35px;
+        height: 35px;
+        font-size: 12px;
+    }
+
+    .action-button {
+        width: 50px;
+        height: 50px;
+        font-size: 10px;
+    }
+}
+
+/* Tablet Devices */
+@media (min-width: 769px) and (max-width: 1024px) {
+    #gameCanvas {
+        width: 100vw;
+        height: 100vh;
+        max-width: 100vw;
+        max-height: 100vh;
+    }
+
+    #gameUI,
+    #playerList,
+    #controlsHelp {
+        font-size: 14px;
+    }
+
+    .game-stats,
+    #playerList {
+        padding: 12px;
+    }
+}
+
+/* Large Screens */
+@media (min-width: 1400px) {
+    #gameCanvas {
+        width: 100vw;
+        height: 100vh;
+    }
+
+    #gameUI,
+    #playerList,
+    #controlsHelp {
+        font-size: 16px;
+    }
+
+    .game-title {
+        font-size: 24px;
+    }
+
+    .stat-row {
+        font-size: 16px;
+    }
+}
+
+/* High DPI Displays */
+@media (-webkit-min-device-pixel-ratio: 2),
+(min-resolution: 192dpi) {
+    #gameCanvas {
+        image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .loading::after {
+        animation: none;
+    }
+
+    .network-indicator.connecting {
+        animation: none;
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    body {
+        background: #000000;
+        color: #ffffff;
+    }
+
+    #gameCanvas {
+        border-color: #ffffff;
+    }
+
+    .game-stats,
+    #playerList,
+    #controlsHelp {
+        border-color: #ffffff;
+        background: rgba(0, 0, 0, 0.9);
+    }
+
+    .stat-value {
+        color: #ffffff;
+    }
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background: white;
+        color: black;
+    }
+
+    #gameContainer,
+    #gameCanvas,
+    .touch-controls {
+        display: none;
+    }
+
+    #gameUI {
+        position: static;
+        color: black;
+    }
+}

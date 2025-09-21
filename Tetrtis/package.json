@@ -1,0 +1,140 @@
+{
+  "name": "fantastic-tetris",
+  "version": "2.0.0",
+  "description": "A modern, innovative web-based Tetris game with 3D graphics, AI assistance, and advanced features",
+  "main": "index.html",
+  "scripts": {
+    "dev": "live-server --port=8080 --open=/index.html",
+    "build": "npm run build:js && npm run build:css && npm run optimize",
+    "build:js": "webpack --mode=production",
+    "build:css": "postcss css/style.css -o dist/style.min.css",
+    "optimize": "imagemin assets/images/* --out-dir=dist/images",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint js/**/*.js",
+    "lint:fix": "eslint js/**/*.js --fix",
+    "format": "prettier --write js/**/*.js css/**/*.css",
+    "start": "npm run dev",
+    "preview": "npm run build && live-server dist --port=8080",
+    "lighthouse": "lighthouse http://localhost:8080 --output html --output-path lighthouse-report.html"
+  },
+  "keywords": [
+    "tetris",
+    "game",
+    "puzzle",
+    "web-game",
+    "javascript",
+    "canvas",
+    "3d-graphics",
+    "ai-assistance",
+    "pwa",
+    "webgl"
+  ],
+  "author": "Fantastic Tetris Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/fantastic-tetris.git"
+  },
+  "bugs": {
+    "url": "https://github.com/username/fantastic-tetris/issues"
+  },
+  "homepage": "https://fantastic-tetris.com",
+  "devDependencies": {
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "babel-loader": "^9.1.3",
+    "css-loader": "^6.8.1",
+    "eslint": "^8.52.0",
+    "jest": "^29.7.0",
+    "lighthouse": "^11.2.0",
+    "live-server": "^1.2.2",
+    "postcss": "^8.4.31",
+    "postcss-cli": "^10.1.0",
+    "prettier": "^3.0.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "imagemin": "^8.0.1",
+    "imagemin-webp": "^8.0.0",
+    "imagemin-mozjpeg": "^10.0.0",
+    "imagemin-pngquant": "^9.0.2"
+  },
+  "dependencies": {
+    "three": "^0.157.0",
+    "howler": "^2.2.4",
+    "hammer": "^2.0.8",
+    "chart.js": "^4.4.0",
+    "gsap": "^3.12.2",
+    "workbox-sw": "^7.0.0",
+    "workbox-webpack-plugin": "^7.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ],
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "pwa": {
+    "name": "Fantastic Tetris",
+    "short_name": "FTetris",
+    "description": "Advanced Tetris game with 3D graphics and AI assistance",
+    "theme_color": "#1a1a2e",
+    "background_color": "#0f0f23",
+    "display": "standalone",
+    "orientation": "portrait",
+    "scope": "/",
+    "start_url": "/"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "testMatch": [
+      "**/tests/**/*.test.js",
+      "**/js/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "js/**/*.js",
+      "!js/**/*.test.js",
+      "!js/vendor/**"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    }
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2022": true,
+      "jest": true
+    },
+    "extends": [
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2022,
+      "sourceType": "module"
+    },
+    "rules": {
+      "no-console": "warn",
+      "no-unused-vars": "error",
+      "prefer-const": "error",
+      "no-var": "error"
+    }
+  },
+  "prettier": {
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "printWidth": 100
+  }
+}

@@ -1,0 +1,94 @@
+/* ==========================================
+   BOLLEN I BURKEN - MAIN STYLESHEET
+   3D Arena Game - Multiplayer Ready
+   ========================================== */
+
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: #949494;
+    color: #333333;
+    overflow: hidden;
+    user-select: none;
+}
+
+/* Game Container */
+#gameContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    box-sizing: border-box;
+    z-index: 1;
+}
+
+/* Main Game Canvas */
+#gameCanvas {
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    background-color: #555555;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* Loading Screen */
+.loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-size: 24px;
+    color: #666666;
+}
+
+.loading::after {
+    content: '';
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    margin-left: 10px;
+    border: 4px solid #aaaaaa;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Game States */
+.game-paused {
+    filter: grayscale(50%) brightness(0.7);
+}
+
+.game-active {
+    filter: none;
+    transition: filter 0.3s ease;
+}
+
+/* Responsive Design Hook */
+@media (max-width: 900px) {
+    #gameCanvas {
+        max-width: 95vw;
+        max-height: 70vh;
+    }
+}
