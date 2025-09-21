@@ -1,4 +1,22 @@
-﻿Create a 3D game called "Bollen i Burken" using Three.js with the following specifications:
+﻿Create a 3D digital version of the classic Swedish hide-and-seek game "Bollen i Burken" using Three.js with the following specifications:
+
+## 🇸🇪 GAME CONCEPT: TRADITIONAL SWEDISH HIDE-AND-SEEK
+
+**"Bollen i Burken"** (Ball in the Jar) is a beloved Swedish children's game that combines hide-and-seek with strategy and rescue mechanics. This 3D version brings the traditional outdoor game into a digital arena environment while preserving the core Swedish gaming heritage.
+
+### Traditional Game Elements to Digitize:
+- **The Guard (Vaktare)**: AI seeker that hunts players
+- **The Can (Burken)**: Central object that can be "kicked" to rescue caught players  
+- **Hiding Mechanics**: Players must find cover to avoid being spotted
+- **Tagging System**: Players get caught when spotted by the guard
+- **Rescue System**: Free caught players by reaching the can
+- **Swedish Calls**: Digital versions of traditional Swedish game phrases
+
+### Cultural Preservation Goals:
+- Introduce international players to Swedish gaming traditions
+- Preserve classic childhood game mechanics in digital form
+- Educational value about Swedish cultural heritage
+- Modern accessibility while maintaining traditional spirit
 
 **KISS + PROFESSIONAL ARCHITECTURE**
 Build slow and keep it as simple as possible. 
@@ -21,19 +39,28 @@ CAMERA & PERSPECTIVE:
 - Slightly tilted perspective (not straight top-down) to show depth and 3D structure
 - Fixed camera position initially
 
-ARENA DESIGN:
-- Simple SQUARE arena floor (not circular)
-- BIGGER arena size for more movement space
-- Raised arena walls around the perimeter (simple walls only)
-- Arena should have depth - the floor is lower than ground level
-- NO decorative elements (pillars, torches, gates) - keep minimal
-- Remove all complex architecture until basic gameplay works
+**ARENA DESIGN: SWEDISH PLAYGROUND INSPIRED**
+- Simple SQUARE arena floor representing a Swedish schoolyard/playground
+- BIGGER arena size for authentic hide-and-seek movement space
+- Raised arena walls around the perimeter (traditional playground boundaries)
+- Arena should have depth - representing a sunken play area
+- **Central "Can" Object**: The focal point for rescue mechanics (future feature)
+- **Hiding Spots**: Strategic placement for authentic Swedish game experience (future)
+- NO decorative elements initially - focus on gameplay fundamentals
 
-PLAYER CHARACTER:
-- 3D character (simple cube or basic 3D model) on the arena floor
-- Smooth movement using WASD or arrow keys
+**PLAYER CHARACTER: THE HIDER**
+- 3D character (simple cube evolving to child-like figure) representing the "hider"
+- Smooth movement using WASD keys (traditional playground running)
 - Character moves on the 3D arena floor plane
-- Collision detection with arena walls
+- Collision detection with arena walls and obstacles
+- **Future**: Hiding states (crouched, behind objects, in spots)
+
+**AI SEEKER: THE DIGITAL GUARD**
+- AI-controlled seeker representing the traditional "vaktare" (guard)
+- Patrol behavior around the arena perimeter and center
+- **Future**: Vision system for spotting players
+- **Future**: Swedish-style "tagging" calls when spotting players
+- **Future**: Intelligent hunting and searching behavior
 
 TECHNICAL REQUIREMENTS:
 - HTML file with Three.js (import from CDN)
@@ -44,35 +71,37 @@ TECHNICAL REQUIREMENTS:
 
 Start with the folder structure and then do the basic 3D arena geometry and a controllable 3D character - we'll add hide and seek gameplay later.
 
-## SIMPLIFICATION REQUIREMENTS (Updated)
+**SIMPLIFICATION REQUIREMENTS: FOCUS ON SWEDISH GAME CORE**
 
-**KEEP IT MINIMAL AND SIMPLE:**
-- Delete all unnecessary complex functions and features
-- Focus on getting basic visuals working correctly first
-- Avoid adding complexity that makes future development harder
-- Prepare foundation for AI seeker to be added later
+**KEEP IT MINIMAL AND CULTURALLY AUTHENTIC:**
+- Focus on the essential Swedish hide-and-seek mechanics first
+- Build the digital "playground" foundation before adding complexity
+- Prepare clean architecture for traditional game rule implementation
+- Future integration of Swedish cultural elements and language
 
-**ARENA CHANGES:**
-- Change from circular arena to simple SQUARE arena
-- Make arena BIGGER than current size
-- Remove complex decorations (pillars, torches, gates, etc.)
-- Keep only: square floor, simple walls, basic lighting
+**ARENA CHANGES FOR AUTHENTICITY:**
+- Change from circular to simple SQUARE arena (Swedish schoolyard style)
+- Make arena BIGGER than current size for proper hide-and-seek gameplay
+- Remove complex decorations that don't serve Swedish game mechanics
+- Keep only: square floor, simple walls, basic lighting, central space for "can"
 
-**GAME WINDOW:**
-- Make game window BIGGER than current 800x600
-- Increase canvas size for better visibility
+**TECHNICAL FOUNDATION:**
+- Make game window BIGGER for better arena visibility
+- Increase canvas size for immersive Swedish playground experience
+- Professional code structure ready for Swedish cultural features
 
-**SIMPLIFICATION GOALS:**
-1. Get basic square arena working perfectly
-2. Get player cube moving smoothly with WASD
-3. Get camera positioned correctly 
-4. Remove all decorative/complex elements
-5. Prepare clean foundation for AI seeker system later
+**DEVELOPMENT PRIORITIES:**
+1. Get basic square arena working perfectly (Swedish playground foundation)
+2. Get player movement smooth with WASD (traditional playground running)
+3. Get camera positioned correctly (observer perspective)
+4. Add AI seeker with basic patrol behavior (digital guard)
+5. Prepare clean foundation for Swedish hide-and-seek mechanics
 
-**FUTURE AI INTEGRATION:**
-- Current goal: Simple player movement in square arena
-- Next step: Add AI character that seeks the player
-- Keep code structure clean for easy AI addition
+**FUTURE SWEDISH INTEGRATION:**
+- **Phase 2**: Add central "can" object and rescue mechanics
+- **Phase 3**: Implement hiding spots and vision system
+- **Phase 4**: Add Swedish language elements and cultural audio
+- **Phase 5**: Educational content about Swedish gaming heritage
 
 ## COMPLETE FILE STRUCTURE
 
@@ -107,62 +136,37 @@ Bollen-I-Burken/
 └── README.md              # Game documentation
 ```
 
-## DEVELOPMENT PLAN
+## DEVELOPMENT PLAN: DIGITAL SWEDISH HERITAGE PROJECT
 
-**ARCHITECTURE FOCUS: Professional & Scalable from Day 1**
-- **Enterprise-grade patterns** - Use proven industry architectural patterns
-- **Scalability-first design** - Every system built to handle growth and complexity
-- **Clean code standards** - Maintainable, testable, and self-documenting code
-- **Modular architecture** - Loose coupling, high cohesion, dependency injection
-- **Configuration-driven** - External config files for easy customization and scaling
-- **Component-based design** - Reusable, composable game systems and entities
-- **Professional structure** - Industry-standard file organization and naming conventions
-- **Future-proof foundation** - Built to support feature expansion and team scaling
-- **Professional code structure** - Enterprise-level organization and patterns
-- **Scalable system design** - Built to handle growth and feature expansion  
-- **Clean architecture** - Clear separation of concerns and dependency management
-- **Configuration-driven** - External config management for easy scaling
-- **Component-based ECS** - Reusable, composable entity-component systems
-- **Modular file structure** - Professional organization for team collaboration and maintenance
+**ARCHITECTURE FOCUS: Swedish Game Mechanics + Professional Foundation**
+- **Cultural Authenticity**: Preserve traditional Swedish hide-and-seek gameplay
+- **Enterprise-grade patterns**: Professional architecture for educational/cultural use
+- **Scalability-first design**: Support for multiple players and Swedish regional variations
+- **Educational Integration**: Built for schools and cultural institutions
+- **Heritage Documentation**: Code structure that supports cultural preservation goals
 
-### Phase 1: Foundation (COMPLETED ✅)
-**Goal: Get basic 3D square arena working with controllable character + Enterprise Architecture**
-**Focus: Professional foundation with enterprise patterns and scalability**
+### Phase 1: Swedish Playground Foundation (COMPLETED ✅)
+**Goal: Digital recreation of Swedish schoolyard with basic movement + AI guard**
 
-**Step 1.1: Core Game Foundation (COMPLETED ✅)**
-- [x] Remove all complex arena decorations (pillars, torches, gates)
-- [x] Change arena from circular to simple SQUARE
-- [x] Make arena BIGGER for more movement space
-- [x] Increase game window/canvas size
-- [x] Remove unnecessary complex systems
+**Step 1.1: Core Swedish Arena Foundation (COMPLETED ✅)**
+- [x] Simple square arena representing Swedish playground/schoolyard
+- [x] "Emperor's view" camera (adult supervisor perspective)
+- [x] BIGGER arena size suitable for traditional hide-and-seek
+- [x] Remove decorative elements that don't serve Swedish game mechanics
+- [x] Professional enterprise architecture supporting cultural features
 
-**Step 1.2: Basic Gameplay (COMPLETED ✅)**
-- [x] Simple square arena floor and walls
-- [x] Player cube that moves with WASD
-- [x] Basic camera positioning (emperor's view)
-- [x] Simple collision detection with square arena walls
-- [x] Basic lighting with shadow coverage fix
+**Step 1.2: Basic Swedish Gameplay (COMPLETED ✅)**
+- [x] Player character with WASD movement (traditional running)
+- [x] AI hunter with patrol behavior (digital "vaktare"/guard)
+- [x] Arena collision detection for playground boundaries
+- [x] Clean foundation ready for Swedish hide-and-seek mechanics
 
-**Step 1.3: UI Layout Issues (COMPLETED ✅)**
-- [x] Fix stats panel visibility - ensure game stats are fully visible and not cut off
-- [x] Remove green bar overlap - fix the green progress bar overlapping game area
-- [x] Proper UI overlay positioning - position all UI elements as proper overlays
-- [x] Canvas size adjustment - make canvas large but leave space for UI elements
-- [x] Z-index/layering - ensure UI elements appear on top with proper layering
-- [x] Test responsive layout - verified UI works on different screen sizes
-
-**Step 1.4: Enterprise Foundation (COMPLETED ✅)**
-- [x] **ResourceManager** - Professional Three.js lifecycle management (Singleton + Factory + Observer patterns)
-- [x] **ErrorHandler** - Enterprise error handling with structured debugging (Strategy + Chain of Responsibility patterns)
-- [x] **AI Hunter Entity** - Basic patrol behavior with ECS integration
-- [x] Professional code structure with SOLID principles
-- [x] Enterprise-level debugging and monitoring tools
-
-**Step 1.5: AI Foundation (COMPLETED ✅)**
-- [x] AI Hunter entity with red cube visual
-- [x] Basic patrol movement with collision detection
-- [x] ECS integration for AI components (AIHunter, VisionCone)
-- [x] Clean architecture prepared for vision system and hunting behavior
+**Step 1.3: Enterprise Foundation for Cultural Project (COMPLETED ✅)**
+- [x] **ResourceManager**: Professional Three.js management for educational stability
+- [x] **ErrorHandler**: Enterprise error handling for institutional use
+- [x] **ConfigManager**: Configuration system ready for Swedish localization
+- [x] **ComponentValidator**: Robust validation for educational software standards
+- [x] ECS architecture supporting traditional game rule implementation
 
 **REMOVE FROM CURRENT BUILD:**
 - Complex arena architecture (pillars, decorations)
@@ -172,102 +176,79 @@ Bollen-I-Burken/
 - Advanced UI elements
 - Sound system (save for later)
 
-### Phase 2: Complete Enterprise Foundation (CURRENT STEP)
-**Goal: Finish enterprise architecture before advanced AI features**
-**Focus: Configuration management, validation, and dependency injection**
+### Phase 2: Traditional Swedish Game Mechanics (NEXT PRIORITY)
+**Goal: Implement core "Bollen i Burken" hide-and-seek gameplay**
 
-**Step 2.1: Configuration Manager (COMPLETED ✅)**
-- [x] Centralized configuration system for all game parameters
-- [x] Multiple configuration sources (localStorage, URL parameters)
-- [x] Live configuration updates for development
-- [x] Type-safe configuration validation with schema
-- [x] Professional debugging commands and analytics
-- [x] AI parameter tuning ready (vision, speed, behavior)
-- [x] Full integration with ArenaBuilder, camera, and all game systems
-- [x] Debug commands: `debugConfig()`, `getConfig()`, `setConfig()`, `saveConfig()`, `resetConfig()`
-- [x] Schema-based validation with comprehensive error handling
-- [x] Observer pattern for live configuration change notifications
+**Step 2.1: The Central "Can" (Burken)**
+- [ ] Add 3D can/bucket object at arena center
+- [ ] Interactive collision detection for "kicking" the can
+- [ ] Visual feedback when can is approached or kicked
+- [ ] Can reset mechanics for continuous gameplay
+- [ ] Swedish-style "sparkad" (kicked) audio feedback
 
-**Step 2.2: Component Validation (COMPLETED ✅)**
-- [x] ECS component validation framework with type checking
-- [x] Runtime validation for component data integrity
-- [x] Defensive programming patterns for component safety
-- [x] Error recovery and fallback handling for invalid components
-- [x] Component schema definitions for Transform, Movement, VisionCone, AIHunter, Player
-- [x] Professional validation error reporting and debugging
-- [x] ValidatedEntity class with automatic component validation
-- [x] Multiple validation strategies (Type, Range, Enum, Array)
-- [x] Auto-correction and default value application
-- [x] Integration with ErrorHandler and ConfigManager
-- [x] Debug commands: `debugValidation()`, `validateAllEntities()`
-- [x] Enterprise patterns: Strategy + Template Method + Chain of Responsibility
+**Step 2.2: Hiding Mechanics**
+- [ ] Add simple hiding spots around arena perimeter
+- [ ] Player hiding state management (visible/hidden)
+- [ ] Line-of-sight system for seeker vision
+- [ ] Hiding spot validation and feedback
+- [ ] Strategic hiding spot placement for balanced gameplay
 
-**Step 2.3: Movement System Critical Fixes (COMPLETED ✅)**
-- [x] Resolved component naming collision (Transform/Movement components overwriting each other)
-- [x] Fixed Map iteration bug (MovementSystem was using .forEach incorrectly on entity Map)
-- [x] Fixed JavaScript syntax errors (missing closing parentheses in Three.js materials)
-- [x] Fixed component reference issues (changed class references to string references)
-- [x] Restored KISS principles with simplified, working movement system
-- [x] AI hunter movement integration (proper AISystem registration and patrol behavior)
-- [x] Both player WASD movement and AI patrol movement now fully functional
+**Step 2.3: Tagging and Rescue System**
+- [ ] AI seeker vision cone and player detection
+- [ ] "Tagging" system when player is spotted while not hidden
+- [ ] Caught player state management
+- [ ] Rescue mechanics: reach can to free caught players
+- [ ] Traditional Swedish game victory/defeat conditions
 
-**Step 2.4: Service Container (PAUSED)**
-- [ ] Dependency injection container with service registration
-- [ ] Service lifecycle management (Singleton, Transient, Scoped)
-- [ ] Interface-based service resolution and loose coupling
-- [ ] Configuration-driven service composition
-- [ ] Testing support through mocking and dependency replacement
-- [ ] Professional factory patterns for service creation
+**Step 2.4: Swedish Cultural Elements**
+- [ ] Swedish language UI elements and calls
+- [ ] Traditional "burkad" (tagged) announcement system
+- [ ] Swedish playground ambient sounds
+- [ ] Cultural context and education panel
+- [ ] Regional Swedish game variations information
 
-**Note**: Service Container development paused due to enterprise complexity causing movement system failures. Focus shifted to stable, working foundation using KISS principles.
+### Phase 3: Enhanced Swedish Experience (FUTURE)
+**Goal: Rich cultural heritage features and educational value**
 
-### Phase 3: Game Foundation Enhanced (COMPLETED ✅)
-**Goal: Stable, polished foundation with optimized movement and natural AI**
-**Status: COMPLETED - Enhanced movement system with professional polish**
+**Step 3.1: Multiple Swedish Environments**
+- [ ] Different Swedish playground and schoolyard layouts
+- [ ] Seasonal variations (summer/winter Swedish settings)
+- [ ] Traditional Swedish building and landscape elements
+- [ ] Regional architecture influences (different parts of Sweden)
 
-**Enhanced Working Features:**
-- [x] **Full Arena Movement**: Player and AI can use 96% of visual arena space (29×29 units)
-- [x] **Natural AI Movement**: Smooth rotation system with realistic turn speeds and collision response
-- [x] **Error-Resilient System**: Robust handling of component variations and missing methods
-- [x] **Optimized Boundaries**: Movement area properly synchronized with visual arena walls
-- [x] **Professional Polish**: Human-like AI behavior patterns and smooth movement transitions
-- [x] **Enhanced Collision**: AI responds naturally to wall collisions without vibration/jerkiness
+**Step 3.2: Educational and Cultural Features**
+- [ ] In-game Swedish language learning elements
+- [ ] Historical information about Swedish children's games
+- [ ] Regional variation documentation and gameplay
+- [ ] Integration with Swedish cultural education curricula
+- [ ] Museum and cultural institution partnership features
 
-### Phase 4: Advanced AI Features (NEXT)
-**Goal: Implement AI vision system and hunting behavior**
-**Focus: Build on solid working foundation**
+### Phase 4: Multiplayer Swedish Gaming (FUTURE)
+**Goal: Share Swedish gaming heritage globally through online play**
 
-**Step 3.1: AI Vision System**
-- [ ] Vision cone implementation with configurable parameters
-- [ ] Line-of-sight detection with raycasting
-- [ ] Visual debug rendering for vision cones
-- [ ] Performance optimization for multiple AI entities
+**Step 4.1: Online Swedish Hide-and-Seek**
+- [ ] Multiplayer networking for traditional Bollen i Burken
+- [ ] Swedish game room creation and joining
+- [ ] International players learning Swedish game rules
+- [ ] Cross-cultural gaming experiences and exchange
 
-**Step 3.2: AI State Machine**
-- [ ] Professional state machine pattern (PATROL → HUNTING → SEARCHING)
-- [ ] State transition logic with proper events
-- [ ] AI behavior trees for complex decision making
-- [ ] Error handling and recovery for AI states
+**Step 4.2: Cultural Tournaments and Events**
+- [ ] Swedish midsummer hide-and-seek tournaments
+- [ ] International Swedish culture gaming festivals  
+- [ ] School exchange programs through gaming
+- [ ] Swedish heritage celebration events
 
-**Step 3.3: AI Hunting Behavior**
-- [ ] Direct chase mechanics when player spotted
-- [ ] Basic pathfinding around obstacles
-- [ ] Last known position searching
-- [ ] AI coordination (if multiple hunters)
+### Phase 5: Cultural Preservation and Documentation (FUTURE)
+**Goal: Comprehensive Swedish gaming heritage project**
 
-### Phase 3: Game Mechanics (FUTURE)
-- Add hiding spots in square arena
-- Implement win/lose conditions
-- Add timer and basic scoring
+**Step 5.1: Heritage Documentation**
+- [ ] Record regional Swedish game variations
+- [ ] Interview elderly Swedes about childhood game memories
+- [ ] Create digital archive of Swedish playground games
+- [ ] Partner with Swedish cultural preservation organizations
 
-### Phase 4: Polish (FUTURE)
-- Enhanced visuals and effects
-- Sound system
-- UI improvements
-- Mobile optimization
-
-### Phase 5: Advanced Features (FUTURE)
-- Multiplayer networking
-- Advanced AI behaviors
-- More complex arena layouts
-- Additional game modes
+**Step 5.2: Global Cultural Impact**
+- [ ] International school programs teaching Swedish culture
+- [ ] Museum installations and cultural exhibits
+- [ ] Academic research partnerships on gaming heritage
+- [ ] Swedish government cultural export initiatives

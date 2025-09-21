@@ -184,15 +184,15 @@ class NetworkSystem extends System {
             const entity = gameState.getEntity(entityId);
             if (entity && entity.active) {
                 const transform = entity.getComponent('Transform');
-                const controller = entity.getComponent(PlayerController);
+                const player = entity.getComponent('Player');
 
-                if (transform && controller) {
+                if (transform && player) {
                     playerStates.push({
                         playerId: playerId,
                         position: transform.position,
                         rotation: transform.rotation,
-                        state: controller.state,
-                        health: controller.health
+                        state: player.state,
+                        health: player.health
                     });
                 }
             }
@@ -216,9 +216,9 @@ class NetworkSystem extends System {
                     transform.rotation = playerState.rotation;
                 }
 
-                if (controller && !controller.isLocal) {
-                    controller.state = playerState.state;
-                    controller.health = playerState.health;
+                if (player && !player.isLocal) {
+                    player.state = playerState.state;
+                    player.health = playerState.health;
                 }
             }
         }
@@ -273,14 +273,14 @@ class NetworkSystem extends System {
         if (!localPlayer) return;
 
         const transform = localPlayer.getComponent('Transform');
-        const controller = localPlayer.getComponent(PlayerController);
+        const player = localPlayer.getComponent('Player');
 
-        if (transform && controller) {
+        if (transform && player) {
             this.sendPlayerUpdate(
                 gameState.localPlayerId,
                 transform.position,
                 transform.rotation,
-                controller.state
+                player.state
             );
         }
     }

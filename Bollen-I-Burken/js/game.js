@@ -181,7 +181,7 @@ class Movement {
     }
 }
 
-// Player Component (Updated for Component Validation)
+// Player Component (Unified - removed redundant PlayerController)
 class Player {
     constructor(playerId, isLocal = false) {
         // Required properties matching validation schema
@@ -193,19 +193,9 @@ class Player {
         this.lives = 3;
         this.powerUps = [];
 
-        // Legacy properties (for backward compatibility)
+        // Game state properties
         this.state = PLAYER_STATES.IDLE;
         this.health = 100;
-    }
-}
-
-class PlayerController {
-    constructor(playerId, isLocal = false) {
-        this.playerId = playerId;
-        this.isLocal = isLocal;
-        this.state = PLAYER_STATES.IDLE;
-        this.health = 100;
-        this.score = 0;
     }
 }
 
@@ -253,13 +243,10 @@ class GameState {
     addPlayer(playerId, isLocal = false) {
         const playerEntity = this.createEntity();
 
-        // Add validated core components
+        // Add core components
         playerEntity.addComponent(new Transform(0, 0.5, 0));
         playerEntity.addComponent(new Player(playerId, isLocal));
         playerEntity.addComponent(new Movement(0.1)); // Player movement speed
-
-        // Add legacy component for backward compatibility
-        playerEntity.addComponent(new PlayerController(playerId, isLocal));
 
         if (isLocal) {
             playerEntity.addComponent(new PlayerInput());
@@ -267,7 +254,7 @@ class GameState {
         }
 
         this.players.set(playerId, playerEntity.id);
-        Utils.log(`Added validated player ${playerId} (local: ${isLocal})`);
+        Utils.log(`Added player ${playerId} (local: ${isLocal})`);
         return playerEntity;
     }
 
@@ -540,7 +527,8 @@ if (typeof module !== 'undefined' && module.exports) {
         Transform,
         PlayerInput,
         Renderable,
-        PlayerController,
+        Movement,
+        Player,
         GameState,
         System,
         GameEngine
@@ -551,9 +539,12 @@ if (typeof module !== 'undefined' && module.exports) {
         Transform,
         PlayerInput,
         Renderable,
-        PlayerController,
+        Movement,
+        Player,
         GameState,
         System,
-        GameEngine
+        GameEngine,
+        GAME_STATES,
+        PLAYER_STATES
     };
 }

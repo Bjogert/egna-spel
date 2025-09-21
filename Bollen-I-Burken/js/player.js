@@ -145,7 +145,7 @@ class PlayerFactory {
         const entity = new Entity(playerId);
         entity.addComponent(new Transform(0, 0.5, 0));
         entity.addComponent(new Renderable(mesh));
-        entity.addComponent(new PlayerController(playerId, isLocal));
+        entity.addComponent(new Player(playerId, isLocal));
 
         if (isLocal) {
             entity.addComponent(new PlayerInput());
