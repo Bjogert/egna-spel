@@ -2,7 +2,6 @@
 
 **KISS**
 Build slow and keep it as simple as possible. 
-No unnessesray fluff and functions. always ceep scalability in mind.
 
 ## 🤖 Information for Claude Code AI Assistant
 
