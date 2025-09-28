@@ -132,6 +132,61 @@ const COMPONENT_SCHEMAS = {
             powerUps: { type: 'array', default: [] }
         },
         dependencies: ['Transform', 'Movement']
+    },
+
+    Interactable: {
+        required: ['type'],
+        properties: {
+            type: {
+                type: 'string',
+                enum: ['can', 'door', 'button', 'lever', 'burken'],
+                default: 'can'
+            },
+            interactDistance: { type: 'number', range: [0.5, 10], default: 1.5 },
+            isActive: { type: 'boolean', default: true },
+            requiresProximity: { type: 'boolean', default: true },
+            interactionCount: { type: 'number', range: [0, Number.MAX_SAFE_INTEGER], default: 0 },
+            lastInteractionTime: { type: 'number', range: [0, Number.MAX_SAFE_INTEGER], default: 0 }
+        },
+        dependencies: ['Transform']
+    },
+
+    Hideable: {
+        required: ['hideCapacity'],
+        properties: {
+            hideCapacity: { type: 'number', range: [1, 20], default: 1 },
+            hideRadius: { type: 'number', range: [0.5, 10], default: 2.0 },
+            isOccupied: { type: 'boolean', default: false },
+            hideEffectiveness: { type: 'number', range: [0, 1], default: 0.8 },
+            detectionReduction: { type: 'number', range: [0, 1], default: 0.7 },
+            occupants: { type: 'array', default: [] }
+        },
+        dependencies: ['Transform']
+    },
+
+    Collider: {
+        required: ['type'],
+        properties: {
+            type: {
+                type: 'string',
+                enum: ['box', 'sphere', 'cylinder'],
+                default: 'box'
+            },
+            bounds: {
+                type: 'object',
+                properties: {
+                    width: { type: 'number', range: [0.1, 20], default: 1 },
+                    height: { type: 'number', range: [0.1, 20], default: 1 },
+                    depth: { type: 'number', range: [0.1, 20], default: 1 }
+                }
+            },
+            isStatic: { type: 'boolean', default: true },
+            blockMovement: { type: 'boolean', default: true },
+            blockVision: { type: 'boolean', default: true },
+            allowSliding: { type: 'boolean', default: true },
+            collisionCacheMs: { type: 'number', range: [0, 100], default: 16 }
+        },
+        dependencies: ['Transform']
     }
 };
 
@@ -396,7 +451,7 @@ class ComponentValidator {
 
     // Auto-correction and fallback handling (Enterprise robustness)
     applyAutoCorrection(component, schema, errors, warnings) {
-        const corrected = { ...component };
+        const corrected = Object.assign(Object.create(Object.getPrototypeOf(component)), component);
         let hasCorrections = false;
 
         if (!schema.properties) return corrected;

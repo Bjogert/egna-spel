@@ -71,7 +71,8 @@ class ResourceManager {
         this.factories.set('geometry', {
             box: (width, height, depth) => new THREE.BoxGeometry(width, height, depth),
             plane: (width, height) => new THREE.PlaneGeometry(width, height),
-            sphere: (radius, segments) => new THREE.SphereGeometry(radius, segments || 32)
+            sphere: (radius, segments) => new THREE.SphereGeometry(radius, segments || 32),
+            cylinder: (radiusTop, radiusBottom, height, segments) => new THREE.CylinderGeometry(radiusTop, radiusBottom, height, segments || 8)
         });
 
         // Material factory

@@ -133,6 +133,12 @@ class InputSystem extends System {
         input.keys.left = this.keys.get('left') || false;
         input.keys.right = this.keys.get('right') || false;
 
+        // Update action keys
+        input.keys.interact = this.keys.get('interact') || false;
+        input.keys.special = this.keys.get('special') || false;
+        input.keys.action1 = this.keys.get('action1') || false;
+        input.keys.action2 = this.keys.get('action2') || false;
+
         // Update input timestamp and sequence
         input.lastInputTime = Utils.now();
         input.inputSequence++;

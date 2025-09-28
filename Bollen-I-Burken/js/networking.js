@@ -207,9 +207,9 @@ class NetworkSystem extends System {
             const entity = gameState.getPlayerEntity(playerState.playerId);
             if (entity) {
                 const transform = entity.getComponent('Transform');
-                const controller = entity.getComponent(PlayerController);
+                const player = entity.getComponent('Player');
 
-                if (transform && !controller.isLocal) {
+                if (transform && player && !player.isLocal) {
                     // Apply interpolation for smooth movement
                     transform.previousPosition = { ...transform.position };
                     transform.position = playerState.position;

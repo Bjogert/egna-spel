@@ -9,9 +9,17 @@ class MovementSystem extends System {
         this.moveSpeed = 0.15;
         this.configManager = window.ConfigManager ? ConfigManager.getInstance() : null;
         this.arenaSize = this.configManager ? this.configManager.get('arena.size') : 15;
+
+        // Collision detection properties
+        this.staticColliders = [];
+        this.playerBounds = { width: 0.8, height: 1.0, depth: 0.8 }; // Player collision box
+        this.aiBounds = { width: 0.9, height: 1.1, depth: 0.9 }; // AI collision box
     }
 
     update(gameState) {
+        // Collect static colliders once per frame for performance
+        this.collectStaticColliders(gameState);
+
         // Update all entities with movement components
         for (const entity of gameState.entities.values()) {
             const transform = entity.getComponent('Transform');
@@ -89,6 +97,23 @@ class MovementSystem extends System {
         transform.position.x += transform.velocity.x;
         transform.position.z += transform.velocity.z;
 
+        // Check collision with obstacles BEFORE applying arena boundaries
+        const newPosition = {
+            x: transform.position.x,
+            y: transform.position.y,
+            z: transform.position.z
+        };
+
+        const correctedPosition = this.checkObstacleCollision(
+            transform.previousPosition || transform.position,
+            newPosition,
+            this.playerBounds
+        );
+
+        // Apply corrected position
+        transform.position.x = correctedPosition.x;
+        transform.position.z = correctedPosition.z;
+
         // Apply arena boundaries - match arena wall positions exactly
         // Arena walls are positioned at ±arenaSize, so movement should go almost to the walls
         const limit = this.arenaSize - 0.5; // Leave small buffer for player collision
@@ -113,9 +138,26 @@ class MovementSystem extends System {
         transform.position.x += transform.velocity.x;
         transform.position.z += transform.velocity.z;
 
+        // Check collision with obstacles for AI as well
+        const newPosition = {
+            x: transform.position.x,
+            y: transform.position.y,
+            z: transform.position.z
+        };
+
+        const correctedPosition = this.checkObstacleCollision(
+            transform.previousPosition || transform.position,
+            newPosition,
+            this.aiBounds
+        );
+
+        // Apply corrected position
+        transform.position.x = correctedPosition.x;
+        transform.position.z = correctedPosition.z;
+
         // Apply arena boundaries - match arena wall positions exactly
         // Arena walls are positioned at ±arenaSize, so movement should go almost to the walls
-        const limit = this.arenaSize - 0.5; // Leave small buffer for player collision
+        const limit = this.arenaSize - 0.5; // Leave small buffer for AI collision
         transform.position.x = Math.max(-limit, Math.min(limit, transform.position.x));
         transform.position.z = Math.max(-limit, Math.min(limit, transform.position.z));
 
@@ -123,6 +165,94 @@ class MovementSystem extends System {
         if (transform.velocity.x !== 0 || transform.velocity.z !== 0) {
             transform.rotation.y = Math.atan2(transform.velocity.x, transform.velocity.z);
         }
+    }
+
+    // Collision Detection Methods
+    collectStaticColliders(gameState) {
+        // Reset colliders array
+        this.staticColliders = [];
+
+        // Find all entities with Collider components
+        for (const entity of gameState.entities.values()) {
+            const collider = entity.getComponent('Collider');
+            const transform = entity.getComponent('Transform');
+
+            if (collider && transform && collider.isStatic && collider.blockMovement) {
+                this.staticColliders.push({
+                    entity: entity,
+                    collider: collider,
+                    transform: transform
+                });
+            }
+        }
+    }
+
+    checkObstacleCollision(oldPos, newPos, entityBounds) {
+        // Safety check: if obstacles disabled or no colliders, skip collision
+        if (this.staticColliders.length === 0) {
+            return newPos; // No obstacles to check
+        }
+
+        // Safety check: prevent infinite loops by limiting correction attempts
+        const maxCorrectionAttempts = 3;
+        let correctedPos = { ...newPos };
+        let attempts = 0;
+
+        // Check collision with each static collider
+        for (const obstacle of this.staticColliders) {
+            if (attempts >= maxCorrectionAttempts) {
+                console.warn('Collision correction limit reached, using original position');
+                return oldPos; // Fallback to prevent infinite loops
+            }
+
+            const obstaclePos = obstacle.transform.position;
+            const obstacleCollider = obstacle.collider;
+
+            // Only handle box collisions for now
+            if (obstacleCollider.type === 'box') {
+                const collision = obstacleCollider.checkBoxCollision(
+                    correctedPos,
+                    entityBounds,
+                    obstaclePos,
+                    obstacleCollider.bounds
+                );
+
+                if (collision) {
+                    attempts++;
+
+                    // Calculate slide response
+                    const slideResponse = obstacleCollider.calculateSlideResponse(
+                        oldPos,
+                        correctedPos,
+                        entityBounds,
+                        obstaclePos
+                    );
+
+                    // Ensure slide response doesn't create invalid position
+                    if (slideResponse &&
+                        !isNaN(slideResponse.x) && !isNaN(slideResponse.z) &&
+                        isFinite(slideResponse.x) && isFinite(slideResponse.z)) {
+                        correctedPos = slideResponse;
+                    } else {
+                        console.warn('Invalid slide response, using old position');
+                        return oldPos;
+                    }
+
+                    // Debug logging for collision issues
+                    if (window.DEBUG) {
+                        console.log('Collision detected and corrected:', {
+                            attempt: attempts,
+                            oldPos: oldPos,
+                            newPos: newPos,
+                            correctedPos: correctedPos,
+                            obstaclePos: obstaclePos
+                        });
+                    }
+                }
+            }
+        }
+
+        return correctedPos;
     }
 }
 

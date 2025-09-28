@@ -277,11 +277,11 @@ class UISystem extends System {
         for (const [playerId, entityId] of gameState.players) {
             const entity = gameState.getEntity(entityId);
             if (entity && entity.active) {
-                const controller = entity.getComponent(PlayerController);
+                const player = entity.getComponent('Player');
                 const transform = entity.getComponent('Transform');
 
                 const playerItem = document.createElement('div');
-                playerItem.className = `player-item ${controller.isLocal ? 'local' : ''}`;
+                playerItem.className = `player-item ${player && player.isLocal ? 'local' : ''}`;
 
                 const playerName = document.createElement('span');
                 playerName.className = 'player-name';

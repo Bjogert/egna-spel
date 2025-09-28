@@ -32,6 +32,12 @@ class Entity {
                 componentName = 'AIHunter';
             } else if (component.angle !== undefined && component.range !== undefined) {
                 componentName = 'VisionCone';
+            } else if (component.type !== undefined && component.interactDistance !== undefined) {
+                componentName = 'Interactable';
+            } else if (component.hideCapacity !== undefined && component.hideRadius !== undefined) {
+                componentName = 'Hideable';
+            } else if (component.type !== undefined && component.bounds !== undefined && component.blockMovement !== undefined) {
+                componentName = 'Collider';
             } else {
                 // Fallback: use a unique identifier to prevent collisions
                 componentName = `UnknownComponent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -142,7 +148,11 @@ class PlayerInput {
             forward: false,
             backward: false,
             left: false,
-            right: false
+            right: false,
+            interact: false,
+            special: false,
+            action1: false,
+            action2: false
         };
         this.lastInputTime = 0;
         this.inputSequence = 0;
@@ -150,6 +160,10 @@ class PlayerInput {
 
     hasInput() {
         return this.keys.forward || this.keys.backward || this.keys.left || this.keys.right;
+    }
+
+    hasActionInput() {
+        return this.keys.interact || this.keys.special || this.keys.action1 || this.keys.action2;
     }
 }
 
@@ -196,6 +210,177 @@ class Player {
         // Game state properties
         this.state = PLAYER_STATES.IDLE;
         this.health = 100;
+    }
+}
+
+// Interactable Component - For objects players can interact with (Swedish Can/Burken)
+class Interactable {
+    constructor(type = 'can', interactDistance = 1.5) {
+        // Required properties matching validation schema
+        this.type = type;
+
+        // Optional properties with defaults from schema
+        this.interactDistance = interactDistance;
+        this.isActive = true;
+        this.requiresProximity = true;
+        this.interactionCount = 0;
+        this.lastInteractionTime = 0;
+
+        // Callback function for custom interaction behavior
+        this.onInteract = null;
+    }
+
+    canInteract(playerDistance) {
+        return this.isActive &&
+               playerDistance <= this.interactDistance &&
+               this.requiresProximity;
+    }
+
+    triggerInteraction(playerId) {
+        if (!this.isActive) return false;
+
+        this.interactionCount++;
+        this.lastInteractionTime = Date.now();
+
+        if (this.onInteract && typeof this.onInteract === 'function') {
+            this.onInteract(playerId, this);
+        }
+
+        Utils.log(`${this.type} interacted with by player ${playerId}`);
+        return true;
+    }
+}
+
+// Hideable Component - For objects that provide hiding spots
+class Hideable {
+    constructor(hideCapacity = 1, hideRadius = 2.0) {
+        // Required properties matching validation schema
+        this.hideCapacity = hideCapacity;
+
+        // Optional properties with defaults from schema
+        this.hideRadius = hideRadius;
+        this.occupants = [];
+        this.isOccupied = false;
+        this.hideEffectiveness = 0.8; // How well this spot hides players (0-1)
+        this.detectionReduction = 0.7; // How much this reduces AI detection
+    }
+
+    canHide(playerId) {
+        return this.occupants.length < this.hideCapacity &&
+               !this.occupants.includes(playerId);
+    }
+
+    addOccupant(playerId) {
+        if (this.canHide(playerId)) {
+            this.occupants.push(playerId);
+            this.isOccupied = this.occupants.length > 0;
+            Utils.log(`Player ${playerId} is now hiding`);
+            return true;
+        }
+        return false;
+    }
+
+    removeOccupant(playerId) {
+        const index = this.occupants.indexOf(playerId);
+        if (index !== -1) {
+            this.occupants.splice(index, 1);
+            this.isOccupied = this.occupants.length > 0;
+            Utils.log(`Player ${playerId} is no longer hiding`);
+            return true;
+        }
+        return false;
+    }
+
+    isPlayerHiding(playerId) {
+        return this.occupants.includes(playerId);
+    }
+}
+
+// Collider Component - For solid obstacles that block movement and vision
+class Collider {
+    constructor(type = 'box', bounds = null) {
+        // Required properties matching validation schema
+        this.type = type; // 'box', 'sphere', 'cylinder'
+
+        // Collision bounds - depends on type
+        this.bounds = bounds || { width: 1, height: 1, depth: 1 };
+
+        // Collision behavior properties
+        this.isStatic = true;          // Obstacles don't move
+        this.blockMovement = true;     // Prevents walking through
+        this.blockVision = true;       // Blocks AI line-of-sight (future feature)
+        this.allowSliding = true;      // Can slide along edges
+
+        // Performance optimization
+        this.lastCollisionCheck = 0;
+        this.collisionCacheMs = 16;    // Cache collision results for 16ms (60fps)
+    }
+
+    // Check if a point is inside this collider (for box type)
+    containsPoint(point, entityPosition) {
+        if (this.type !== 'box') return false;
+
+        const halfWidth = this.bounds.width / 2;
+        const halfDepth = this.bounds.depth / 2;
+        const halfHeight = this.bounds.height / 2;
+
+        return (
+            point.x >= entityPosition.x - halfWidth &&
+            point.x <= entityPosition.x + halfWidth &&
+            point.z >= entityPosition.z - halfDepth &&
+            point.z <= entityPosition.z + halfDepth &&
+            point.y >= entityPosition.y - halfHeight &&
+            point.y <= entityPosition.y + halfHeight
+        );
+    }
+
+    // Check collision between two box colliders
+    checkBoxCollision(posA, boundsA, posB, boundsB) {
+        const halfWidthA = boundsA.width / 2;
+        const halfDepthA = boundsA.depth / 2;
+        const halfWidthB = boundsB.width / 2;
+        const halfDepthB = boundsB.depth / 2;
+
+        return (
+            Math.abs(posA.x - posB.x) < (halfWidthA + halfWidthB) &&
+            Math.abs(posA.z - posB.z) < (halfDepthA + halfDepthB) &&
+            Math.abs(posA.y - posB.y) < (boundsA.height / 2 + boundsB.height / 2)
+        );
+    }
+
+    // Calculate collision response (slide along obstacle edge)
+    calculateSlideResponse(oldPos, newPos, entityBounds, obstaclePos) {
+        if (!this.allowSliding) return oldPos;
+
+        const entityHalfWidth = entityBounds.width / 2;
+        const entityHalfDepth = entityBounds.depth / 2;
+        const obstacleHalfWidth = this.bounds.width / 2;
+        const obstacleHalfDepth = this.bounds.depth / 2;
+
+        // Calculate overlap on each axis
+        const overlapX = (entityHalfWidth + obstacleHalfWidth) - Math.abs(newPos.x - obstaclePos.x);
+        const overlapZ = (entityHalfDepth + obstacleHalfDepth) - Math.abs(newPos.z - obstaclePos.z);
+
+        // Slide along the axis with less overlap
+        const correctedPos = { ...newPos };
+
+        if (overlapX < overlapZ) {
+            // Slide along X axis
+            if (newPos.x > obstaclePos.x) {
+                correctedPos.x = obstaclePos.x + obstacleHalfWidth + entityHalfWidth + 0.01;
+            } else {
+                correctedPos.x = obstaclePos.x - obstacleHalfWidth - entityHalfWidth - 0.01;
+            }
+        } else {
+            // Slide along Z axis
+            if (newPos.z > obstaclePos.z) {
+                correctedPos.z = obstaclePos.z + obstacleHalfDepth + entityHalfDepth + 0.01;
+            } else {
+                correctedPos.z = obstaclePos.z - obstacleHalfDepth - entityHalfDepth - 0.01;
+            }
+        }
+
+        return correctedPos;
     }
 }
 

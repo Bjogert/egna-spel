@@ -138,6 +138,218 @@ class ArenaBuilder {
         Utils.log('Arena lighting created with ResourceManager tracking');
     }
 
+    createCentralCan() {
+        Utils.log('Creating central Swedish can (Burken)...');
+
+        // Get can configuration from ConfigManager
+        const canRadius = this.configManager.get('can.radius', 0.8);
+        const canHeight = this.configManager.get('can.height', 1.6);
+        const canColor = this.configManager.get('can.color', 0x8B4513); // Swedish brown
+        const canPosition = this.configManager.get('can.position', { x: 0, y: canHeight / 2, z: 0 });
+
+        // Create tracked geometry and material for Swedish-style metal can
+        const canGeometry = this.resourceManager.create(
+            'geometry',
+            'cylinder',
+            [canRadius, canRadius, canHeight, 12], // 12 segments for smooth cylinder
+            'central-can-geometry'
+        );
+
+        const canMaterial = this.resourceManager.create(
+            'material',
+            'lambert',
+            {
+                color: canColor,
+                roughness: 0.7,
+                metalness: 0.3
+            },
+            'central-can-material'
+        );
+
+        // Create the can mesh
+        const canMesh = new THREE.Mesh(canGeometry, canMaterial);
+        canMesh.position.set(canPosition.x, canPosition.y, canPosition.z);
+        canMesh.castShadow = true;
+        canMesh.receiveShadow = true;
+
+        // Add some Swedish character with simple texture/details
+        canMesh.name = 'central-burken'; // Swedish name for the can
+
+        // Track the mesh with ResourceManager
+        this.resourceManager.track(canMesh, 'mesh', 'central-can-mesh');
+
+        // Add to scene and track
+        this.scene.add(canMesh);
+        this.arenaObjects.push(canMesh);
+
+        Utils.log('Central Swedish can (Burken) created at arena center');
+        return canMesh;
+    }
+
+    createRandomObstacles() {
+        Utils.log('Creating random Swedish playground obstacles...');
+
+        // Get obstacle configuration (no magic numbers!)
+        const enabled = this.configManager.get('obstacles.enabled');
+        if (!enabled) {
+            Utils.log('Obstacles disabled in configuration');
+            return [];
+        }
+
+        const count = this.configManager.get('obstacles.count');
+        const canExclusionRadius = this.configManager.get('obstacles.canExclusionRadius');
+        const minDistanceFromWalls = this.configManager.get('obstacles.minDistanceFromWalls');
+        const minDistanceBetween = this.configManager.get('obstacles.minDistanceBetween');
+        const maxAttempts = this.configManager.get('obstacles.maxPlacementAttempts');
+
+        // Size ranges (fully configurable)
+        const minWidth = this.configManager.get('obstacles.minWidth');
+        const maxWidth = this.configManager.get('obstacles.maxWidth');
+        const minHeight = this.configManager.get('obstacles.minHeight');
+        const maxHeight = this.configManager.get('obstacles.maxHeight');
+        const minDepth = this.configManager.get('obstacles.minDepth');
+        const maxDepth = this.configManager.get('obstacles.maxDepth');
+
+        // Visual properties
+        const color = this.configManager.get('obstacles.color');
+        const materialType = this.configManager.get('obstacles.material');
+
+        const obstacles = [];
+        const positions = [];
+
+        // Generate obstacles
+        for (let i = 0; i < count; i++) {
+            let placed = false;
+            let attempts = 0;
+
+            while (!placed && attempts < maxAttempts) {
+                attempts++;
+
+                // Generate random size within configured ranges
+                const size = {
+                    width: this.randomBetween(minWidth, maxWidth),
+                    height: this.randomBetween(minHeight, maxHeight),
+                    depth: this.randomBetween(minDepth, maxDepth)
+                };
+
+                // Generate random position
+                const position = this.generateRandomPosition(size, canExclusionRadius, minDistanceFromWalls);
+
+                // Check if position is valid (no overlaps)
+                if (this.isValidObstaclePosition(position, size, positions, minDistanceBetween)) {
+                    // Create obstacle mesh
+                    const obstacleMesh = this.createObstacleMesh(position, size, color, materialType, i);
+
+                    // Store position and size for collision checking
+                    positions.push({
+                        position: position,
+                        size: size,
+                        mesh: obstacleMesh
+                    });
+
+                    obstacles.push({
+                        mesh: obstacleMesh,
+                        position: position,
+                        size: size
+                    });
+
+                    placed = true;
+                    Utils.log(`Obstacle ${i + 1} placed at (${position.x.toFixed(1)}, ${position.z.toFixed(1)})`);
+                }
+            }
+
+            if (!placed) {
+                Utils.warn(`Failed to place obstacle ${i + 1} after ${maxAttempts} attempts`);
+            }
+        }
+
+        Utils.log(`Created ${obstacles.length} Swedish playground obstacles`);
+        return obstacles;
+    }
+
+    randomBetween(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+    generateRandomPosition(size, canExclusionRadius, minDistanceFromWalls) {
+        // Calculate valid placement area
+        const validMinX = -this.arenaSize + minDistanceFromWalls + size.width / 2;
+        const validMaxX = this.arenaSize - minDistanceFromWalls - size.width / 2;
+        const validMinZ = -this.arenaSize + minDistanceFromWalls + size.depth / 2;
+        const validMaxZ = this.arenaSize - minDistanceFromWalls - size.depth / 2;
+
+        let position;
+        let attempts = 0;
+        const maxPositionAttempts = 50;
+
+        do {
+            position = {
+                x: this.randomBetween(validMinX, validMaxX),
+                y: size.height / 2, // Place on ground
+                z: this.randomBetween(validMinZ, validMaxZ)
+            };
+            attempts++;
+        } while (attempts < maxPositionAttempts && this.getDistanceFromCenter(position) < canExclusionRadius);
+
+        return position;
+    }
+
+    getDistanceFromCenter(position) {
+        return Math.sqrt(position.x * position.x + position.z * position.z);
+    }
+
+    isValidObstaclePosition(position, size, existingPositions, minDistance) {
+        // Check distance from existing obstacles
+        for (const existing of existingPositions) {
+            const distance = Math.sqrt(
+                Math.pow(position.x - existing.position.x, 2) +
+                Math.pow(position.z - existing.position.z, 2)
+            );
+
+            const requiredDistance = minDistance + (size.width + existing.size.width) / 2;
+
+            if (distance < requiredDistance) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    createObstacleMesh(position, size, color, materialType, index) {
+        // Create tracked geometry and material
+        const geometry = this.resourceManager.create(
+            'geometry',
+            'box',
+            [size.width, size.height, size.depth],
+            `obstacle-${index}-geometry`
+        );
+
+        const material = this.resourceManager.create(
+            'material',
+            materialType,
+            { color: color },
+            `obstacle-${index}-material`
+        );
+
+        // Create mesh
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(position.x, position.y, position.z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        // Add Swedish naming
+        mesh.name = `swedish-obstacle-${index}`;
+
+        // Track mesh with ResourceManager
+        this.resourceManager.track(mesh, 'mesh', `obstacle-${index}-mesh`);
+
+        // Add to scene and track
+        this.scene.add(mesh);
+        this.arenaObjects.push(mesh);
+
+        return mesh;
+    }
 
     clearArena() {
         // Professional resource cleanup using ResourceManager
@@ -164,22 +376,39 @@ class ArenaBuilder {
         });
 
         // Clear arena-specific resources through ResourceManager
-        const arenaResourceIds = [
+        const staticResourceIds = [
             'arena-floor-geometry', 'arena-floor-material', 'arena-floor-mesh',
             'arena-wall-material',
             'arena-wall-north-geometry', 'arena-wall-north-mesh',
             'arena-wall-south-geometry', 'arena-wall-south-mesh',
             'arena-wall-east-geometry', 'arena-wall-east-mesh',
             'arena-wall-west-geometry', 'arena-wall-west-mesh',
-            'arena-ambient-light', 'arena-directional-light'
+            'arena-ambient-light', 'arena-directional-light',
+            'central-can-geometry', 'central-can-material', 'central-can-mesh'
         ];
 
-        arenaResourceIds.forEach(id => {
+        staticResourceIds.forEach(id => {
             // Try to dispose from each resource type
             ['geometry', 'material', 'mesh', 'light'].forEach(type => {
                 this.resourceManager.dispose(type, id);
             });
         });
+
+        // Clear dynamically generated obstacles
+        const obstacleCount = this.configManager.get('obstacles.count', 50); // Use max possible
+        for (let i = 0; i < obstacleCount; i++) {
+            const obstacleIds = [
+                `obstacle-${i}-geometry`,
+                `obstacle-${i}-material`,
+                `obstacle-${i}-mesh`
+            ];
+
+            obstacleIds.forEach(id => {
+                ['geometry', 'material', 'mesh'].forEach(type => {
+                    this.resourceManager.dispose(type, id);
+                });
+            });
+        }
 
         this.arenaObjects = [];
         Utils.log('Arena cleared with ResourceManager');

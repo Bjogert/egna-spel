@@ -415,11 +415,62 @@ if (componentName === 'Object') {
 4. **Enhanced Movement**: Both player and AI move naturally within full arena
 5. **Professional Polish**: Realistic movement patterns and behaviors
 
+## 🔥 CRITICAL ARCHITECTURAL BUG (September 28, 2025)
+
+### ✅ **Issue #11: ComponentValidator Method Stripping (RESOLVED)**
+
+**🎯 ROOT CAUSE DISCOVERED**: Enterprise ComponentValidator system accidentally breaking collision detection
+
+**The Problem**:
+- **Symptom**: `TypeError: obstacleCollider.checkBoxCollision is not a function`
+- **Location**: MovementSystem trying to call Collider methods
+- **Infinite Loop**: Error occurs every frame (60fps) when obstacles enabled
+- **Console Evidence**: 1000+ identical error messages flooding console
+
+**🔍 Deep Analysis by Serena**:
+- **Component Creation**: ✅ `new Collider()` instances created correctly with methods
+- **Validation Process**: ❌ `ComponentValidator.applyAutoCorrection()` strips methods
+- **Specific Issue**: Spread operator `{ ...component }` destroys prototype chain
+- **Storage Result**: Plain objects stored instead of class instances
+- **Runtime Failure**: MovementSystem gets methodless objects
+
+**📍 Exact Bug Location**:
+```javascript
+// BEFORE (line 454 in component-validator.js):
+const corrected = { ...component }; // ❌ Strips all methods!
+
+// AFTER (FIXED):
+const corrected = Object.assign(Object.create(Object.getPrototypeOf(component)), component); // ✅ Preserves methods
+```
+
+**🏗️ Architectural Issue**:
+- **Enterprise Over-Engineering**: Validation system too aggressive
+- **Paradigm Conflict**: Data-centric validation vs. Behavior-centric components
+- **ECS Pattern Violation**: Hybrid components (data + methods) not handled properly
+
+**✅ SOLUTION IMPLEMENTED**:
+- **Immediate Fix**: Modified ComponentValidator to preserve prototype chain
+- **Method Preservation**: Components retain their class methods after validation
+- **Zero Breaking Changes**: Existing data validation still works
+- **Testing**: Obstacles + collision detection now functional
+
+**📊 LESSONS LEARNED**:
+- **Validation vs. Functionality**: Enterprise patterns can break working code
+- **Method vs. Data Components**: Need clear distinction in ECS systems
+- **Debugging Strategy**: Component lifecycle analysis reveals validation issues
+- **Robustness**: Defensive programming needed for method-dependent components
+
+**🎯 ARCHITECTURAL RECOMMENDATIONS**:
+1. **Component Classification**: Separate data-only vs. behavior components
+2. **Validation Awareness**: Skip auto-correction for functional components
+3. **Method Preservation**: Always preserve prototype chain in object operations
+4. **Error Prevention**: Add method existence checks in critical paths
+
 ---
-*Bug report updated: September 21, 2025 - Evening*
-*Final Status: 🎉 ALL ISSUES RESOLVED + ENHANCED - Game ready for advanced features*
-*Approach Success: Systematic debugging + Incremental improvement = Polished foundation*
-*Ready for Phase 4: AI Vision System with solid, enhanced foundation*
+*Bug report updated: September 28, 2025*
+*Status: 🎉 COLLISION SYSTEM FIXED - ComponentValidator preserves methods*
+*Architecture: Enterprise validation now compatible with functional components*
+*Next: Step-by-step obstacle re-implementation with working collision detection*
 
 ---
 ## 🤖 AI Assistant Quick Reference

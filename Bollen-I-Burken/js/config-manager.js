@@ -85,6 +85,33 @@ const CONFIG_SCHEMA = {
         showControls: { type: 'boolean', default: true },
         showDebugInfo: { type: 'boolean', default: false },
         statsUpdateInterval: { type: 'number', min: 100, max: 2000, default: 1000 }
+    },
+
+    // Obstacle Configuration (Swedish Playground Objects)
+    obstacles: {
+        // Generation Control
+        enabled: { type: 'boolean', default: true }, // Re-enabled with ComponentValidator fix applied
+        count: { type: 'number', min: 0, max: 50, default: 2 }, // Even smaller count for testing
+
+        // Size Ranges (Fully Configurable - No Magic Numbers!)
+        minWidth: { type: 'number', min: 0.5, max: 3, default: 0.8 },
+        maxWidth: { type: 'number', min: 0.5, max: 5, default: 2.5 },
+        minHeight: { type: 'number', min: 0.5, max: 3, default: 0.8 },
+        maxHeight: { type: 'number', min: 0.5, max: 4, default: 1.8 },
+        minDepth: { type: 'number', min: 0.5, max: 3, default: 0.8 },
+        maxDepth: { type: 'number', min: 0.5, max: 5, default: 2.5 },
+
+        // Placement Control (Swedish Playground Layout)
+        canExclusionRadius: { type: 'number', min: 2, max: 10, default: 4 },
+        minDistanceFromWalls: { type: 'number', min: 0.5, max: 3, default: 1.0 },
+        minDistanceBetween: { type: 'number', min: 0.5, max: 3, default: 1.5 },
+
+        // Generation Attempts (Prevent Infinite Loops)
+        maxPlacementAttempts: { type: 'number', min: 100, max: 1000, default: 300 },
+
+        // Visual Properties (Swedish Playground Style)
+        color: { type: 'color', default: 0x8B4513 }, // Swedish brown
+        material: { type: 'string', default: 'lambert' }
     }
 };
 

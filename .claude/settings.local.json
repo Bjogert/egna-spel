@@ -5,7 +5,9 @@
       "Bash(python:*)",
       "Bash(dir:*)",
       "Bash(node:*)",
-      "Bash(start index.html)"
+      "Bash(start index.html)",
+      "Bash(tasklist)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

@@ -290,26 +290,187 @@ class AISystem extends System {
 
         // Check if player is within vision cone angle
         if (Math.abs(angleDiff) <= halfVisionAngle) {
-            // Player is within vision cone - set vision state
-            visionCone.canSeePlayer = true;
-            visionCone.targetSeen = true;
-            visionCone.lastSeenPosition = {
-                x: playerTransform.position.x,
-                y: playerTransform.position.y,
-                z: playerTransform.position.z
-            };
-            visionCone.lastSeenTime = Date.now(); // Track when player was last seen
+            // Check if line of sight is blocked by obstacles
+            const hasLineOfSight = this.checkLineOfSight(aiTransform.position, playerTransform.position, gameState);
 
-            // Trigger state change to hunting if not already hunting
-            const aiComponent = hunter.getComponent('AIHunter');
-            if (aiComponent && aiComponent.state === 'PATROL') {
-                aiComponent.state = 'HUNTING';
-                aiComponent.huntingStartTime = Date.now();
-                Utils.log(`🎯 AI SPOTTED PLAYER! Switching to HUNTING mode`);
+            if (hasLineOfSight) {
+                // Player is within vision cone AND visible - set vision state
+                visionCone.canSeePlayer = true;
+                visionCone.targetSeen = true;
+                visionCone.lastSeenPosition = {
+                    x: playerTransform.position.x,
+                    y: playerTransform.position.y,
+                    z: playerTransform.position.z
+                };
+                visionCone.lastSeenTime = Date.now(); // Track when player was last seen
+
+                // Trigger state change to hunting if not already hunting
+                const aiComponent = hunter.getComponent('AIHunter');
+                if (aiComponent && aiComponent.state === 'PATROL') {
+                    aiComponent.state = 'HUNTING';
+                    aiComponent.huntingStartTime = Date.now();
+                    Utils.log(`🎯 AI SPOTTED PLAYER! Switching to HUNTING mode`);
+                }
+
+                Utils.log(`AI can see player! Distance: ${distance.toFixed(2)}, Angle: ${(angleDiff * 180 / Math.PI).toFixed(1)}°`);
+            } else {
+                Utils.log(`Player in vision cone but line of sight blocked by obstacle`);
+            }
+        }
+    }
+
+    checkLineOfSight(aiPosition, playerPosition, gameState) {
+        // Get all entities with Collider components (obstacles)
+        const obstacles = [];
+
+        // Iterate through all entities to find obstacles
+        for (const [entityId, entity] of gameState.entities) {
+            if (entity.hasComponent('Collider') && entity.active) {
+                const transform = entity.getComponent('Transform');
+                const collider = entity.getComponent('Collider');
+
+                if (transform && collider && collider.blockMovement) {
+                    obstacles.push({
+                        position: transform.position,
+                        bounds: collider.bounds
+                    });
+                }
+            }
+        }
+
+        // If no obstacles, line of sight is clear
+        if (obstacles.length === 0) {
+            return true;
+        }
+
+        // Perform ray-box intersection tests
+        return this.raycastToObstacles(aiPosition, playerPosition, obstacles);
+    }
+
+    raycastToObstacles(start, end, obstacles) {
+        // Calculate ray direction and length
+        const rayDirection = {
+            x: end.x - start.x,
+            y: end.y - start.y,
+            z: end.z - start.z
+        };
+
+        const rayLength = Math.sqrt(
+            rayDirection.x * rayDirection.x +
+            rayDirection.y * rayDirection.y +
+            rayDirection.z * rayDirection.z
+        );
+
+        // Normalize ray direction
+        if (rayLength === 0) return true; // Same position
+
+        rayDirection.x /= rayLength;
+        rayDirection.y /= rayLength;
+        rayDirection.z /= rayLength;
+
+        // Test each obstacle for intersection
+        for (const obstacle of obstacles) {
+            if (this.rayIntersectsBox(start, rayDirection, rayLength, obstacle.position, obstacle.bounds)) {
+                return false; // Line of sight blocked
+            }
+        }
+
+        return true; // Line of sight clear
+    }
+
+    rayIntersectsBox(rayStart, rayDirection, rayLength, boxCenter, boxBounds) {
+        // Calculate box extents (half-sizes)
+        const halfWidth = boxBounds.width / 2;
+        const halfHeight = boxBounds.height / 2;
+        const halfDepth = boxBounds.depth / 2;
+
+        // Calculate box min and max coordinates
+        const boxMin = {
+            x: boxCenter.x - halfWidth,
+            y: boxCenter.y - halfHeight,
+            z: boxCenter.z - halfDepth
+        };
+        const boxMax = {
+            x: boxCenter.x + halfWidth,
+            y: boxCenter.y + halfHeight,
+            z: boxCenter.z + halfDepth
+        };
+
+        // Ray-box intersection using slabs method
+        let tMin = 0;
+        let tMax = rayLength;
+
+        // Check X slab
+        if (Math.abs(rayDirection.x) < 1e-6) {
+            // Ray is parallel to X slab
+            if (rayStart.x < boxMin.x || rayStart.x > boxMax.x) {
+                return false;
+            }
+        } else {
+            const invDirX = 1.0 / rayDirection.x;
+            let t1 = (boxMin.x - rayStart.x) * invDirX;
+            let t2 = (boxMax.x - rayStart.x) * invDirX;
+
+            if (t1 > t2) {
+                const temp = t1;
+                t1 = t2;
+                t2 = temp;
             }
 
-            Utils.log(`AI can see player! Distance: ${distance.toFixed(2)}, Angle: ${(angleDiff * 180 / Math.PI).toFixed(1)}°`);
+            tMin = Math.max(tMin, t1);
+            tMax = Math.min(tMax, t2);
+
+            if (tMin > tMax) return false;
         }
+
+        // Check Y slab
+        if (Math.abs(rayDirection.y) < 1e-6) {
+            // Ray is parallel to Y slab
+            if (rayStart.y < boxMin.y || rayStart.y > boxMax.y) {
+                return false;
+            }
+        } else {
+            const invDirY = 1.0 / rayDirection.y;
+            let t1 = (boxMin.y - rayStart.y) * invDirY;
+            let t2 = (boxMax.y - rayStart.y) * invDirY;
+
+            if (t1 > t2) {
+                const temp = t1;
+                t1 = t2;
+                t2 = temp;
+            }
+
+            tMin = Math.max(tMin, t1);
+            tMax = Math.min(tMax, t2);
+
+            if (tMin > tMax) return false;
+        }
+
+        // Check Z slab
+        if (Math.abs(rayDirection.z) < 1e-6) {
+            // Ray is parallel to Z slab
+            if (rayStart.z < boxMin.z || rayStart.z > boxMax.z) {
+                return false;
+            }
+        } else {
+            const invDirZ = 1.0 / rayDirection.z;
+            let t1 = (boxMin.z - rayStart.z) * invDirZ;
+            let t2 = (boxMax.z - rayStart.z) * invDirZ;
+
+            if (t1 > t2) {
+                const temp = t1;
+                t1 = t2;
+                t2 = temp;
+            }
+
+            tMin = Math.max(tMin, t1);
+            tMax = Math.min(tMax, t2);
+
+            if (tMin > tMax) return false;
+        }
+
+        // If we get here, ray intersects the box
+        return tMin >= 0; // Only count if intersection is in front of ray start
     }
 
     applyMovementWithCollision(transform) {
@@ -449,6 +610,59 @@ class AISystem extends System {
 
     getHunters() {
         return Array.from(this.hunters);
+    }
+
+    // Test method to verify line-of-sight detection
+    testLineOfSight(gameState) {
+        const hunters = Array.from(this.hunters);
+        if (hunters.length === 0) {
+            Utils.log('No AI hunters to test');
+            return;
+        }
+
+        const hunter = hunters[0];
+        const aiTransform = hunter.getComponent('Transform');
+        const visionCone = hunter.getComponent('VisionCone');
+
+        if (!aiTransform || !visionCone) {
+            Utils.log('AI hunter missing required components for testing');
+            return;
+        }
+
+        const localPlayer = gameState.getLocalPlayer();
+        if (!localPlayer) {
+            Utils.log('No local player found for testing');
+            return;
+        }
+
+        const playerTransform = localPlayer.getComponent('Transform');
+        if (!playerTransform) {
+            Utils.log('Player missing transform component');
+            return;
+        }
+
+        // Test line of sight
+        const hasLineOfSight = this.checkLineOfSight(aiTransform.position, playerTransform.position, gameState);
+        const distance = Math.sqrt(
+            Math.pow(playerTransform.position.x - aiTransform.position.x, 2) +
+            Math.pow(playerTransform.position.z - aiTransform.position.z, 2)
+        );
+
+        Utils.log(`🔍 AI Line-of-Sight Test:`);
+        Utils.log(`  AI Position: (${aiTransform.position.x.toFixed(2)}, ${aiTransform.position.z.toFixed(2)})`);
+        Utils.log(`  Player Position: (${playerTransform.position.x.toFixed(2)}, ${playerTransform.position.z.toFixed(2)})`);
+        Utils.log(`  Distance: ${distance.toFixed(2)}`);
+        Utils.log(`  Line of Sight: ${hasLineOfSight ? '✅ CLEAR' : '❌ BLOCKED'}`);
+        Utils.log(`  Vision Range: ${visionCone.range}`);
+        Utils.log(`  Can See Player: ${visionCone.canSeePlayer ? '✅ YES' : '❌ NO'}`);
+
+        return {
+            distance,
+            hasLineOfSight,
+            canSeePlayer: visionCone.canSeePlayer,
+            aiPosition: aiTransform.position,
+            playerPosition: playerTransform.position
+        };
     }
 
     destroy() {

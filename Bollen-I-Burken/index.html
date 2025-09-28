@@ -44,6 +44,7 @@
     <script src="js/arena.js"></script>
     <script src="js/player.js"></script>
     <script src="js/ai.js"></script>
+    <script src="js/interaction.js"></script>
     <script src="js/networking.js"></script>
 
     <!-- Main Game Script -->
@@ -71,6 +72,7 @@
         let audioSystem;
         let networkSystem;
         let aiSystem;
+        let interactionSystem;
 
         // Performance tracking
         let lastTime = 0;
@@ -209,6 +211,7 @@
             // audioSystem = new AudioSystem(); // Disabled for now
             networkSystem = new NetworkSystem();
             aiSystem = new AISystem();
+            interactionSystem = new InteractionSystem();
 
             // Add systems to game engine
             gameEngine.addSystem(inputSystem);
@@ -217,6 +220,7 @@
             // gameEngine.addSystem(audioSystem); // Disabled for now
             gameEngine.addSystem(networkSystem);
             gameEngine.addSystem(aiSystem);
+            gameEngine.addSystem(interactionSystem);
 
             // Initialize networking in local mode
             networkSystem.initializeNetwork('local');
@@ -235,7 +239,79 @@
             arenaBuilder = new ArenaBuilder(scene);
             arenaBuilder.createBasicArena();
 
+            // Create the central can mesh
+            const canMesh = arenaBuilder.createCentralCan();
+
+            // Create the central can entity with components
+            createCentralCanEntity(canMesh);
+
+            // Create random obstacles around the arena
+            const obstacles = arenaBuilder.createRandomObstacles();
+
+            // Create obstacle entities with collision components
+            createObstacleEntities(obstacles);
+
             Utils.log('Arena created');
+        }
+
+        function createCentralCanEntity(canMesh) {
+            Utils.log('Creating central can entity...');
+
+            // Create entity for the central Swedish can
+            const canEntity = gameEngine.gameState.createEntity();
+
+            // Add Transform component (positioned at arena center)
+            canEntity.addComponent(new Transform(0, 0.8, 0)); // Center position, elevated
+
+            // Add Renderable component
+            canEntity.addComponent(new Renderable(canMesh));
+
+            // Add Interactable component - the heart of Swedish "Bollen i Burken"
+            const interactable = new Interactable('burken', 2.0); // Swedish can, 2 units interaction distance
+            interactable.onInteract = function(playerId, component) {
+                Utils.log(`🇸🇪 Swedish Can (Burken) kicked by player ${playerId}! Traditional rescue mechanic triggered!`);
+                // Future: Implement full rescue mechanics here
+            };
+            canEntity.addComponent(interactable);
+
+            // Add Hideable component - can provide hiding near it
+            canEntity.addComponent(new Hideable(2, 2.5)); // Can hide 2 players within 2.5 units
+
+            Utils.log('Central Swedish can entity created with interaction components');
+            return canEntity;
+        }
+
+        function createObstacleEntities(obstacles) {
+            Utils.log('Creating obstacle entities with collision...');
+
+            const obstacleEntities = [];
+
+            obstacles.forEach((obstacle, index) => {
+                // Create entity for this obstacle
+                const obstacleEntity = gameEngine.gameState.createEntity();
+
+                // Add Transform component
+                obstacleEntity.addComponent(new Transform(
+                    obstacle.position.x,
+                    obstacle.position.y,
+                    obstacle.position.z
+                ));
+
+                // Add Renderable component
+                obstacleEntity.addComponent(new Renderable(obstacle.mesh));
+
+                // Add Collider component for solid collision
+                obstacleEntity.addComponent(new Collider('box', obstacle.size));
+
+                // Add Hideable component - can hide behind obstacles
+                const hideRadius = Math.max(obstacle.size.width, obstacle.size.depth) + 1.0;
+                obstacleEntity.addComponent(new Hideable(1, hideRadius));
+
+                obstacleEntities.push(obstacleEntity);
+            });
+
+            Utils.log(`Created ${obstacleEntities.length} obstacle entities with collision`);
+            return obstacleEntities;
         }
 
         function createLocalPlayer() {
@@ -431,7 +507,8 @@
                     ui: uiSystem,
                     // audio: audioSystem, // Disabled for now
                     network: networkSystem,
-                    ai: aiSystem
+                    ai: aiSystem,
+                    interaction: interactionSystem
                 },
                 stats: gameEngine ? gameEngine.getStats() : null,
                 resources: resourceManager ? resourceManager.getStats() : null,
@@ -571,6 +648,215 @@
             console.log('=== END VALIDATION TEST ===');
         };
 
+        window.debugInteractions = function () {
+            console.log('=== INTERACTION SYSTEM DEBUG ===');
+
+            if (interactionSystem) {
+                console.log('InteractionSystem Stats:', interactionSystem.getInteractionStats());
+                interactionSystem.debugLogInteractions();
+            } else {
+                console.log('❌ InteractionSystem not initialized');
+            }
+
+            // Find interactable entities
+            if (gameEngine && gameEngine.gameState) {
+                console.log('Interactable entities:');
+                for (const entity of gameEngine.gameState.entities.values()) {
+                    const interactable = entity.getComponent('Interactable');
+                    if (interactable) {
+                        const transform = entity.getComponent('Transform');
+                        console.log(`  Entity ${entity.id}: ${interactable.type} at`, transform ? transform.position : 'no position');
+                        console.log(`    Distance: ${interactable.interactDistance}, Active: ${interactable.isActive}`);
+                    }
+                }
+            }
+
+            console.log('=== END INTERACTION DEBUG ===');
+        };
+
+        window.testCanInteraction = function () {
+            console.log('🧪 Testing Can Interaction...');
+
+            if (!gameEngine || !gameEngine.gameState) {
+                console.log('❌ Game not initialized');
+                return;
+            }
+
+            const localPlayer = gameEngine.gameState.getLocalPlayer();
+            if (!localPlayer) {
+                console.log('❌ No local player found');
+                return;
+            }
+
+            // Find the central can
+            let canEntity = null;
+            for (const entity of gameEngine.gameState.entities.values()) {
+                const interactable = entity.getComponent('Interactable');
+                if (interactable && (interactable.type === 'can' || interactable.type === 'burken')) {
+                    canEntity = entity;
+                    break;
+                }
+            }
+
+            if (!canEntity) {
+                console.log('❌ Central can not found');
+                return;
+            }
+
+            // Move player near the can
+            const playerTransform = localPlayer.getComponent('Transform');
+            const canTransform = canEntity.getComponent('Transform');
+
+            if (playerTransform && canTransform) {
+                playerTransform.position.x = canTransform.position.x + 1.0; // 1 unit away
+                playerTransform.position.z = canTransform.position.z;
+                console.log(`✅ Player moved near can at (${playerTransform.position.x}, ${playerTransform.position.z})`);
+            }
+
+            // Trigger interaction manually
+            if (interactionSystem) {
+                const success = interactionSystem.handleInteractionAttempt(localPlayer, gameEngine.gameState);
+                console.log(`Interaction attempt: ${success ? '✅ Success' : '❌ Failed'}`);
+            }
+        };
+
+        window.debugObstacles = function () {
+            console.log('=== OBSTACLE SYSTEM DEBUG ===');
+
+            if (!gameEngine || !gameEngine.gameState) {
+                console.log('❌ Game not initialized');
+                return;
+            }
+
+            // Count obstacles
+            let obstacleCount = 0;
+            let colliderCount = 0;
+
+            for (const entity of gameEngine.gameState.entities.values()) {
+                const collider = entity.getComponent('Collider');
+                const transform = entity.getComponent('Transform');
+
+                if (collider && transform) {
+                    colliderCount++;
+                    if (collider.isStatic && collider.blockMovement) {
+                        obstacleCount++;
+                        console.log(`Obstacle ${obstacleCount}: Position (${transform.position.x.toFixed(1)}, ${transform.position.z.toFixed(1)}), Size: ${collider.bounds.width.toFixed(1)}x${collider.bounds.height.toFixed(1)}x${collider.bounds.depth.toFixed(1)}`);
+                    }
+                }
+            }
+
+            console.log(`Total Entities with Colliders: ${colliderCount}`);
+            console.log(`Static Blocking Obstacles: ${obstacleCount}`);
+
+            // Check movement system collision state
+            if (movementSystem) {
+                console.log(`MovementSystem Static Colliders: ${movementSystem.staticColliders ? movementSystem.staticColliders.length : 'N/A'}`);
+            }
+
+            // Test collision configuration
+            if (configManager) {
+                console.log('Obstacle Configuration:');
+                console.log(`  Enabled: ${configManager.get('obstacles.enabled')}`);
+                console.log(`  Count: ${configManager.get('obstacles.count')}`);
+                console.log(`  Can Exclusion Radius: ${configManager.get('obstacles.canExclusionRadius')}`);
+                console.log(`  Size Range: ${configManager.get('obstacles.minWidth')}-${configManager.get('obstacles.maxWidth')} width`);
+            }
+
+            console.log('=== END OBSTACLE DEBUG ===');
+        };
+
+        window.testObstacleCollision = function () {
+            console.log('🧪 Testing Obstacle Collision...');
+
+            if (!gameEngine || !gameEngine.gameState) {
+                console.log('❌ Game not initialized');
+                return;
+            }
+
+            const localPlayer = gameEngine.gameState.getLocalPlayer();
+            if (!localPlayer) {
+                console.log('❌ No local player found');
+                return;
+            }
+
+            // Find first obstacle
+            let obstacleEntity = null;
+            for (const entity of gameEngine.gameState.entities.values()) {
+                const collider = entity.getComponent('Collider');
+                if (collider && collider.isStatic && collider.blockMovement) {
+                    obstacleEntity = entity;
+                    break;
+                }
+            }
+
+            if (!obstacleEntity) {
+                console.log('❌ No obstacles found to test collision');
+                return;
+            }
+
+            // Move player to obstacle position (should trigger collision)
+            const playerTransform = localPlayer.getComponent('Transform');
+            const obstacleTransform = obstacleEntity.getComponent('Transform');
+
+            if (playerTransform && obstacleTransform) {
+                const originalPos = { ...playerTransform.position };
+
+                // Try to move player into obstacle
+                playerTransform.position.x = obstacleTransform.position.x;
+                playerTransform.position.z = obstacleTransform.position.z;
+
+                console.log(`✅ Player moved from (${originalPos.x.toFixed(1)}, ${originalPos.z.toFixed(1)}) to obstacle at (${obstacleTransform.position.x.toFixed(1)}, ${obstacleTransform.position.z.toFixed(1)})`);
+                console.log('🎮 Try moving with WASD - collision should prevent overlap');
+            }
+        };
+
+        window.testMovement = function () {
+            console.log('🧪 Testing Player Movement...');
+
+            if (!gameEngine || !gameEngine.gameState) {
+                console.log('❌ Game not initialized');
+                return;
+            }
+
+            const localPlayer = gameEngine.gameState.getLocalPlayer();
+            if (!localPlayer) {
+                console.log('❌ No local player found');
+                return;
+            }
+
+            const playerTransform = localPlayer.getComponent('Transform');
+            const playerInput = localPlayer.getComponent('PlayerInput');
+
+            if (playerTransform && playerInput) {
+                console.log('Player Position:', playerTransform.position);
+                console.log('Player Velocity:', playerTransform.velocity);
+                console.log('Player Input Keys:', playerInput.keys);
+                console.log('Movement System Colliders:', movementSystem.staticColliders.length);
+
+                // Test direct movement
+                const oldPos = { ...playerTransform.position };
+                playerTransform.position.x += 1.0;
+                console.log(`Moved player from (${oldPos.x.toFixed(1)}, ${oldPos.z.toFixed(1)}) to (${playerTransform.position.x.toFixed(1)}, ${playerTransform.position.z.toFixed(1)})`);
+                console.log('🎮 Player should move if you can see position change');
+            }
+        };
+
+        window.disableCollision = function () {
+            console.log('🔧 Temporarily disabling collision detection...');
+            if (movementSystem) {
+                movementSystem.staticColliders = [];
+                console.log('✅ Collision disabled - try moving with WASD');
+                console.log('Use enableCollision() to re-enable');
+            }
+        };
+
+        window.enableCollision = function () {
+            console.log('🔧 Re-enabling collision detection...');
+            if (movementSystem) {
+                console.log('✅ Collision re-enabled');
+            }
+        };
+
         window.debugMovement = function () {
             console.log('=== MOVEMENT SYSTEM DEBUG ===');
 
@@ -632,6 +918,32 @@
             Utils.log('Page loaded, initializing game...');
             initializeGame();
         });
+
+        window.testAIVision = function () {
+            console.log('🤖 Testing AI Vision System...');
+
+            if (!gameEngine || !gameEngine.gameState) {
+                console.log('❌ Game not initialized');
+                return;
+            }
+
+            const aiSystem = gameEngine.systems.get('AISystem');
+            if (!aiSystem) {
+                console.log('❌ AI System not found');
+                return;
+            }
+
+            // Run the line-of-sight test
+            const result = aiSystem.testLineOfSight(gameEngine.gameState);
+            if (result) {
+                console.log('🔍 Test completed successfully!');
+                if (!result.hasLineOfSight && result.distance < 12) {
+                    console.log('✅ Obstacle occlusion working correctly!');
+                } else if (result.hasLineOfSight && result.distance < 12) {
+                    console.log('✅ Clear line of sight detected correctly!');
+                }
+            }
+        };
 
         // Enable debug mode in development
         window.DEBUG = true;
