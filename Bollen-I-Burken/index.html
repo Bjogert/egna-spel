@@ -26,6 +26,33 @@
         <!-- Game stats will be populated by UISystem -->
     </div>
 
+    <!-- Start/Game Over Menu -->
+    <div id="startMenu" class="menu-overlay visible" aria-hidden="false">
+        <div class="menu-content" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+            <h1 id="menuTitle" class="menu-title">Bollen i Burken</h1>
+            <p class="menu-subtitle">Digital Swedish Hide-and-Seek</p>
+            <div id="menuStatus" class="menu-status hidden" aria-live="assertive"></div>
+            <p id="menuSummary" class="menu-summary hidden" aria-live="polite"></p>
+
+            <section class="menu-section">
+                <h2>How to Play</h2>
+                <p>Stay hidden from the AI guard, watch its vision cone, and survive for as long as you can. Kick the central can to free yourself in future updates.</p>
+            </section>
+
+            <section class="menu-section">
+                <h2>Controls</h2>
+                <ul class="menu-controls">
+                    <li><span>WASD</span> or <span>Arrow Keys</span> &mdash; Move</li>
+                    <li><span>Space</span> or <span>E</span> &mdash; Interact</li>
+                    <li><span>P</span> &mdash; Pause</li>
+                    <li><span>Esc</span> &mdash; Menu</li>
+                </ul>
+            </section>
+
+            <button id="startButton" class="menu-button" type="button">Start Game</button>
+        </div>
+    </div>
+
     <!-- Loading Screen -->
     <div id="loadingScreen" class="loading">
         Loading Arena...
@@ -74,10 +101,17 @@
         let frameCount = 0;
         let lastFpsTime = 0;
 
+        // Menu overlay references
+        let startMenuElement;
+        let startButtonElement;
+        let menuStatusElement;
+        let menuSummaryElement;
+        let gameLoopStarted = false;
+
         // Initialize the game
-        async function initializeGame() {
+        async function bootstrapGame() {
             try {
-                Utils.log('Starting Bollen i Burken...');
+                Utils.log('Bootstrapping Bollen i Burken...');
                 Utils.log('Simple KISS configuration loaded from config.js');
 
                 // Initialize Resource Manager (simple cleanup tracking)
@@ -86,27 +120,28 @@
                 // Initialize Three.js
                 await initializeThreeJS();
 
-                // Initialize game engine
+                // Initialize game engine and systems
                 initializeGameEngine();
-
-                // Initialize systems
                 initializeSystems();
 
-                // Create arena
-                createArena();
+                // Prepare menu controls
+                setupMenuOverlay();
 
-                // Create local player
-                createLocalPlayer();
+                // Hide loading screen once base systems are ready
+                hideLoadingScreen();
 
-                // Start the game
-                startGame();
+                // Show start menu overlay by default
+                showStartMenu();
 
-                Utils.log('Game initialization complete');
+                // Kick off the render loop (remains active across rounds)
+                requestAnimationFrame(gameLoop);
+                gameLoopStarted = true;
+
+                Utils.log('Game bootstrap complete');
 
             } catch (error) {
-                // Simple error handling - no enterprise ErrorHandler
-                console.error('Failed to initialize game:', error);
-                Utils.error('Game initialization failed', error);
+                console.error('Failed to bootstrap game:', error);
+                Utils.error('Game bootstrap failed', error);
                 showErrorMessage('Failed to initialize game: ' + error.message);
             }
         }
@@ -162,7 +197,7 @@
         }
 
         function initializeGameEngine() {
-            Utils.log('Initializing game engine...');
+            Utils.log('bootstrapping game engine...');
 
             // Create game engine
             gameEngine = new GameEngine();
@@ -174,7 +209,7 @@
         }
 
         function initializeSystems() {
-            Utils.log('Initializing game systems...');
+            Utils.log('bootstrapping game systems...');
 
             // Initialize all systems
             inputSystem = new InputSystem();
@@ -205,22 +240,186 @@
             Utils.log('All systems initialized');
         }
 
+        // ==========================================
+        // Menu Overlay Helpers
+        // ==========================================
+        function setupMenuOverlay() {
+            startMenuElement = document.getElementById('startMenu');
+            startButtonElement = document.getElementById('startButton');
+            menuStatusElement = document.getElementById('menuStatus');
+            menuSummaryElement = document.getElementById('menuSummary');
+
+            if (!startButtonElement) {
+                Utils.warn('Start button not found in DOM');
+                return;
+            }
+
+            startButtonElement.addEventListener('click', () => {
+                if (gameEngine && gameEngine.gameState && gameEngine.gameState.gamePhase === GAME_STATES.PLAYING) {
+                    return; // Already in play
+                }
+                startButtonElement.disabled = true;
+                startNewGame();
+            });
+
+            if (startMenuElement) {
+                startMenuElement.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' && !startMenuElement.classList.contains('hidden') && !startButtonElement.disabled) {
+                        startButtonElement.click();
+                    }
+                });
+            }
+        }
+
+        function showStartMenu(options = {}) {
+            const {
+                gameOver = false,
+                message = '',
+                reason = 'tagged',
+                elapsedMs = 0
+            } = options;
+
+            if (startMenuElement) {
+                startMenuElement.classList.remove('hidden');
+                startMenuElement.classList.add('visible');
+                startMenuElement.setAttribute('aria-hidden', 'false');
+            }
+
+            if (menuStatusElement) {
+                let statusText = message;
+                if (!statusText && gameOver) {
+                    statusText = reason === 'won' ? 'You survived!' : 'You were tagged!';
+                }
+
+                menuStatusElement.textContent = statusText;
+
+                if (statusText) {
+                    menuStatusElement.classList.remove('hidden');
+                    menuStatusElement.style.color = reason === 'won' ? '#7ef29d' : '#ffc857';
+                } else {
+                    menuStatusElement.classList.add('hidden');
+                    menuStatusElement.style.removeProperty('color');
+                }
+            }
+
+            if (menuSummaryElement) {
+                if (gameOver) {
+                    const formattedTime = Utils.formatTime(Math.max(0, elapsedMs));
+                    const summaryText = reason === 'won'
+                        ? `Victory time: ${formattedTime}`
+                        : `Survival time: ${formattedTime}`;
+
+                    menuSummaryElement.textContent = summaryText;
+                    menuSummaryElement.classList.remove('hidden');
+                } else {
+                    menuSummaryElement.textContent = '';
+                    menuSummaryElement.classList.add('hidden');
+                }
+            }
+
+            if (startButtonElement) {
+                startButtonElement.textContent = gameOver ? 'Play Again' : 'Start Game';
+                startButtonElement.disabled = false;
+                setTimeout(() => startButtonElement.focus({ preventScroll: true }), 50);
+            }
+
+            if (uiSystem) {
+                if (typeof uiSystem.setMenuVisible === 'function') {
+                    uiSystem.setMenuVisible(true);
+                } else if (typeof uiSystem.toggleUI === 'function') {
+                    uiSystem.toggleUI(false);
+                }
+            }
+
+            if (gameEngine && gameEngine.gameState && typeof gameEngine.gameState.setGamePhase === 'function') {
+                const phase = gameOver ? GAME_STATES.GAME_OVER : GAME_STATES.START_MENU;
+                gameEngine.gameState.setGamePhase(phase);
+            }
+
+            if (!gameOver && gameEngine) {
+                gameEngine.gameStatus = 'idle';
+            }
+        }
+
+        function hideStartMenu() {
+            if (startMenuElement) {
+                startMenuElement.classList.remove('visible');
+                startMenuElement.classList.add('hidden');
+                startMenuElement.setAttribute('aria-hidden', 'true');
+            }
+
+            if (menuStatusElement) {
+                menuStatusElement.textContent = '';
+                menuStatusElement.classList.add('hidden');
+                menuStatusElement.style.removeProperty('color');
+            }
+
+            if (menuSummaryElement) {
+                menuSummaryElement.textContent = '';
+                menuSummaryElement.classList.add('hidden');
+            }
+
+            if (uiSystem) {
+                if (typeof uiSystem.setMenuVisible === 'function') {
+                    uiSystem.setMenuVisible(false);
+                } else if (typeof uiSystem.toggleUI === 'function') {
+                    uiSystem.toggleUI(true);
+                }
+            }
+        }
+
+        window.showStartMenu = showStartMenu;
+        window.hideStartMenu = hideStartMenu;
+
+        function startNewGame() {
+            Utils.log('Starting new round...');
+            hideStartMenu();
+            showLoadingScreen();
+
+            cleanupGameWorld();
+
+            if (gameEngine) {
+                gameEngine.reset();
+                if (gameEngine.gameState && typeof gameEngine.gameState.setGamePhase === 'function') {
+                    gameEngine.gameState.setGamePhase(GAME_STATES.LOADING);
+                }
+            }
+
+            createArena();
+            createLocalPlayer();
+            startGame();
+        }
+
+        function cleanupGameWorld() {
+            if (playerManager && typeof playerManager.clearAll === 'function') {
+                playerManager.clearAll();
+            }
+
+            if (arenaBuilder && typeof arenaBuilder.clearArena === 'function') {
+                arenaBuilder.clearArena();
+            }
+        }
+
+        function showLoadingScreen() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'flex';
+            }
+        }
+
         function createArena() {
             Utils.log('Creating arena...');
 
-            arenaBuilder = new ArenaBuilder(scene);
+            if (!arenaBuilder) {
+                arenaBuilder = new ArenaBuilder(scene);
+            }
+
             arenaBuilder.createBasicArena();
 
-            // Create the central can mesh
             const canMesh = arenaBuilder.createCentralCan();
-
-            // Create the central can entity with components
             createCentralCanEntity(canMesh);
 
-            // Create random obstacles around the arena
             const obstacles = arenaBuilder.createRandomObstacles();
-
-            // Create obstacle entities with collision components
             createObstacleEntities(obstacles);
 
             Utils.log('Arena created');
@@ -241,7 +440,7 @@
             // Add Interactable component - the heart of Swedish "Bollen i Burken"
             const interactable = new Interactable('burken', 2.0); // Swedish can, 2 units interaction distance
             interactable.onInteract = function(playerId, component) {
-                Utils.log(`🇸🇪 Swedish Can (Burken) kicked by player ${playerId}! Traditional rescue mechanic triggered!`);
+                Utils.log(`???????? Swedish Can (Burken) kicked by player ${playerId}! Traditional rescue mechanic triggered!`);
                 // Future: Implement full rescue mechanics here
             };
             canEntity.addComponent(interactable);
@@ -289,10 +488,11 @@
         function createLocalPlayer() {
             Utils.log('Creating local player...');
 
-            playerManager = new PlayerManager(scene, gameEngine);
-            playerManager.addLocalPlayer(localPlayerId);
+            if (!playerManager) {
+                playerManager = new PlayerManager(scene, gameEngine);
+            }
 
-            // Add AI hunter
+            playerManager.addLocalPlayer(localPlayerId);
             playerManager.addAIHunter('ai-hunter-1');
 
             Utils.log('Local player and AI hunter created');
@@ -304,14 +504,14 @@
             // Set game state to playing
             gameEngine.start();
 
-            // Start audio (disabled for now)
-            // audioSystem.startAmbientMusic();
-
             // Hide loading screen
             hideLoadingScreen();
 
-            // Start game loop
-            requestAnimationFrame(gameLoop);
+            // Ensure the game loop is running (it persists across rounds)
+            if (!gameLoopStarted) {
+                requestAnimationFrame(gameLoop);
+                gameLoopStarted = true;
+            }
 
             Utils.log('Game started successfully');
         }
@@ -319,6 +519,10 @@
         // Main game loop (simple, with try-catch)
         function gameLoop(currentTime) {
             try {
+                if (!lastTime) {
+                    lastTime = currentTime;
+                }
+
                 const deltaTime = currentTime - lastTime;
                 lastTime = currentTime;
 
@@ -503,7 +707,7 @@
                 console.log('InteractionSystem Stats:', interactionSystem.getInteractionStats());
                 interactionSystem.debugLogInteractions();
             } else {
-                console.log('❌ InteractionSystem not initialized');
+                console.log('??? InteractionSystem not initialized');
             }
 
             // Find interactable entities
@@ -523,16 +727,16 @@
         };
 
         window.testCanInteraction = function () {
-            console.log('🧪 Testing Can Interaction...');
+            console.log('???? Testing Can Interaction...');
 
             if (!gameEngine || !gameEngine.gameState) {
-                console.log('❌ Game not initialized');
+                console.log('??? Game not initialized');
                 return;
             }
 
             const localPlayer = gameEngine.gameState.getLocalPlayer();
             if (!localPlayer) {
-                console.log('❌ No local player found');
+                console.log('??? No local player found');
                 return;
             }
 
@@ -547,7 +751,7 @@
             }
 
             if (!canEntity) {
-                console.log('❌ Central can not found');
+                console.log('??? Central can not found');
                 return;
             }
 
@@ -558,13 +762,13 @@
             if (playerTransform && canTransform) {
                 playerTransform.position.x = canTransform.position.x + 1.0; // 1 unit away
                 playerTransform.position.z = canTransform.position.z;
-                console.log(`✅ Player moved near can at (${playerTransform.position.x}, ${playerTransform.position.z})`);
+                console.log(`??? Player moved near can at (${playerTransform.position.x}, ${playerTransform.position.z})`);
             }
 
             // Trigger interaction manually
             if (interactionSystem) {
                 const success = interactionSystem.handleInteractionAttempt(localPlayer, gameEngine.gameState);
-                console.log(`Interaction attempt: ${success ? '✅ Success' : '❌ Failed'}`);
+                console.log(`Interaction attempt: ${success ? '??? Success' : '??? Failed'}`);
             }
         };
 
@@ -572,7 +776,7 @@
             console.log('=== OBSTACLE SYSTEM DEBUG ===');
 
             if (!gameEngine || !gameEngine.gameState) {
-                console.log('❌ Game not initialized');
+                console.log('??? Game not initialized');
                 return;
             }
 
@@ -612,16 +816,16 @@
         };
 
         window.testObstacleCollision = function () {
-            console.log('🧪 Testing Obstacle Collision...');
+            console.log('???? Testing Obstacle Collision...');
 
             if (!gameEngine || !gameEngine.gameState) {
-                console.log('❌ Game not initialized');
+                console.log('??? Game not initialized');
                 return;
             }
 
             const localPlayer = gameEngine.gameState.getLocalPlayer();
             if (!localPlayer) {
-                console.log('❌ No local player found');
+                console.log('??? No local player found');
                 return;
             }
 
@@ -636,7 +840,7 @@
             }
 
             if (!obstacleEntity) {
-                console.log('❌ No obstacles found to test collision');
+                console.log('??? No obstacles found to test collision');
                 return;
             }
 
@@ -651,22 +855,22 @@
                 playerTransform.position.x = obstacleTransform.position.x;
                 playerTransform.position.z = obstacleTransform.position.z;
 
-                console.log(`✅ Player moved from (${originalPos.x.toFixed(1)}, ${originalPos.z.toFixed(1)}) to obstacle at (${obstacleTransform.position.x.toFixed(1)}, ${obstacleTransform.position.z.toFixed(1)})`);
-                console.log('🎮 Try moving with WASD - collision should prevent overlap');
+                console.log(`??? Player moved from (${originalPos.x.toFixed(1)}, ${originalPos.z.toFixed(1)}) to obstacle at (${obstacleTransform.position.x.toFixed(1)}, ${obstacleTransform.position.z.toFixed(1)})`);
+                console.log('???? Try moving with WASD - collision should prevent overlap');
             }
         };
 
         window.testMovement = function () {
-            console.log('🧪 Testing Player Movement...');
+            console.log('???? Testing Player Movement...');
 
             if (!gameEngine || !gameEngine.gameState) {
-                console.log('❌ Game not initialized');
+                console.log('??? Game not initialized');
                 return;
             }
 
             const localPlayer = gameEngine.gameState.getLocalPlayer();
             if (!localPlayer) {
-                console.log('❌ No local player found');
+                console.log('??? No local player found');
                 return;
             }
 
@@ -683,23 +887,23 @@
                 const oldPos = { ...playerTransform.position };
                 playerTransform.position.x += 1.0;
                 console.log(`Moved player from (${oldPos.x.toFixed(1)}, ${oldPos.z.toFixed(1)}) to (${playerTransform.position.x.toFixed(1)}, ${playerTransform.position.z.toFixed(1)})`);
-                console.log('🎮 Player should move if you can see position change');
+                console.log('???? Player should move if you can see position change');
             }
         };
 
         window.disableCollision = function () {
-            console.log('🔧 Temporarily disabling collision detection...');
+            console.log('???? Temporarily disabling collision detection...');
             if (movementSystem) {
                 movementSystem.staticColliders = [];
-                console.log('✅ Collision disabled - try moving with WASD');
+                console.log('??? Collision disabled - try moving with WASD');
                 console.log('Use enableCollision() to re-enable');
             }
         };
 
         window.enableCollision = function () {
-            console.log('🔧 Re-enabling collision detection...');
+            console.log('???? Re-enabling collision detection...');
             if (movementSystem) {
-                console.log('✅ Collision re-enabled');
+                console.log('??? Collision re-enabled');
             }
         };
 
@@ -739,7 +943,7 @@
                         keys: playerInput ? playerInput.keys : 'N/A'
                     });
                 } else {
-                    console.log('❌ No local player found');
+                    console.log('??? No local player found');
                 }
             }
 
@@ -751,42 +955,42 @@
             console.log('Press W, A, S, D keys and watch console');
 
             document.addEventListener('keydown', (e) => {
-                console.log('🔥 RAW KEY DOWN:', e.code, e.key);
+                console.log('???? RAW KEY DOWN:', e.code, e.key);
             });
 
             document.addEventListener('keyup', (e) => {
-                console.log('🔥 RAW KEY UP:', e.code, e.key);
+                console.log('???? RAW KEY UP:', e.code, e.key);
             });
         };
 
         // Start the game when page loads
         window.addEventListener('load', function () {
-            Utils.log('Page loaded, initializing game...');
-            initializeGame();
+            Utils.log('Page loaded, bootstrapping game...');
+            bootstrapGame();
         });
 
         window.testAIVision = function () {
-            console.log('🤖 Testing AI Vision System...');
+            console.log('???? Testing AI Vision System...');
 
             if (!gameEngine || !gameEngine.gameState) {
-                console.log('❌ Game not initialized');
+                console.log('??? Game not initialized');
                 return;
             }
 
             const aiSystem = gameEngine.systems.get('AISystem');
             if (!aiSystem) {
-                console.log('❌ AI System not found');
+                console.log('??? AI System not found');
                 return;
             }
 
             // Run the line-of-sight test
             const result = aiSystem.testLineOfSight(gameEngine.gameState);
             if (result) {
-                console.log('🔍 Test completed successfully!');
+                console.log('???? Test completed successfully!');
                 if (!result.hasLineOfSight && result.distance < 12) {
-                    console.log('✅ Obstacle occlusion working correctly!');
+                    console.log('??? Obstacle occlusion working correctly!');
                 } else if (result.hasLineOfSight && result.distance < 12) {
-                    console.log('✅ Clear line of sight detected correctly!');
+                    console.log('??? Clear line of sight detected correctly!');
                 }
             }
         };
@@ -798,3 +1002,15 @@
 </body>
 
 </html>
+
+
+
+
+
+
+
+
+
+
+
+

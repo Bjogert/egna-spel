@@ -392,7 +392,7 @@ class GameState {
         this.currentTick = 0;
         this.players = new Map(); // playerId -> entityId
         this.localPlayerId = null;
-        this.gamePhase = GAME_STATES.LOADING;
+        this.gamePhase = GAME_STATES.START_MENU;
         this.startTime = Utils.now();
     }
 
@@ -511,7 +511,7 @@ class GameEngine {
         // Game timer and state
         this.gameStartTime = 0;
         this.gameDuration = 60000; // 60 seconds to survive
-        this.gameStatus = 'playing'; // 'playing', 'won', 'lost'
+        this.gameStatus = 'idle'; // 'idle', 'playing', 'won', 'tagged'
 
         Utils.log('Game engine initialized');
 
@@ -607,7 +607,7 @@ class GameEngine {
         this.gameState.setGamePhase(GAME_STATES.PLAYING);
         this.gameStartTime = Date.now();
         this.gameStatus = 'playing';
-        Utils.log('🎮 Game Started - Survive for 60 seconds!');
+        Utils.log('Game Started - Survive for 60 seconds!');
     }
 
     pause() {
@@ -636,13 +636,13 @@ class GameEngine {
         if (this.gameStatus !== 'playing') return; // Already ended
 
         this.gameStatus = reason; // 'won' or 'tagged'
+        this.gameState.setGamePhase(GAME_STATES.GAME_OVER);
+        this.gameStartTime = 0;
 
         if (reason === 'won') {
-            Utils.log('🎉 YOU WON! You survived for 60 seconds!');
-            alert('🎉 CONGRATULATIONS!\n\nYou survived for 60 seconds and won the game!\n\nWell done!');
+            Utils.log('You won! You survived for 60 seconds.');
         } else if (reason === 'tagged') {
-            Utils.log('🏃‍♂️ GAME OVER! You were tagged!');
-            alert('🏃‍♂️ TAGGED!\n\nThe AI Hunter caught you!\n\nGame Over!');
+            Utils.log('Game over! You were tagged by the AI hunter.');
         }
 
         // Stop all AI movement
@@ -655,6 +655,11 @@ class GameEngine {
                     transform.velocity.z = 0;
                 }
             }
+        }
+
+        if (typeof window !== 'undefined' && typeof window.showStartMenu === 'function') {
+            const message = reason === 'won' ? 'You Won! Play Again?' : 'Game Over';
+            window.showStartMenu({ gameOver: reason !== 'won', message });
         }
     }
 
@@ -670,7 +675,8 @@ class GameEngine {
 
     stop() {
         this.gameState.setGamePhase(GAME_STATES.GAME_OVER);
-        Utils.log('Game engine stopped');
+        this.gameStartTime = 0;
+        Utils.log("Game engine stopped");
     }
 
     reset() {
@@ -681,8 +687,13 @@ class GameEngine {
         this.gameState.currentTick = 0;
         this.gameState.localPlayerId = null;
         this.gameState.startTime = Utils.now();
+        this.gameState.setGamePhase(GAME_STATES.START_MENU);
 
-        Utils.log('Game engine reset');
+        this.gameStatus = "idle";
+        this.gameStartTime = 0;
+        this.accumulator = 0;
+
+        Utils.log("Game engine reset");
     }
 
     getStats() {
@@ -725,3 +736,12 @@ if (typeof module !== 'undefined' && module.exports) {
         PLAYER_STATES
     };
 }
+
+
+
+
+
+
+
+
+

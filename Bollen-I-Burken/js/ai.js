@@ -84,6 +84,10 @@ class AISystem extends System {
     }
 
     update(gameState, deltaTime) {
+        if (!gameState || gameState.gamePhase !== GAME_STATES.PLAYING) {
+            return;
+        }
+
         // Update all AI hunters with error handling
         for (const hunter of this.hunters) {
             if (!hunter.active) {

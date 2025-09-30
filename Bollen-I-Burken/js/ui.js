@@ -187,51 +187,63 @@ class UISystem extends System {
         const timerValueElement = document.getElementById('timerValue');
         const gameStatusElement = document.getElementById('gameStatus');
 
-        if (window.GameEngine) {
-            const remainingTime = window.GameEngine.getRemainingTime();
-            const gameStatus = window.GameEngine.gameStatus;
+        if (!window.GameEngine) {
+            return;
+        }
 
-            if (timerValueElement) {
-                timerValueElement.textContent = remainingTime;
+        const remainingTime = window.GameEngine.getRemainingTime();
+        const gameStatus = window.GameEngine.gameStatus;
 
-                // Change color based on time remaining
-                if (remainingTime <= 10 && gameStatus === 'playing') {
-                    timerValueElement.style.color = '#ff4444'; // Red when critical
+        if (timerValueElement) {
+            timerValueElement.textContent = Math.max(0, remainingTime);
+
+            if (gameStatus === 'playing') {
+                if (remainingTime <= 10) {
+                    timerValueElement.style.color = '#ff4444';
                     timerValueElement.style.fontWeight = 'bold';
-                } else if (remainingTime <= 30 && gameStatus === 'playing') {
-                    timerValueElement.style.color = '#ffaa00'; // Orange when warning
+                } else if (remainingTime <= 30) {
+                    timerValueElement.style.color = '#ffaa00';
+                    timerValueElement.style.fontWeight = 'bold';
                 } else {
-                    timerValueElement.style.color = '#44ff44'; // Green when safe
+                    timerValueElement.style.color = '#44ff44';
                     timerValueElement.style.fontWeight = 'normal';
                 }
+            } else {
+                timerValueElement.style.color = '#44ff44';
+                timerValueElement.style.fontWeight = 'normal';
             }
+        }
 
-            if (gameStatusElement) {
-                if (gameStatus === 'won') {
-                    gameStatusElement.textContent = '🎉 YOU WON! Congratulations!';
-                    gameStatusElement.style.color = '#44ff44';
-                } else if (gameStatus === 'tagged') {
-                    gameStatusElement.textContent = '🏃‍♂️ TAGGED! Game Over!';
-                    gameStatusElement.style.color = '#ff4444';
-                } else if (gameStatus === 'playing') {
-                    // Check if AI is hunting
-                    const aiSystem = window.GameEngine.getSystem('AISystem');
-                    if (aiSystem) {
-                        const hunters = aiSystem.getHunters();
-                        const isHunting = hunters.some(hunter => {
-                            const ai = hunter.getComponent('AIHunter');
-                            return ai && ai.state === 'HUNTING';
-                        });
+        if (gameStatusElement) {
+            if (gameStatus === 'won') {
+                gameStatusElement.textContent = 'You won! Great job!';
+                gameStatusElement.style.color = '#44ff44';
+            } else if (gameStatus === 'tagged') {
+                gameStatusElement.textContent = 'The hunter caught you.';
+                gameStatusElement.style.color = '#ff4444';
+            } else if (gameStatus === 'playing') {
+                let message = 'Stay hidden from the hunter!';
+                let color = '#ffffff';
 
-                        if (isHunting) {
-                            gameStatusElement.textContent = '🚨 AI SPOTTED YOU! Run and hide!';
-                            gameStatusElement.style.color = '#ff4444';
-                        } else {
-                            gameStatusElement.textContent = '👁️ Stay hidden from the AI Hunter!';
-                            gameStatusElement.style.color = '#ffffff';
-                        }
+                const aiSystem = window.GameEngine.getSystem('AISystem');
+                if (aiSystem) {
+                    const hunters = aiSystem.getHunters();
+                    const isHunting = hunters.some(hunter => {
+                        const ai = hunter.getComponent('AIHunter');
+                        return ai && ai.state === 'HUNTING';
+                    });
+
+                    if (isHunting) {
+                        message = 'The hunter spotted you! Run!';
+                        color = '#ff4444';
                     }
                 }
+
+                gameStatusElement.textContent = message;
+                gameStatusElement.style.color = color;
+            } else {
+                gameStatusElement.textContent = 'Press Start to enter the arena.';
+                gameStatusElement.style.color = '#ffffff';
             }
         }
     }
@@ -302,23 +314,36 @@ class UISystem extends System {
         if (!gameContainer) return;
 
         // Update visual state based on game phase
+        const messages = this.elements.gameMessages;
+
+
         switch (gameState.gamePhase) {
             case GAME_STATES.LOADING:
                 this.showLoadingScreen();
                 break;
+            case GAME_STATES.START_MENU:
+                this.hideLoadingScreen();
+                gameContainer.className = 'game-start-menu';
+                if (messages) {
+                    messages.innerHTML = '';
+                }
+                break;
             case GAME_STATES.PLAYING:
                 this.hideLoadingScreen();
                 gameContainer.className = 'game-active';
+                if (messages) {
+                    messages.innerHTML = '';
+                }
                 break;
             case GAME_STATES.PAUSED:
                 gameContainer.className = 'game-paused';
-                this.showMessage('PAUSED', 'Press P to resume');
-                break;
-            case GAME_STATES.MENU:
-                this.showMessage('MENU', 'Press ESC to continue');
+                this.showMessage('Paused', 'Press P to resume');
                 break;
             case GAME_STATES.GAME_OVER:
-                this.showMessage('GAME OVER', 'Press R to restart');
+                gameContainer.className = 'game-over';
+                if (messages) {
+                    messages.innerHTML = '';
+                }
                 break;
         }
     }
@@ -492,6 +517,25 @@ class UISystem extends System {
         });
     }
 
+    setMenuVisible(isVisible) {
+        this.toggleUI(!isVisible);
+
+        const optionalElements = [
+            this.elements.gameTimer,
+            this.elements.gameTitle
+        ];
+
+        optionalElements.forEach(element => {
+            if (element) {
+                element.style.display = isVisible ? 'none' : 'block';
+            }
+        });
+
+        if (this.elements.controlsHelp) {
+            this.elements.controlsHelp.style.display = 'none';
+        }
+    }
+
     destroy() {
         // Clean up UI elements
         Object.values(this.elements).forEach(element => {
@@ -510,3 +554,4 @@ if (typeof module !== 'undefined' && module.exports) {
 } else {
     window.GameUI = { UISystem };
 }
+

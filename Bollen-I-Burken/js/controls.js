@@ -115,6 +115,10 @@ class InputSystem extends System {
             return;
         }
 
+        if (gameState.gamePhase !== GAME_STATES.PLAYING) {
+            return;
+        }
+
         const localPlayer = gameState.getLocalPlayer();
         if (!localPlayer) {
             Utils.log('InputSystem: No local player found');
@@ -272,16 +276,7 @@ class InputSystem extends System {
     update(gameState) {
         this.currentGameState = gameState; // Store reference for input updates
 
-        // Process any pending input updates
-        if (this.pendingInput) {
-            this.updatePlayerInput();
-            this.pendingInput = false;
-        }
-
-        // Update gamepad input
-        this.updateGamepad();
-
-        // Handle system keys
+        // Handle system keys regardless of phase
         if (this.keys.get('pause')) {
             this.keys.set('pause', false); // Prevent repeat
             this.togglePause(gameState);
@@ -291,6 +286,19 @@ class InputSystem extends System {
             this.keys.set('menu', false); // Prevent repeat
             this.showMenu(gameState);
         }
+
+        if (!gameState || gameState.gamePhase !== GAME_STATES.PLAYING) {
+            return;
+        }
+
+        // Process any pending input updates
+        if (this.pendingInput) {
+            this.updatePlayerInput();
+            this.pendingInput = false;
+        }
+
+        // Update gamepad input
+        this.updateGamepad();
     }
 
     togglePause(gameState) {
@@ -302,12 +310,7 @@ class InputSystem extends System {
     }
 
     showMenu(gameState) {
-        // Toggle between menu and game
-        if (gameState.gamePhase === GAME_STATES.PLAYING) {
-            gameState.setGamePhase(GAME_STATES.MENU);
-        } else if (gameState.gamePhase === GAME_STATES.MENU) {
-            gameState.setGamePhase(GAME_STATES.PLAYING);
-        }
+        this.togglePause(gameState);
     }
 
     isMobileDevice() {

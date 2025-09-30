@@ -17,7 +17,7 @@ const GAME_CONFIG = {
 // Game States
 const GAME_STATES = {
     LOADING: 'loading',
-    MENU: 'menu',
+    START_MENU: 'start_menu',
     PLAYING: 'playing',
     PAUSED: 'paused',
     GAME_OVER: 'game_over'

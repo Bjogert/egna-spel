@@ -10,6 +10,7 @@
 - WASD, touch, and gamepad input driving local player cube plus collision-aware movement (`js/controls.js`, `js/player.js`)
 - Single AI hunter patrolling with state machine, vision checks, and tagging detection (`js/ai.js`)
 - HUD with timers, stats, notifications, and debug helpers (`js/ui.js`)
+- Full-screen start / game over menu overlay with cultural context, restart flow, and survival summary (`index.html`, `css/style.css`, `js/ui.js`)
 - Procedural audio stubs for footsteps, UI, and ambient loops (`js/audio.js`)
 - Interaction system recognizes proximity to the can and logs placeholder rescue effects (`js/interaction.js`)
 - Networking layer scaffolded for future WebRTC/WebSocket work (`js/networking.js`)
@@ -18,6 +19,7 @@
 - Custom ECS in `js/game.js` manages entities, components, systems, and game loop timers
 - Simplified configuration lives in `js/core/config.js` (`CONFIG` object plus helper getters/setters)
 - Utility helpers (`js/utils.js`) provide vector math, logging, timing, constants, and debug flags
+- Game loop now idles in `START_MENU`/`GAME_OVER` phases so input, movement, and AI systems stay paused until a round begins (`js/game.js`, `js/controls.js`, `js/player.js`, `js/ai.js`)
 - `ResourceManager` singleton still active for geometry/material tracking despite KISS push (`js/resource-manager.js`)
 - Legacy enterprise modules (`config-manager.js`, `error-handler.js`, `component-validator.js`) remain in repo for reference but are no longer loaded
 
@@ -50,3 +52,4 @@
 - `.claude/documentation.md` - running notes on resolved issues and current feature set
 - `.claude/Configuration-Sliders-Plan.md` - UI and design brief for obstacle tuning
 - `README.md` - high-level pitch (needs encoding cleanup)
+

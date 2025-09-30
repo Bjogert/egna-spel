@@ -22,14 +22,16 @@ This game brings the classic Swedish game into a 3D arena environment:
 - **Swedish Gaming Heritage**: Preserving and modernizing this classic Swedish children's game for the digital age
 
 ### Current Features (Phase 1)
-- ✅ 3D arena environment with "emperor's view" camera positioning
-- ✅ Controllable player character with smooth WASD movement
-- ✅ AI hunter with basic patrol behavior (the digital "guard")
-- ✅ Collision detection with arena boundaries
-- ✅ Entity-Component-System architecture for scalable gameplay
-- ✅ Professional debugging and development tools
-- ✅ Enterprise-level code structure and error handling
-- ✅ Real-time UI with game statistics
+- 3D arena environment with "emperor's view" camera positioning
+- Controllable player character with smooth WASD movement
+- AI hunter with basic patrol behavior (the digital "guard")
+- Collision detection with arena boundaries
+- Entity-Component-System architecture for scalable gameplay
+- Professional debugging and development tools
+- Real-time UI with game statistics
+- Full-screen start / game over menu overlay with cultural context and controls primer
+- Clean round restart flow via Start / Play Again button without reloading the page
+- Input, movement, and AI systems gate updates outside the active play phase for reliable lobby and pause states
 
 ### Planned Features (Future Phases)
 - 🔄 **Hide-and-Seek Mechanics**: Hiding spots around the arena

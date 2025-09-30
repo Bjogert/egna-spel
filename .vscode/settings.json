@@ -1,0 +1,4 @@
+{
+    "claude-code.useNodeExecution": true,
+    "claude-code.environmentVariables": []
+}

@@ -67,6 +67,17 @@ Classic puzzle game with modern web technologies
 - Technologies: Three.js, WebGL, HTML5
 - Features: 3D arena, character movement, gladiatorial theme
 
+#### Recent Updates
+- Added full-screen start / game over menu overlay with Swedish context and controls primer (`index.html`, `css/style.css`, `js/ui.js`)
+- Implemented Play Again flow that rebuilds the arena and entities without reloading the page
+- Gated input, movement, and AI systems to idle while in START_MENU or GAME_OVER states for reliable restarts
+
+#### Notes for Next AI Assistant
+- Preserve the new START_MENU state; do not reintroduce the old MENU phase when expanding state handling
+- When adding features, keep showStartMenu / hideStartMenu helpers centralized (exported on window) and reuse them instead of duplicating DOM logic
+- Restart flow depends on PlayerManager.clearAll() and gameEngine.reset(); update both if you add new entities or resources so rounds remain leak-free
+
+
 ---
 
 ## General Development Guidelines

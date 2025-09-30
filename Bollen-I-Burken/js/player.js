@@ -16,6 +16,10 @@ class MovementSystem extends System {
     }
 
     update(gameState) {
+        if (!gameState || gameState.gamePhase !== GAME_STATES.PLAYING) {
+            return;
+        }
+
         // Collect static colliders once per frame for performance
         this.collectStaticColliders(gameState);
 
@@ -304,6 +308,9 @@ class PlayerManager {
             0xbd10e0  // Magenta
         ];
         this.colorIndex = 1;
+        this.playerMeshes = new Map();
+        this.playerEntities = new Map();
+        this.hunterData = new Map();
     }
 
     addLocalPlayer(playerId) {
@@ -322,6 +329,9 @@ class PlayerManager {
         // Create and add player to game state
         const gameEntity = this.gameEngine.gameState.addPlayer(playerId, true);
         gameEntity.addComponent(new Renderable(mesh));
+
+        this.playerMeshes.set(playerId, mesh);
+        this.playerEntities.set(playerId, gameEntity);
 
         Utils.log(`Added local player: ${playerId}`);
         return gameEntity;
@@ -347,6 +357,9 @@ class PlayerManager {
         const gameEntity = this.gameEngine.gameState.addPlayer(playerId, false);
         gameEntity.addComponent(new Renderable(mesh));
 
+        this.playerMeshes.set(playerId, mesh);
+        this.playerEntities.set(playerId, gameEntity);
+
         Utils.log(`Added remote player: ${playerId}`);
         return gameEntity;
     }
@@ -360,9 +373,25 @@ class PlayerManager {
                 if (renderable.mesh.geometry) renderable.mesh.geometry.dispose();
                 if (renderable.mesh.material) renderable.mesh.material.dispose();
             }
-            this.gameEngine.gameState.removePlayer(playerId);
             Utils.log(`Removed player: ${playerId}`);
+        } else {
+            const mesh = this.playerMeshes.get(playerId);
+            if (mesh) {
+                this.scene.remove(mesh);
+                if (mesh.geometry) mesh.geometry.dispose();
+                if (mesh.material) {
+                    if (Array.isArray(mesh.material)) {
+                        mesh.material.forEach(material => material.dispose());
+                    } else {
+                        mesh.material.dispose();
+                    }
+                }
+            }
         }
+
+        this.gameEngine.gameState.removePlayer(playerId);
+        this.playerMeshes.delete(playerId);
+        this.playerEntities.delete(playerId);
     }
 
     addAIHunter(hunterId, position = null) {
@@ -405,8 +434,55 @@ class PlayerManager {
             Utils.warn(`AISystem not found - AI hunter ${hunterId} will not move`);
         }
 
+        this.hunterData.set(hunterId, { entity: aiEntity, mesh, visionCone });
+
         Utils.log(`Added AI hunter: ${hunterId} at position (${spawnPos.x}, ${spawnPos.z})`);
         return aiEntity;
+    }
+
+
+    removeAIHunter(hunterId) {
+        const hunterInfo = this.hunterData.get(hunterId);
+        if (!hunterInfo) {
+            return;
+        }
+
+        if (hunterInfo.mesh) {
+            this.scene.remove(hunterInfo.mesh);
+            if (hunterInfo.mesh.geometry) hunterInfo.mesh.geometry.dispose();
+            if (hunterInfo.mesh.material) hunterInfo.mesh.material.dispose();
+        }
+
+        if (hunterInfo.visionCone) {
+            this.scene.remove(hunterInfo.visionCone);
+            if (hunterInfo.visionCone.geometry) hunterInfo.visionCone.geometry.dispose();
+            if (hunterInfo.visionCone.material) hunterInfo.visionCone.material.dispose();
+        }
+
+        const aiSystem = this.gameEngine.getSystem('AISystem');
+        if (aiSystem) {
+            aiSystem.removeEntity(hunterInfo.entity);
+        }
+
+        if (hunterInfo.entity) {
+            this.gameEngine.gameState.removeEntity(hunterInfo.entity.id);
+        }
+
+        this.hunterData.delete(hunterId);
+        Utils.log(`Removed AI hunter: ${hunterId}`);
+    }
+
+    clearAll() {
+        const playerIds = Array.from(this.playerMeshes.keys());
+        playerIds.forEach(playerId => this.removePlayer(playerId));
+
+        const hunterIds = Array.from(this.hunterData.keys());
+        hunterIds.forEach(hunterId => this.removeAIHunter(hunterId));
+
+        this.playerMeshes.clear();
+        this.playerEntities.clear();
+        this.hunterData.clear();
+        this.colorIndex = 1;
     }
 
     createVisionConeDebugMesh(angleInDegrees, range) {
