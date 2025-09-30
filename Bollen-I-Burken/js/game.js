@@ -14,6 +14,8 @@
         Interactable: global.Interactable,
         Hideable: global.Hideable,
         Collider: global.Collider,
+        AIHunter: global.AIHunter,
+        VisionCone: global.VisionCone,
         GameState: global.GameState,
         System: global.System,
         GameEngine: global.GameEngineClass || global.GameEngineConstructor || global.GameEngine,
