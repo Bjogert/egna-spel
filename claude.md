@@ -71,22 +71,23 @@ Classic puzzle game with modern web technologies
 
 ## General Development Guidelines
 
-### Professional Architecture Standards
-- **Build for scalability from day one** - Design systems that can grow and expand
-- **Enterprise-level code structure** - Use industry best practices and patterns
-- **Modular design principles** - Separate concerns for maintainability and testing
-- **Clean code standards** - Readable, documented, and self-explaining code
-- **SOLID principles** - Single responsibility, open/closed, dependency inversion
-- **Design patterns** - Use proven patterns (MVC, Observer, Factory, etc.)
-- **Future-proof architecture** - Build foundations that support feature expansion
+### KISS Architecture Standards (Keep It Simple, Stupid)
+- **Start simple, scale when needed** - Don't over-engineer from day one
+- **Avoid enterprise patterns in small projects** - No Singleton, Observer, Strategy unless clearly needed
+- **One concern per file** - Each file should have a single, clear responsibility
+- **Small, focused files** - Target 200-400 lines max; if >500 lines, split it
+- **Clear folder structure** - Organize by system (core/, systems/, managers/, utils/)
+- **Explicit over clever** - Simple code that's easy to understand beats clever abstractions
+- **Test in isolation** - If you can't test a system independently, it's too coupled
+- **No premature abstraction** - Solve the problem first, abstract patterns later when needed
 
-### Scalability Requirements
-- **Component-based architecture** - Reusable, composable game components
-- **Event-driven systems** - Loose coupling between game systems
-- **Data-driven design** - Configuration over hard-coded values
-- **Performance optimization** - Built-in profiling and optimization hooks
-- **Memory management** - Object pooling and efficient resource handling
-- **Extensible plugin system** - Easy addition of new features and mechanics
+### Scalability Requirements (Applied Gradually)
+- **Component-based architecture** - Simple components without validation overhead
+- **Loose coupling** - Systems communicate through clear interfaces, not singletons
+- **Configuration as simple objects** - No enterprise ConfigManager, just export const CONFIG
+- **Performance through simplicity** - Less code = faster execution = easier optimization
+- **Memory management where it matters** - Focus on Three.js resource cleanup, not everything
+- **Grow complexity incrementally** - Add features one at a time, test thoroughly
 
 ## Technical Requirements
 
@@ -113,10 +114,22 @@ game-name/
 │   ├── style.css       # Main stylesheet
 │   └── responsive.css  # Mobile responsive styles
 ├── js/
-│   ├── game.js         # Core game logic
-│   ├── controls.js     # Input handling
-│   ├── ui.js          # User interface management
-│   └── audio.js       # Sound management
+│   ├── core/          # Core engine components
+│   │   ├── entity.js       # Entity class
+│   │   ├── components.js   # Component definitions
+│   │   ├── game-engine.js  # Game loop and state
+│   │   └── config.js       # Simple configuration object
+│   ├── systems/       # Game systems (one per file)
+│   │   ├── input-system.js
+│   │   ├── movement-system.js
+│   │   ├── ai-system.js
+│   │   └── ui-system.js
+│   ├── managers/      # Specific managers
+│   │   ├── arena-builder.js
+│   │   └── player-manager.js
+│   └── utils/         # Helper functions
+│       ├── utils.js
+│       └── constants.js
 ├── assets/
 │   ├── sounds/        # Audio files
 │   ├── images/        # Graphics and sprites
@@ -126,14 +139,14 @@ game-name/
 
 ## Development Best Practices
 
-### Professional Code Standards
-- **Enterprise-grade architecture** - Use proven industry patterns and structures
-- **Scalability-first approach** - Design every system to handle growth and complexity
-- **Clean code principles** - Self-documenting, maintainable, and testable code
-- **Separation of concerns** - Clear boundaries between different system responsibilities
-- **Dependency injection** - Loose coupling for better testing and flexibility
-- **Configuration management** - External config files for easy customization
-- **Error handling** - Comprehensive error management and graceful degradation
+### Professional Code Standards (KISS Approach)
+- **Simple, readable code** - Code that clearly expresses its intent without clever tricks
+- **Start basic, refactor when needed** - Build working features before optimizing structure
+- **Clear separation of concerns** - One file, one purpose; one function, one responsibility
+- **Explicit dependencies** - Pass what you need, don't hide behind singletons or globals
+- **Simple error handling** - Use try-catch where needed, log clearly with console.error
+- **Configuration as code** - Simple exported objects, no configuration frameworks
+- **Avoid premature patterns** - Don't add Singleton/Observer/Factory until you need them twice
 
 ### Performance Optimization
 - Use requestAnimationFrame for smooth animations

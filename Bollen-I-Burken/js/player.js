@@ -7,8 +7,7 @@ class MovementSystem extends System {
     constructor() {
         super('MovementSystem');
         this.moveSpeed = 0.15;
-        this.configManager = window.ConfigManager ? ConfigManager.getInstance() : null;
-        this.arenaSize = this.configManager ? this.configManager.get('arena.size') : 15;
+        this.arenaSize = CONFIG.arena.size;
 
         // Collision detection properties
         this.staticColliders = [];

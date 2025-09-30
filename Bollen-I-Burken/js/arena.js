@@ -7,20 +7,19 @@ class ArenaBuilder {
     constructor(scene) {
         this.scene = scene;
 
-        // Get enterprise managers (Enterprise pattern)
-        this.configManager = ConfigManager.getInstance();
+        // Get resource manager (for cleanup tracking)
         this.resourceManager = ResourceManager.getInstance();
 
-        // Get arena configuration
-        this.arenaSize = this.configManager.get('arena.size');
-        this.wallHeight = this.configManager.get('arena.wallHeight');
-        this.wallThickness = this.configManager.get('arena.wallThickness');
-        this.floorColor = this.configManager.get('arena.floorColor');
-        this.wallColor = this.configManager.get('arena.wallColor');
+        // Get arena configuration from simple CONFIG object
+        this.arenaSize = CONFIG.arena.size;
+        this.wallHeight = CONFIG.arena.wallHeight;
+        this.wallThickness = CONFIG.arena.wallThickness;
+        this.floorColor = CONFIG.arena.floorColor;
+        this.wallColor = CONFIG.arena.wallColor;
 
         this.arenaObjects = [];
 
-        Utils.log('ArenaBuilder initialized with ConfigManager and ResourceManager');
+        Utils.log('ArenaBuilder initialized with simple config');
     }
 
     createBasicArena() {
@@ -101,11 +100,11 @@ class ArenaBuilder {
     }
 
     createBasicLighting() {
-        // Get lighting configuration
-        const ambientIntensity = this.configManager.get('graphics.ambientLightIntensity');
-        const directionalIntensity = this.configManager.get('graphics.directionalLightIntensity');
-        const shadowMapSize = this.configManager.get('graphics.shadowMapSize');
-        const enableShadows = this.configManager.get('graphics.shadows');
+        // Get lighting configuration from simple CONFIG
+        const ambientIntensity = CONFIG.graphics.ambientLightIntensity;
+        const directionalIntensity = CONFIG.graphics.directionalLightIntensity;
+        const shadowMapSize = CONFIG.graphics.shadowMapSize;
+        const enableShadows = CONFIG.graphics.shadows;
 
         // Simple ambient lighting - tracked by ResourceManager
         const ambientLight = new THREE.AmbientLight(0x404040, ambientIntensity);
@@ -141,11 +140,11 @@ class ArenaBuilder {
     createCentralCan() {
         Utils.log('Creating central Swedish can (Burken)...');
 
-        // Get can configuration from ConfigManager
-        const canRadius = this.configManager.get('can.radius', 0.8);
-        const canHeight = this.configManager.get('can.height', 1.6);
-        const canColor = this.configManager.get('can.color', 0x8B4513); // Swedish brown
-        const canPosition = this.configManager.get('can.position', { x: 0, y: canHeight / 2, z: 0 });
+        // Get can configuration from simple CONFIG
+        const canRadius = CONFIG.can.radius;
+        const canHeight = CONFIG.can.height;
+        const canColor = CONFIG.can.color; // Swedish brown
+        const canPosition = CONFIG.can.position;
 
         // Create tracked geometry and material for Swedish-style metal can
         const canGeometry = this.resourceManager.create(
@@ -189,30 +188,30 @@ class ArenaBuilder {
     createRandomObstacles() {
         Utils.log('Creating random Swedish playground obstacles...');
 
-        // Get obstacle configuration (no magic numbers!)
-        const enabled = this.configManager.get('obstacles.enabled');
+        // Get obstacle configuration from simple CONFIG (no magic numbers!)
+        const enabled = CONFIG.obstacles.enabled;
         if (!enabled) {
             Utils.log('Obstacles disabled in configuration');
             return [];
         }
 
-        const count = this.configManager.get('obstacles.count');
-        const canExclusionRadius = this.configManager.get('obstacles.canExclusionRadius');
-        const minDistanceFromWalls = this.configManager.get('obstacles.minDistanceFromWalls');
-        const minDistanceBetween = this.configManager.get('obstacles.minDistanceBetween');
-        const maxAttempts = this.configManager.get('obstacles.maxPlacementAttempts');
+        const count = CONFIG.obstacles.count;
+        const canExclusionRadius = CONFIG.obstacles.canExclusionRadius;
+        const minDistanceFromWalls = CONFIG.obstacles.minDistanceFromWalls;
+        const minDistanceBetween = CONFIG.obstacles.minDistanceBetween;
+        const maxAttempts = CONFIG.obstacles.maxPlacementAttempts;
 
         // Size ranges (fully configurable)
-        const minWidth = this.configManager.get('obstacles.minWidth');
-        const maxWidth = this.configManager.get('obstacles.maxWidth');
-        const minHeight = this.configManager.get('obstacles.minHeight');
-        const maxHeight = this.configManager.get('obstacles.maxHeight');
-        const minDepth = this.configManager.get('obstacles.minDepth');
-        const maxDepth = this.configManager.get('obstacles.maxDepth');
+        const minWidth = CONFIG.obstacles.minWidth;
+        const maxWidth = CONFIG.obstacles.maxWidth;
+        const minHeight = CONFIG.obstacles.minHeight;
+        const maxHeight = CONFIG.obstacles.maxHeight;
+        const minDepth = CONFIG.obstacles.minDepth;
+        const maxDepth = CONFIG.obstacles.maxDepth;
 
         // Visual properties
-        const color = this.configManager.get('obstacles.color');
-        const materialType = this.configManager.get('obstacles.material');
+        const color = CONFIG.obstacles.color;
+        const materialType = CONFIG.obstacles.material;
 
         const obstacles = [];
         const positions = [];
@@ -395,7 +394,7 @@ class ArenaBuilder {
         });
 
         // Clear dynamically generated obstacles
-        const obstacleCount = this.configManager.get('obstacles.count', 50); // Use max possible
+        const obstacleCount = CONFIG.obstacles.count; // From simple CONFIG
         for (let i = 0; i < obstacleCount; i++) {
             const obstacleIds = [
                 `obstacle-${i}-geometry`,

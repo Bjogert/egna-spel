@@ -397,18 +397,10 @@ class GameState {
     }
 
     createEntity() {
-        // Use ValidatedEntity for enterprise-grade component validation
-        if (typeof ValidatedEntity === 'undefined') {
-            Utils.error('ValidatedEntity is not available, falling back to Entity');
-            const entity = new Entity(this.nextEntityId++);
-            this.entities.set(entity.id, entity);
-            Utils.log(`Created fallback entity ${entity.id}`);
-            return entity;
-        }
-
-        const entity = new ValidatedEntity(this.nextEntityId++);
+        // Use simple Entity - no validation overhead (KISS)
+        const entity = new Entity(this.nextEntityId++);
         this.entities.set(entity.id, entity);
-        Utils.log(`Created validated entity ${entity.id}`);
+        Utils.log(`Created entity ${entity.id}`);
         return entity;
     }
 

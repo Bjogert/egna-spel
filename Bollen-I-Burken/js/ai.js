@@ -97,19 +97,9 @@ class AISystem extends System {
                 Utils.error(`AI Hunter ${hunter.id} update failed:`, error);
 
                 // Try to get ErrorHandler if available
-                if (typeof ErrorHandler !== 'undefined') {
-                    try {
-                        const errorHandler = ErrorHandler.getInstance();
-                        errorHandler.handle(new GameError('Hunter update failed', ERROR_CATEGORIES.SYSTEM, {
-                            hunterId: hunter.id,
-                            deltaTime: deltaTime,
-                            phase: 'update',
-                            error: error.message
-                        }), 'ERROR');
-                    } catch (handlerError) {
-                        Utils.warn('ErrorHandler not available for AI error logging');
-                    }
-                }
+                // Simple error logging
+                console.error(`Hunter ${hunter.id} update failed:`, error);
+                Utils.error('Hunter update failed', error);
 
                 // Continue with other hunters
                 continue;
@@ -474,9 +464,8 @@ class AISystem extends System {
     }
 
     applyMovementWithCollision(transform) {
-        // Get arena bounds from ConfigManager
-        const configManager = window.ConfigManager ? ConfigManager.getInstance() : null;
-        const arenaSize = configManager ? configManager.get('arena.size') : 15;
+        // Get arena bounds from simple CONFIG
+        const arenaSize = CONFIG.arena.size;
         const detectionLimit = arenaSize - 1.2; // Early detection to avoid wall grinding
         const hardLimit = arenaSize - 0.5; // Hard boundary limit
 

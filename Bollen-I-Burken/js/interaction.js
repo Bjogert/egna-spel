@@ -8,14 +8,10 @@ class InteractionSystem extends System {
     constructor() {
         super('InteractionSystem');
 
-        // Get enterprise managers
-        this.configManager = ConfigManager.getInstance();
-        this.errorHandler = ErrorHandler.getInstance();
-
-        // Interaction configuration
-        this.maxInteractionDistance = this.configManager.get('interaction.maxDistance', 5.0);
-        this.interactionCooldown = this.configManager.get('interaction.cooldownMs', 500);
-        this.enableVisualFeedback = this.configManager.get('interaction.visualFeedback', true);
+        // Interaction configuration from simple CONFIG
+        this.maxInteractionDistance = CONFIG.interaction.maxDistance;
+        this.interactionCooldown = CONFIG.interaction.cooldownMs;
+        this.enableVisualFeedback = CONFIG.interaction.visualFeedback;
 
         // State tracking
         this.lastInteractionTime = new Map(); // playerId -> timestamp
@@ -45,15 +41,9 @@ class InteractionSystem extends System {
             }
 
         } catch (error) {
-            if (this.errorHandler) {
-                this.errorHandler.handle(new GameError(
-                    'InteractionSystem update failed',
-                    ERROR_CATEGORIES.SYSTEM,
-                    { originalError: error.message }
-                ), 'ERROR');
-            } else {
-                Utils.error('InteractionSystem update failed:', error);
-            }
+            // Simple error logging
+            console.error('InteractionSystem update failed:', error);
+            Utils.error('InteractionSystem update failed:', error);
         }
     }
 
@@ -174,19 +164,9 @@ class InteractionSystem extends System {
             }
 
         } catch (error) {
-            if (this.errorHandler) {
-                this.errorHandler.handle(new GameError(
-                    'Interaction trigger failed',
-                    ERROR_CATEGORIES.GAMEPLAY,
-                    {
-                        playerId: playerId,
-                        interactableType: interactable.type,
-                        originalError: error.message
-                    }
-                ), 'WARNING');
-            } else {
-                Utils.error('Interaction trigger failed:', error);
-            }
+            // Simple error logging
+            console.error(`Interaction trigger failed for player ${playerId}:`, error);
+            Utils.error('Interaction trigger failed:', error);
         }
 
         return false;

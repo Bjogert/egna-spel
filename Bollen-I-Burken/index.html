@@ -32,12 +32,10 @@
     </div>
 
     <!-- Game Scripts -->
+    <script src="js/core/config.js"></script>
     <script src="js/utils.js"></script>
-    <script src="js/error-handler.js"></script>
-    <script src="js/config-manager.js"></script>
     <script src="js/resource-manager.js"></script>
     <script src="js/game.js"></script>
-    <script src="js/component-validator.js"></script>
     <script src="js/controls.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/audio.js"></script>
@@ -61,9 +59,6 @@
         let playerManager;
         let localPlayerId;
         let resourceManager;
-        let errorHandler;
-        let configManager;
-        let componentValidator;
 
         // Game systems
         let inputSystem;
@@ -83,27 +78,10 @@
         async function initializeGame() {
             try {
                 Utils.log('Starting Bollen i Burken...');
+                Utils.log('Simple KISS configuration loaded from config.js');
 
-                // Initialize Error Handler (Enterprise foundation)
-                errorHandler = new ErrorHandler();
-
-                // Initialize Configuration Manager (Enterprise foundation)
-                configManager = new ConfigManager();
-
-                // Add configuration sources
-                configManager.addSource('localStorage', new LocalStorageConfigSource());
-                configManager.addSource('url', new URLConfigSource());
-
-                // Load configuration from URL parameters and localStorage
-                await configManager.loadFromSource('url');
-                await configManager.loadFromSource('localStorage');
-
-                // Initialize Resource Manager (Enterprise foundation)
+                // Initialize Resource Manager (simple cleanup tracking)
                 resourceManager = new ResourceManager();
-
-                // Initialize Component Validator (Enterprise foundation)
-                componentValidator = new ComponentValidator();
-                componentValidator.initialize(errorHandler, configManager);
 
                 // Initialize Three.js
                 await initializeThreeJS();
@@ -126,15 +104,9 @@
                 Utils.log('Game initialization complete');
 
             } catch (error) {
-                // Use ErrorHandler for professional error management
-                if (errorHandler) {
-                    errorHandler.handle(new GameError('Game initialization failed', ERROR_CATEGORIES.SYSTEM, {
-                        phase: 'initialization',
-                        originalError: error.message
-                    }), 'CRITICAL');
-                } else {
-                    Utils.error('Failed to initialize game', error);
-                }
+                // Simple error handling - no enterprise ErrorHandler
+                console.error('Failed to initialize game:', error);
+                Utils.error('Game initialization failed', error);
                 showErrorMessage('Failed to initialize game: ' + error.message);
             }
         }
@@ -149,13 +121,13 @@
 
             // Create scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(configManager.get('graphics.backgroundColor'));
+            scene.background = new THREE.Color(CONFIG.graphics.backgroundColor);
 
-            // Create camera with "emperor's view" using ConfigManager
-            const cameraHeight = configManager.get('camera.height');
-            const cameraDistance = configManager.get('camera.distance');
-            const cameraFov = configManager.get('camera.fov');
-            const lookAtOffset = configManager.get('camera.lookAtOffset');
+            // Create camera with "emperor's view" using simple CONFIG
+            const cameraHeight = CONFIG.camera.height;
+            const cameraDistance = CONFIG.camera.distance;
+            const cameraFov = CONFIG.camera.fov;
+            const lookAtOffset = CONFIG.camera.lookAtOffset;
 
             camera = new THREE.PerspectiveCamera(
                 cameraFov, // field of view from config
@@ -344,33 +316,32 @@
             Utils.log('Game started successfully');
         }
 
-        // Main game loop (wrapped with ErrorBoundary)
-        const gameLoop = ErrorBoundary.wrap(function gameLoop(currentTime) {
-            const deltaTime = currentTime - lastTime;
-            lastTime = currentTime;
+        // Main game loop (simple, with try-catch)
+        function gameLoop(currentTime) {
+            try {
+                const deltaTime = currentTime - lastTime;
+                lastTime = currentTime;
 
-            // Update game engine (handles tick-based updates)
-            gameEngine.update(deltaTime);
+                // Update game engine (handles tick-based updates)
+                gameEngine.update(deltaTime);
 
-            // Render the Three.js scene
-            renderer.render(scene, camera);
+                // Render the Three.js scene
+                renderer.render(scene, camera);
 
-            // Update FPS counter
-            updateFPS(currentTime);
+                // Update FPS counter
+                updateFPS(currentTime);
 
-            // Update UI with current stats
-            updateGameUI();
+                // Update UI with current stats
+                updateGameUI();
 
-            // Continue the game loop
-            requestAnimationFrame(gameLoop);
-        }, {
-            system: 'GameLoop',
-            function: 'gameLoop'
-        }, {
-            level: 'ERROR',
-            suppressErrors: false,
-            returnDefault: null
-        });
+                // Continue the game loop
+                requestAnimationFrame(gameLoop);
+            } catch (error) {
+                console.error('Game loop error:', error);
+                // Try to continue anyway
+                requestAnimationFrame(gameLoop);
+            }
+        }
 
         function updateFPS(currentTime) {
             frameCount++;
@@ -463,30 +434,22 @@
         window.addEventListener('resize', Utils.throttle(handleResize, 250));
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        // Handle errors globally with ErrorHandler
+        // Handle errors globally (simple logging)
         window.addEventListener('error', (event) => {
-            if (errorHandler) {
-                errorHandler.handle(new GameError('Uncaught global error', ERROR_CATEGORIES.SYSTEM, {
-                    filename: event.filename,
-                    lineno: event.lineno,
-                    colno: event.colno,
-                    stack: event.error?.stack
-                }), 'CRITICAL');
-            } else {
-                Utils.error('Global error caught', event.error);
-            }
+            console.error('Global error:', {
+                message: event.message,
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+                error: event.error
+            });
+            Utils.error('Global error caught', event.error);
             showErrorMessage('An unexpected error occurred. Please reload the game.');
         });
 
         window.addEventListener('unhandledrejection', (event) => {
-            if (errorHandler) {
-                errorHandler.handle(new GameError('Unhandled promise rejection', ERROR_CATEGORIES.SYSTEM, {
-                    reason: event.reason,
-                    promise: event.promise
-                }), 'CRITICAL');
-            } else {
-                Utils.error('Unhandled promise rejection', event.reason);
-            }
+            console.error('Unhandled promise rejection:', event.reason);
+            Utils.error('Unhandled promise rejection', event.reason);
             showErrorMessage('An unexpected error occurred. Please reload the game.');
         });
 
@@ -497,10 +460,8 @@
                 scene: scene,
                 camera: camera,
                 renderer: renderer,
+                config: CONFIG,  // Simple config object
                 resourceManager: resourceManager,
-                errorHandler: errorHandler,
-                configManager: configManager,
-                componentValidator: componentValidator,
                 systems: {
                     input: inputSystem,
                     movement: movementSystem,
@@ -511,9 +472,7 @@
                     interaction: interactionSystem
                 },
                 stats: gameEngine ? gameEngine.getStats() : null,
-                resources: resourceManager ? resourceManager.getStats() : null,
-                errors: errorHandler ? errorHandler.getStats() : null,
-                config: configManager ? configManager.getStats() : null
+                resources: resourceManager ? resourceManager.getStats() : null
             };
         };
 
@@ -526,127 +485,16 @@
             }
         };
 
-        window.debugErrors = function () {
-            if (errorHandler) {
-                console.log('=== ERROR HANDLER DEBUG ===');
-                console.log('Error Statistics:', errorHandler.getStats());
-                console.log('Recent Errors:', errorHandler.getStoredErrors());
-                console.log('=== END ERROR DEBUG ===');
-            } else {
-                console.log('ErrorHandler not initialized');
-            }
-        };
-
-        window.clearErrors = function () {
-            if (errorHandler) {
-                errorHandler.clearErrors();
-                console.log('All stored errors cleared');
-            } else {
-                console.log('ErrorHandler not initialized');
-            }
-        };
-
-        window.exportErrors = function () {
-            if (errorHandler) {
-                const errorData = errorHandler.exportErrors();
-                console.log('Error export:', errorData);
-                return errorData;
-            } else {
-                console.log('ErrorHandler not initialized');
-                return '[]';
-            }
-        };
-
+        // Simple config debug
         window.debugConfig = function () {
-            if (configManager) {
-                configManager.debugLogConfig();
-            } else {
-                console.log('ConfigManager not initialized');
-            }
+            console.log('=== SIMPLE CONFIG (KISS) ===');
+            console.log(CONFIG);
+            console.log('=== END CONFIG ===');
         };
 
-        window.getConfig = function (path, defaultValue) {
-            if (configManager) {
-                return configManager.get(path, defaultValue);
-            } else {
-                console.log('ConfigManager not initialized');
-                return null;
-            }
-        };
-
-        window.setConfig = function (path, value) {
-            if (configManager) {
-                const result = configManager.set(path, value);
-                console.log(`Config ${path} set to:`, value, result ? '✅' : '❌');
-                return result;
-            } else {
-                console.log('ConfigManager not initialized');
-                return false;
-            }
-        };
-
-        window.saveConfig = function () {
-            if (configManager) {
-                configManager.saveToSource('localStorage').then(success => {
-                    console.log('Config saved to localStorage:', success ? '✅' : '❌');
-                });
-            } else {
-                console.log('ConfigManager not initialized');
-            }
-        };
-
-        window.resetConfig = function (path) {
-            if (configManager) {
-                configManager.reset(path);
-                console.log('Config reset:', path || 'all settings');
-            } else {
-                console.log('ConfigManager not initialized');
-            }
-        };
-
-        window.debugValidation = function () {
-            if (componentValidator) {
-                componentValidator.debugLogSchemas();
-            } else {
-                console.log('ComponentValidator not initialized');
-            }
-        };
-
-        window.validateAllEntities = function () {
-            if (gameEngine && componentValidator) {
-                const results = [];
-                gameEngine.gameState.entities.forEach(entity => {
-                    if (entity.validateAllComponents) {
-                        const validationResults = entity.validateAllComponents();
-                        results.push({
-                            entityId: entity.id,
-                            componentValidations: validationResults
-                        });
-                    }
-                });
-                console.log('Entity Validation Results:', results);
-                return results;
-            } else {
-                console.log('GameEngine or ComponentValidator not initialized');
-                return [];
-            }
-        };
-
-        window.testValidation = function () {
-            console.log('=== TESTING COMPONENT VALIDATION ===');
-            console.log('ValidatedEntity available:', typeof ValidatedEntity !== 'undefined');
-            console.log('ComponentValidator available:', typeof ComponentValidator !== 'undefined');
-
-            if (gameEngine) {
-                console.log('Game entities count:', gameEngine.gameState.entities.size);
-                gameEngine.gameState.entities.forEach(entity => {
-                    console.log(`Entity ${entity.id}:`, entity.constructor.name);
-                    console.log('  Components:', Array.from(entity.components.keys()));
-                });
-            }
-
-            console.log('=== END VALIDATION TEST ===');
-        };
+        // Config helpers (use global functions from config.js)
+        window.getConfig = getConfig;  // Direct reference to config.js function
+        window.setConfig = setConfig;  // Direct reference to config.js function
 
         window.debugInteractions = function () {
             console.log('=== INTERACTION SYSTEM DEBUG ===');
@@ -754,13 +602,11 @@
             }
 
             // Test collision configuration
-            if (configManager) {
-                console.log('Obstacle Configuration:');
-                console.log(`  Enabled: ${configManager.get('obstacles.enabled')}`);
-                console.log(`  Count: ${configManager.get('obstacles.count')}`);
-                console.log(`  Can Exclusion Radius: ${configManager.get('obstacles.canExclusionRadius')}`);
-                console.log(`  Size Range: ${configManager.get('obstacles.minWidth')}-${configManager.get('obstacles.maxWidth')} width`);
-            }
+            console.log('Obstacle Configuration:');
+            console.log(`  Enabled: ${CONFIG.obstacles.enabled}`);
+            console.log(`  Count: ${CONFIG.obstacles.count}`);
+            console.log(`  Can Exclusion Radius: ${CONFIG.obstacles.canExclusionRadius}`);
+            console.log(`  Size Range: ${CONFIG.obstacles.minWidth}-${CONFIG.obstacles.maxWidth} width`);
 
             console.log('=== END OBSTACLE DEBUG ===');
         };
