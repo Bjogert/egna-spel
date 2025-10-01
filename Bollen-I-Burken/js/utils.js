@@ -18,6 +18,7 @@ const GAME_CONFIG = {
 const GAME_STATES = {
     LOADING: 'loading',
     START_MENU: 'start_menu',
+    COUNTDOWN: 'countdown',  // Hunter counting before game starts
     PLAYING: 'playing',
     PAUSED: 'paused',
     GAME_OVER: 'game_over'

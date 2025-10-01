@@ -410,6 +410,73 @@ class UISystem extends System {
         }
     }
 
+    showCountdown(seconds) {
+        // Create or update countdown display
+        let countdownElement = document.getElementById('countdownDisplay');
+
+        if (!countdownElement) {
+            countdownElement = document.createElement('div');
+            countdownElement.id = 'countdownDisplay';
+            countdownElement.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 120px;
+                font-weight: bold;
+                color: #ffc857;
+                text-shadow: 0 0 20px rgba(255, 200, 87, 0.8),
+                             0 0 40px rgba(255, 200, 87, 0.6),
+                             0 0 60px rgba(255, 200, 87, 0.4);
+                z-index: 3000;
+                animation: countdownPulse 0.5s ease-in-out;
+                font-family: 'Arial Black', sans-serif;
+            `;
+            document.body.appendChild(countdownElement);
+        }
+
+        countdownElement.textContent = seconds;
+
+        // Re-trigger animation by removing and re-adding
+        countdownElement.style.animation = 'none';
+        setTimeout(() => {
+            countdownElement.style.animation = 'countdownPulse 0.5s ease-in-out';
+        }, 10);
+
+        // Add subtitle text
+        let subtitleElement = document.getElementById('countdownSubtitle');
+        if (!subtitleElement) {
+            subtitleElement = document.createElement('div');
+            subtitleElement.id = 'countdownSubtitle';
+            subtitleElement.style.cssText = `
+                position: fixed;
+                top: 60%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 24px;
+                font-weight: normal;
+                color: #b8c5d9;
+                z-index: 3000;
+                font-family: 'Arial', sans-serif;
+                text-align: center;
+            `;
+            subtitleElement.textContent = 'Vakten räknar... Hitta gömställe!';
+            document.body.appendChild(subtitleElement);
+        }
+    }
+
+    hideCountdown() {
+        const countdownElement = document.getElementById('countdownDisplay');
+        const subtitleElement = document.getElementById('countdownSubtitle');
+
+        if (countdownElement) {
+            countdownElement.remove();
+        }
+        if (subtitleElement) {
+            subtitleElement.remove();
+        }
+    }
+
     showNotification(message, type = 'info', duration = 3000) {
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;

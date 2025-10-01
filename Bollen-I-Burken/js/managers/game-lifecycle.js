@@ -141,23 +141,60 @@
         }
 
         startGame() {
-            Utils.log('Starting game...');
-
-            // Set game state to playing
-            this.gameEngine.start();
+            Utils.log('Starting countdown...');
 
             // Hide loading screen
             if (global.MenuOverlay) {
                 global.MenuOverlay.hideLoadingScreen();
             }
 
+            // Set game state to COUNTDOWN
+            if (this.gameEngine.gameState && typeof this.gameEngine.gameState.setGamePhase === 'function') {
+                this.gameEngine.gameState.setGamePhase(GAME_STATES.COUNTDOWN);
+            }
+
+            // Start 5 second countdown
+            this.startCountdown(5);
+        }
+
+        startCountdown(seconds) {
+            let remainingSeconds = seconds;
+
+            // Show countdown UI
+            if (global.uiSystem && typeof global.uiSystem.showCountdown === 'function') {
+                global.uiSystem.showCountdown(remainingSeconds);
+            }
+
+            const countdownInterval = setInterval(() => {
+                remainingSeconds--;
+
+                if (remainingSeconds > 0) {
+                    // Update countdown display
+                    if (global.uiSystem && typeof global.uiSystem.showCountdown === 'function') {
+                        global.uiSystem.showCountdown(remainingSeconds);
+                    }
+                    Utils.log(`Countdown: ${remainingSeconds}...`);
+                } else {
+                    // Countdown finished
+                    clearInterval(countdownInterval);
+
+                    // Hide countdown UI
+                    if (global.uiSystem && typeof global.uiSystem.hideCountdown === 'function') {
+                        global.uiSystem.hideCountdown();
+                    }
+
+                    // Start the actual game
+                    this.gameEngine.start();
+
+                    Utils.log('Game started successfully');
+                }
+            }, 1000);
+
             // Ensure the game loop is running (it persists across rounds)
             if (global.gameLoopStarted !== undefined && !global.gameLoopStarted) {
                 requestAnimationFrame(global.gameLoop);
                 global.gameLoopStarted = true;
             }
-
-            Utils.log('Game started successfully');
         }
     }
 
