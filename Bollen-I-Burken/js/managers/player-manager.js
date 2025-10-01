@@ -108,6 +108,19 @@
         }
 
         addAIHunter(hunterId, position = null) {
+            // Get difficulty settings
+            const difficultyLevel = CONFIG.currentDifficulty;
+            const difficulty = CONFIG.difficulties[difficultyLevel];
+
+            const patrolSpeed = difficulty.ai.patrolSpeed;
+            const chaseSpeed = difficulty.ai.chaseSpeed;
+            const visionAngle = difficulty.ai.visionAngle;
+            const visionRange = difficulty.ai.visionRange;
+
+            Utils.log(`Creating AI Hunter with difficulty: ${difficulty.name}`);
+            Utils.log(`  Patrol Speed: ${patrolSpeed}, Chase Speed: ${chaseSpeed}`);
+            Utils.log(`  Vision: ${visionAngle}° angle, ${visionRange}m range`);
+
             const geometry = new THREE.BoxGeometry(0.9, 1.1, 0.9);
             const material = new THREE.MeshLambertMaterial({
                 color: 0xff4444,
@@ -121,16 +134,22 @@
             mesh.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
             this.scene.add(mesh);
 
-            const visionCone = this.createVisionConeDebugMesh(60, 8);
+            const visionCone = this.createVisionConeDebugMesh(visionAngle, visionRange);
             visionCone.position.copy(mesh.position);
             this.scene.add(visionCone);
 
             const aiEntity = this.gameEngine.gameState.createEntity();
             aiEntity.addComponent(new Transform(spawnPos.x, spawnPos.y, spawnPos.z));
-            aiEntity.addComponent(new Movement(0.08));
+            aiEntity.addComponent(new Movement(patrolSpeed));
             aiEntity.addComponent(new Renderable(mesh));
-            aiEntity.addComponent(new AIHunter());
-            aiEntity.addComponent(new VisionCone(60, 8));
+
+            // Create AI Hunter component with difficulty-based speeds
+            const aiHunter = new AIHunter();
+            aiHunter.speed = patrolSpeed;
+            aiHunter.huntingSpeed = chaseSpeed;
+            aiEntity.addComponent(aiHunter);
+
+            aiEntity.addComponent(new VisionCone(visionAngle, visionRange));
 
             mesh.visionConeMesh = visionCone;
 

@@ -157,7 +157,244 @@ const CONFIG = {
     validation: {
         enabled: false,             // Component validation disabled (KISS)
         strictMode: false           // No strict validation
-    }
+    },
+
+    // ========== DIFFICULTY SYSTEM ==========
+    // 10 levels: More obstacles = easier, fewer obstacles = harder
+    currentDifficulty: 1,  // Default to level 2 (Fyllekäring)
+
+    difficulties: [
+        // Level 1: Barnkalas (Children's Party)
+        {
+            id: 0,
+            name: "Barnkalas",
+            nameEnglish: "Children's Party",
+            description: "Mer gömställen än barn på festen!",
+            descriptionEnglish: "More hiding spots than kids at the party!",
+            obstacles: {
+                count: 45,
+                minDistanceBetween: 2.0,
+                canExclusionRadius: 3.0,
+                minWidth: 2.5, maxWidth: 5.0,
+                minDepth: 2.5, maxDepth: 5.0,
+                minHeight: 1.5, maxHeight: 3.0,
+                lowObstacleRatio: 0.0  // No low obstacles (all full cover)
+            },
+            ai: {
+                patrolSpeed: 0.06,
+                chaseSpeed: 0.10,
+                visionRange: 8,
+                visionAngle: 60
+            }
+        },
+        // Level 2: Fyllekäring på Midsommar
+        {
+            id: 1,
+            name: "Fyllekäring på Midsommar",
+            nameEnglish: "Drunk Uncle at Midsummer",
+            description: "Han ser inte så bra efter alla snapsar...",
+            descriptionEnglish: "Can't see well after all those shots...",
+            obstacles: {
+                count: 35,
+                minDistanceBetween: 2.2,
+                canExclusionRadius: 3.5,
+                minWidth: 2.0, maxWidth: 4.5,
+                minDepth: 2.0, maxDepth: 4.5,
+                minHeight: 1.2, maxHeight: 2.8,
+                lowObstacleRatio: 0.1
+            },
+            ai: {
+                patrolSpeed: 0.07,
+                chaseSpeed: 0.11,
+                visionRange: 9,
+                visionAngle: 65
+            }
+        },
+        // Level 3: Dagisfröken Övervakar
+        {
+            id: 2,
+            name: "Dagisfröken Övervakar",
+            nameEnglish: "Daycare Teacher Watching",
+            description: "Hon har ögon i nacken!",
+            descriptionEnglish: "She has eyes in the back of her head!",
+            obstacles: {
+                count: 28,
+                minDistanceBetween: 2.5,
+                canExclusionRadius: 4.0,
+                minWidth: 1.8, maxWidth: 4.0,
+                minDepth: 1.8, maxDepth: 4.0,
+                minHeight: 1.0, maxHeight: 2.5,
+                lowObstacleRatio: 0.15
+            },
+            ai: {
+                patrolSpeed: 0.08,
+                chaseSpeed: 0.12,
+                visionRange: 10,
+                visionAngle: 70
+            }
+        },
+        // Level 4: Kvarterspolisen
+        {
+            id: 3,
+            name: "Kvarterspolisen",
+            nameEnglish: "Neighborhood Cop",
+            description: "Patrullerar som ett proffs",
+            descriptionEnglish: "Patrols like a pro",
+            obstacles: {
+                count: 22,
+                minDistanceBetween: 2.8,
+                canExclusionRadius: 4.5,
+                minWidth: 1.5, maxWidth: 3.5,
+                minDepth: 1.5, maxDepth: 3.5,
+                minHeight: 0.8, maxHeight: 2.2,
+                lowObstacleRatio: 0.2
+            },
+            ai: {
+                patrolSpeed: 0.09,
+                chaseSpeed: 0.13,
+                visionRange: 11,
+                visionAngle: 75
+            }
+        },
+        // Level 5: Fotbollstränaren
+        {
+            id: 4,
+            name: "Fotbollstränaren",
+            nameEnglish: "Soccer Coach",
+            description: "Ser allt från sidan!",
+            descriptionEnglish: "Sees everything from the sideline!",
+            obstacles: {
+                count: 18,
+                minDistanceBetween: 3.0,
+                canExclusionRadius: 5.0,
+                minWidth: 1.2, maxWidth: 3.0,
+                minDepth: 1.2, maxDepth: 3.0,
+                minHeight: 0.7, maxHeight: 2.0,
+                lowObstacleRatio: 0.3
+            },
+            ai: {
+                patrolSpeed: 0.10,
+                chaseSpeed: 0.15,
+                visionRange: 12,
+                visionAngle: 80
+            }
+        },
+        // Level 6: Gymnasieläraren
+        {
+            id: 5,
+            name: "Gymnasieläraren",
+            nameEnglish: "High School Teacher",
+            description: "Inget mobilfuskande här!",
+            descriptionEnglish: "No phone cheating here!",
+            obstacles: {
+                count: 14,
+                minDistanceBetween: 3.5,
+                canExclusionRadius: 5.5,
+                minWidth: 1.0, maxWidth: 2.5,
+                minDepth: 1.0, maxDepth: 2.5,
+                minHeight: 0.6, maxHeight: 1.8,
+                lowObstacleRatio: 0.4
+            },
+            ai: {
+                patrolSpeed: 0.11,
+                chaseSpeed: 0.17,
+                visionRange: 13,
+                visionAngle: 85
+            }
+        },
+        // Level 7: Vakten på Ikea
+        {
+            id: 6,
+            name: "Vakten på Ikea",
+            nameEnglish: "IKEA Security Guard",
+            description: "Övervakar alla genvägar!",
+            descriptionEnglish: "Watches all the shortcuts!",
+            obstacles: {
+                count: 10,
+                minDistanceBetween: 4.0,
+                canExclusionRadius: 6.0,
+                minWidth: 0.8, maxWidth: 2.0,
+                minDepth: 0.8, maxDepth: 2.0,
+                minHeight: 0.5, maxHeight: 1.5,
+                lowObstacleRatio: 0.5
+            },
+            ai: {
+                patrolSpeed: 0.12,
+                chaseSpeed: 0.18,
+                visionRange: 14,
+                visionAngle: 90
+            }
+        },
+        // Level 8: Säkerhetspolisen
+        {
+            id: 7,
+            name: "Säkerhetspolisen",
+            nameEnglish: "Secret Service",
+            description: "Ser dig innan du ens ser honom...",
+            descriptionEnglish: "Sees you before you see him...",
+            obstacles: {
+                count: 7,
+                minDistanceBetween: 5.0,
+                canExclusionRadius: 7.0,
+                minWidth: 0.8, maxWidth: 1.5,
+                minDepth: 0.8, maxDepth: 1.5,
+                minHeight: 0.5, maxHeight: 1.2,
+                lowObstacleRatio: 0.6
+            },
+            ai: {
+                patrolSpeed: 0.13,
+                chaseSpeed: 0.20,
+                visionRange: 15,
+                visionAngle: 95
+            }
+        },
+        // Level 9: Guds Öga
+        {
+            id: 8,
+            name: "Guds Öga",
+            nameEnglish: "God's Eye",
+            description: "Ser allt, vet allt...",
+            descriptionEnglish: "Sees all, knows all...",
+            obstacles: {
+                count: 4,
+                minDistanceBetween: 6.0,
+                canExclusionRadius: 8.0,
+                minWidth: 0.8, maxWidth: 1.2,
+                minDepth: 0.8, maxDepth: 1.2,
+                minHeight: 0.5, maxHeight: 1.0,
+                lowObstacleRatio: 0.75
+            },
+            ai: {
+                patrolSpeed: 0.14,
+                chaseSpeed: 0.22,
+                visionRange: 16,
+                visionAngle: 100
+            }
+        },
+        // Level 10: Systemet Stänger om 5 Minuter
+        {
+            id: 9,
+            name: "Systemet Stänger om 5 Minuter",
+            nameEnglish: "Liquor Store Closing in 5 Minutes",
+            description: "Full panik! Ingen tid för gömlek!",
+            descriptionEnglish: "Full panic! No time for hide and seek!",
+            obstacles: {
+                count: 2,
+                minDistanceBetween: 8.0,
+                canExclusionRadius: 10.0,
+                minWidth: 0.8, maxWidth: 1.0,
+                minDepth: 0.8, maxDepth: 1.0,
+                minHeight: 0.5, maxHeight: 0.8,
+                lowObstacleRatio: 1.0  // All obstacles are low (useless cover!)
+            },
+            ai: {
+                patrolSpeed: 0.15,
+                chaseSpeed: 0.25,
+                visionRange: 18,
+                visionAngle: 110
+            }
+        }
+    ]
 };
 
 // Add missing obstacle settings that arena.js needs

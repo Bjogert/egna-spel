@@ -82,12 +82,12 @@ obstacles: {
 #### When Hunter Spots Player:
 1. Hunter must run BACK to the can
 2. Hunter touches can + shouts name → Player eliminated
-3. BUT if player reaches can first → **Player wins!**
+3. BUT if player reaches can ad presses the space bar first → **Player wins!**
 
 #### Player Goal:
 1. Sneak to the can while hidden
 2. Touch/kick the can (SPACE key)
-3. Shout "The can is kicked, 1, 2, 3!"
+3. Shout "1, 2, 3, Dunk för mig!!!"
 4. **WIN THE ROUND**
 
 ### Implementation Steps
