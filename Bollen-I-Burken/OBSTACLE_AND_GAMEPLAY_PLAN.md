@@ -1,4 +1,4 @@
-# Obstacle System & Proper "Bollen i Burken" Mechanics Plan
+# Obstacle System & Proper "Dunkgömme" Mechanics Plan
 
 ## Phase 1: Enhanced Obstacle System
 
@@ -69,7 +69,7 @@ obstacles: {
 
 ---
 
-## Phase 2: Proper "Bollen i Burken" Mechanics
+## Phase 2: Proper "Dunkgömme" Mechanics
 
 ### Current Issues
 - Game is "get tagged = lose immediately"
@@ -197,7 +197,7 @@ class RaceMechanic {
 - [x] Hunter races to can when player is spotted
 - [x] First to reach can wins the race
 - [x] Proper victory/defeat screens
-- [x] Matches traditional "Bollen i Burken" rules
+- [x] Matches traditional "Dunkgömme" rules
 - [x] Fun and strategic gameplay loop
 
 ---

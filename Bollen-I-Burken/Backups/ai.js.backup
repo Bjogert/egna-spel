@@ -49,7 +49,7 @@ class AIHunter {
         // Corner search
         this.currentCornerTarget = null;
 
-        // Bollen i Burken specific properties
+        // Dunkgömme specific properties
         this.canPosition = { x: 0, z: 0 }; // Will be set when can is found
         this.playerSpottedTime = 0;
         this.isRacingToCan = false;
@@ -150,7 +150,7 @@ class AISystem extends System {
     update(gameState, deltaTime) {
         if (!this.enabled) return;
 
-        // AI is blindfolded during countdown - traditional Bollen i Burken rules
+        // AI is blindfolded during countdown - traditional Dunkgömme rules
         if (window.GameEngine && window.GameEngine.gameStatus === 'countdown') {
             // Stop all AI movement during countdown
             this.hunters.forEach(hunter => {
@@ -269,7 +269,7 @@ class AISystem extends System {
     }
 
     // ==========================================
-    // BOLLEN I BURKEN SPECIFIC BEHAVIORS
+    // Dunkgömme SPECIFIC BEHAVIORS
     // ==========================================
 
     updateGuardingCanBehavior(aiComponent, transform, movement, spatialAwareness, gameState, deltaTime) {

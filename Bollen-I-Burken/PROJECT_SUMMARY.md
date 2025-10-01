@@ -1,7 +1,7 @@
 # PROJECT_SUMMARY
 
 ## Overview
-- Web-based Three.js prototype of the Swedish hide-and-seek game "Bollen i Burken"
+- Web-based Three.js prototype of the Swedish hide-and-seek game "Dunkgömme"
 - Goal: preserve cultural rules (guard, can kicking, rescues) while building scalable ECS foundation
 - Target platforms: modern desktop and mobile browsers; no build step, just open `index.html`
 

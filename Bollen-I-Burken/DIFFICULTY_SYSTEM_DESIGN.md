@@ -1,4 +1,4 @@
-# Dynamic Difficulty System - "Bollen i Burken"
+# Dynamic Difficulty System - "Dunkgömme"
 
 ## Concept
 10 difficulty levels with Swedish humor, where **EASIER = MORE OBSTACLES** (more hiding spots) and **HARDER = FEWER OBSTACLES** (nowhere to hide).

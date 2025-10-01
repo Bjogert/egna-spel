@@ -1,8 +1,8 @@
-# Bollen i Burken - Architecture Overview
+# Dunkgömme - Architecture Overview
 
 ## 🏗️ Enterprise-Grade Game Architecture
 
-This document provides a comprehensive overview of the Bollen i Burken codebase architecture, designed for Swedish cultural preservation through modern web gaming technology.
+This document provides a comprehensive overview of the Dunkgömme codebase architecture, designed for Swedish cultural preservation through modern web gaming technology.
 
 ---
 

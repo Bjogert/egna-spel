@@ -115,7 +115,8 @@ class InputSystem extends System {
             return;
         }
 
-        if (gameState.gamePhase !== GAME_STATES.PLAYING) {
+        // Allow input during COUNTDOWN and PLAYING
+        if (gameState.gamePhase !== GAME_STATES.PLAYING && gameState.gamePhase !== GAME_STATES.COUNTDOWN) {
             return;
         }
 
@@ -287,7 +288,8 @@ class InputSystem extends System {
             this.showMenu(gameState);
         }
 
-        if (!gameState || gameState.gamePhase !== GAME_STATES.PLAYING) {
+        // Allow input during COUNTDOWN and PLAYING
+        if (!gameState || (gameState.gamePhase !== GAME_STATES.PLAYING && gameState.gamePhase !== GAME_STATES.COUNTDOWN)) {
             return;
         }
 

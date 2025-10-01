@@ -1,10 +1,10 @@
-# Bollen i Burken - 3D Swedish Hide-and-Seek Game
+# Dunkgömme - 3D Swedish Hide-and-Seek Game
 
-A 3D digital version of the classic Swedish hide-and-seek game "Bollen i Burken" (Ball in the Jar), built with Three.js and modern web technologies.
+A 3D digital version of the classic Swedish hide-and-seek game "Dunkgömme" (Ball in the Jar), built with Three.js and modern web technologies.
 
-## 🎮 What is "Bollen i Burken"?
+## 🎮 What is "Dunkgömme" or "Bollen I Burken" as the retarded kids call it?
 
-**Bollen i Burken** (also called "Burken" or "Dunkgömme" in some parts of Sweden) is a beloved Swedish outdoor game that's like an advanced version of hide-and-seek. Here's how the traditional game works:
+**Dunkgömme** (also called "Burken" or "Dunkgömme" in some parts of Sweden) is a beloved Swedish outdoor game that's like an advanced version of hide-and-seek. Here's how the traditional game works:
 
 ### Traditional Game Rules:
 1. **The Guard (Vaktare)**: One player protects a can/bucket/object (the "burk")
@@ -58,7 +58,7 @@ This game brings the classic Swedish game into a 3D arena environment:
 
 ## �🇪 Cultural Heritage & Game Origins
 
-**Bollen i Burken** is an important part of Swedish childhood culture, traditionally played outdoors in yards, parks, and playgrounds across Sweden. The game:
+**Dunkgömme** is an important part of Swedish childhood culture, traditionally played outdoors in yards, parks, and playgrounds across Sweden. The game:
 
 - **Trains Skills**: Develops motor skills, reaction time, and group dynamics
 - **Social Play**: Teaches strategy, teamwork, and fair play
@@ -77,7 +77,7 @@ By creating a 3D digital version, we're:
 ## �🏗️ Technical Architecture
 
 ### Game-Ready Design
-The technical foundation is built to support the unique mechanics of Bollen i Burken:
+The technical foundation is built to support the unique mechanics of Dunkgömme:
 
 - **Entity-Component-System (ECS)** - Scalable management of players, AI seekers, and game objects
 - **3D Spatial Awareness** - Arena-based movement with hiding spot detection
@@ -254,7 +254,7 @@ Optimized for smooth gameplay:
 
 ## 🔮 Future Roadmap
 
-### Phase 2: Classic Bollen i Burken Mechanics
+### Phase 2: Classic Dunkgömme Mechanics
 - **Hiding Spots**: Interactive objects to hide behind/in
 - **AI Vision System**: Seeker can spot players who aren't hidden
 - **"Can" Object**: Central object that can be "kicked" to free caught players
@@ -269,7 +269,7 @@ Optimized for smooth gameplay:
 - **Achievement System**: Unlock Swedish folklore and gaming history
 
 ### Phase 4: Modern Multiplayer
-- **Online Multiplayer**: Play traditional Bollen i Burken with friends worldwide
+- **Online Multiplayer**: Play traditional Dunkgömme with friends worldwide
 - **Tournament Mode**: Competitive Swedish hide-and-seek championships
 - **Spectator Mode**: Watch games with traditional Swedish commentary
 - **Mobile App**: Take Swedish gaming culture on the go
@@ -286,7 +286,7 @@ This project is part of a game development learning exercise. Feel free to use a
 
 ## 🙏 Acknowledgments
 
-- **Swedish Children**: For generations of Bollen i Burken players who kept this tradition alive
+- **Swedish Children**: For generations of Dunkgömme players who kept this tradition alive
 - **Cultural Heritage**: The importance of preserving traditional Swedish games
 - **Three.js Community**: For excellent 3D web graphics capabilities
 - **Modern Web Standards**: Enabling cross-platform Swedish gaming experiences

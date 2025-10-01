@@ -61,7 +61,7 @@ Classic puzzle game with modern web technologies
 - Technologies: HTML5 Canvas, JavaScript, CSS3
 - Features: Full Tetris gameplay with sound and visual effects
 
-### 2. Bollen i Burken (In Development)
+### 2. Dunkgömme (In Development)
 3D hide-and-seek arena game
 - Location: Root folder
 - Technologies: Three.js, WebGL, HTML5
@@ -73,9 +73,76 @@ Classic puzzle game with modern web technologies
 - Gated input, movement, and AI systems to idle while in START_MENU or GAME_OVER states for reliable restarts
 
 #### Notes for Next AI Assistant
-- Preserve the new START_MENU state; do not reintroduce the old MENU phase when expanding state handling
+- Preserve the new START_MENU and COUNTDOWN states; do not reintroduce the old MENU phase when expanding state handling
 - When adding features, keep showStartMenu / hideStartMenu helpers centralized (exported on window) and reuse them instead of duplicating DOM logic
 - Restart flow depends on PlayerManager.clearAll() and gameEngine.reset(); update both if you add new entities or resources so rounds remain leak-free
+
+#### CRITICAL: Legacy Cleanup & KISS Refactoring Completed (Oct 2025)
+**Major architectural cleanup completed - MUST preserve these improvements:**
+
+1. **File Size Limits** - ALL files MUST be 400-500 lines maximum
+   - If a file exceeds 500 lines, it MUST be split into smaller modules
+   - Each system MUST be in its own file (no monolithic files)
+   - Example: UI split into `ui-system.js` (main) + `menu-overlay.js` (menus)
+
+2. **Folder Structure - KISS Architecture**
+   ```
+   js/
+   ├── main.js                    # Bootstrap only (KEEP in root)
+   ├── utils.js                   # Core utilities (KEEP in root)
+   ├── debug-commands.js          # Debug tools (KEEP in root)
+   ├── core/                      # ECS primitives
+   │   ├── entity.js
+   │   ├── components/            # Individual component files
+   │   ├── game-state.js
+   │   └── game-engine.js
+   ├── systems/                   # ONE SYSTEM PER FILE
+   │   ├── input/
+   │   │   └── input-system.js    # MOVED from controls.js
+   │   ├── audio/
+   │   │   └── audio-system.js    # MOVED from audio.js
+   │   ├── ui/
+   │   │   ├── ui-system.js       # MOVED from ui.js
+   │   │   └── menu-overlay.js    # Menu-specific logic
+   │   ├── movement-system.js
+   │   ├── ai/
+   │   ├── interaction/
+   │   └── network/
+   └── managers/                  # Specific managers
+       ├── arena/                 # Arena split into modules
+       ├── player-manager.js
+       ├── player-factory.js
+       └── game-lifecycle.js
+   ```
+
+3. **NO Aggregator Files** - DELETED during cleanup:
+   - `js/player.js` (was re-exporting PlayerManager/Factory)
+   - `js/arena.js` (was re-exporting ArenaBuilder)
+   - `js/ai.js` (was re-exporting AISystem/components)
+   - `js/interaction.js` (was re-exporting InteractionSystem)
+   - `js/networking.js` (was re-exporting NetworkSystem)
+   - `js/game.js` (was aggregating core components)
+   - `js/resource-manager.js` (aggregator - real code in managers/resource/)
+
+4. **NO Enterprise Patterns** - DELETED during cleanup:
+   - `js/config-manager.js` (747 lines of Singleton/Observer/Strategy bloat)
+   - `js/error-handler.js` (605 lines of enterprise error handling)
+   - `js/component-validator.js` (600 lines of unused validation)
+   - **Replacement:** Simple `CONFIG` object exported from `js/core/config.js`
+
+5. **Rules for Adding New Systems:**
+   - Create new file in `js/systems/[category]/[system-name].js`
+   - NEVER add aggregator files that just re-export other modules
+   - NEVER use Singleton, Observer, or Strategy patterns unless absolutely necessary
+   - Keep files under 500 lines - split if needed
+   - Direct imports/exports only - no global namespace aggregators
+
+6. **Files That MUST Stay in Root:**
+   - `js/main.js` - Bootstrap and game loop entry point
+   - `js/utils.js` - Core utilities (Utils class, GAME_STATES, constants)
+   - `js/debug-commands.js` - Development debugging helpers
+
+**DO NOT reintroduce deleted patterns. Keep architecture KISS.**
 
 
 ---

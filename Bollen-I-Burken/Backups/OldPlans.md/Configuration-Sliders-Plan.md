@@ -2,7 +2,7 @@
 
 ## 🎯 Overview
 
-This document outlines the implementation plan for adding configuration sliders to control obstacle generation parameters in Bollen i Burken. The sliders will allow players to adjust "amount of obstacles" and "distance from can exclusion radius" and apply changes when desired.
+This document outlines the implementation plan for adding configuration sliders to control obstacle generation parameters in Dunkgömme. The sliders will allow players to adjust "amount of obstacles" and "distance from can exclusion radius" and apply changes when desired.
 
 ## 📊 Current System Analysis
 

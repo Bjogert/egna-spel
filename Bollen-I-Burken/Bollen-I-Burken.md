@@ -1,8 +1,8 @@
-﻿Create a 3D digital version of the classic Swedish hide-and-seek game "Bollen i Burken" using Three.js with the following specifications:
+﻿Create a 3D digital version of the classic Swedish hide-and-seek game "Dunkgömme" using Three.js with the following specifications:
 
 ## 🇸🇪 GAME CONCEPT: TRADITIONAL SWEDISH HIDE-AND-SEEK
 
-**"Bollen i Burken"** (Ball in the Jar) is a beloved Swedish children's game that combines hide-and-seek with strategy and rescue mechanics. This 3D version brings the traditional outdoor game into a digital arena environment while preserving the core Swedish gaming heritage.
+**"Dunkgömme"** (Ball in the Jar) is a beloved Swedish children's game that combines hide-and-seek with strategy and rescue mechanics. This 3D version brings the traditional outdoor game into a digital arena environment while preserving the core Swedish gaming heritage.
 
 ### Traditional Game Elements to Digitize:
 - **The Guard (Vaktare)**: AI seeker that hunts players
@@ -177,7 +177,7 @@ Bollen-I-Burken/
 - Sound system (save for later)
 
 ### Phase 2: Traditional Swedish Game Mechanics (NEXT PRIORITY)
-**Goal: Implement core "Bollen i Burken" hide-and-seek gameplay**
+**Goal: Implement core "Dunkgömme" hide-and-seek gameplay**
 
 **Step 2.1: The Central "Can" (Burken)**
 - [ ] Add 3D can/bucket object at arena center
@@ -227,7 +227,7 @@ Bollen-I-Burken/
 **Goal: Share Swedish gaming heritage globally through online play**
 
 **Step 4.1: Online Swedish Hide-and-Seek**
-- [ ] Multiplayer networking for traditional Bollen i Burken
+- [ ] Multiplayer networking for traditional Dunkgömme
 - [ ] Swedish game room creation and joining
 - [ ] International players learning Swedish game rules
 - [ ] Cross-cultural gaming experiences and exchange

@@ -1,4 +1,4 @@
-# Bollen i Burken - Refactoring Progress Report
+# Dunkgömme - Refactoring Progress Report
 
 **Date**: September 29, 2025
 **Status**: Phase 1 In Progress

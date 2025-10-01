@@ -175,7 +175,7 @@ NET REDUCTION: 1,697 lines (87% reduction in config/error/validation code)
 2. **Check console immediately**:
    - Press F12 to open developer tools
    - Look for any red errors
-   - Should see: "Starting Bollen i Burken...", "Simple KISS configuration loaded"
+   - Should see: "Starting Dunkgömme...", "Simple KISS configuration loaded"
 
 3. **Play the game**:
    - Use WASD to move around

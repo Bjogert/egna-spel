@@ -1,4 +1,4 @@
-# Bollen i Burken - Architecture Overview (KISS Edition)
+# Dunkgömme - Architecture Overview (KISS Edition)
 
 **Last Updated**: September 29, 2025
 **Status**: Post-Revert, Refactoring In Progress
@@ -8,7 +8,7 @@
 
 ## 📋 Executive Summary
 
-This document outlines the **simplified, maintainable architecture** for Bollen i Burken after identifying and removing over-engineering that caused the AI vision system to break.
+This document outlines the **simplified, maintainable architecture** for Dunkgömme after identifying and removing over-engineering that caused the AI vision system to break.
 
 ### Core Philosophy: KISS Over Enterprise
 
@@ -1266,7 +1266,7 @@ Then: renderer.render(scene, camera)
 
 ## 📝 Conclusion
 
-The Bollen i Burken architecture has been redesigned around **KISS principles**:
+The Dunkgömme architecture has been redesigned around **KISS principles**:
 
 ✅ **Simple code** over enterprise patterns
 ✅ **Small files** over 2000-line mosaics

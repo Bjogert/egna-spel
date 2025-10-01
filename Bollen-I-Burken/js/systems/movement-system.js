@@ -16,7 +16,8 @@
         }
 
         update(gameState) {
-            if (!gameState || gameState.gamePhase !== GAME_STATES.PLAYING) {
+            // Allow movement during COUNTDOWN and PLAYING
+            if (!gameState || (gameState.gamePhase !== GAME_STATES.PLAYING && gameState.gamePhase !== GAME_STATES.COUNTDOWN)) {
                 return;
             }
 

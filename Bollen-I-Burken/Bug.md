@@ -4,7 +4,7 @@
 Keep the fix targeted and simple; do not reintroduce the old enterprise scaffold.
 
 ## Context
-- Project: Bollen i Burken (Three.js ECS prototype)
+- Project: DunkgÃ¶mme (Three.js ECS prototype)
 - Recent Work: Stage 5 refactor moved networking and ResourceManager logic into smaller modules (`js/systems/network/`, `js/managers/resource/`).
 
 ## Problem Summary
@@ -17,7 +17,7 @@ The bootstrap halts before Three.js setup finishes, so nothing renders.
 ## Reproduction Steps
 1. Perform a hard reload of `index.html` in the browser.
 2. Watch the console during the initial bootstrap.
-3. Error appears immediately after “Simple KISS configuration loaded from config.js”.
+3. Error appears immediately after ï¿½Simple KISS configuration loaded from config.jsï¿½.
 
 ## Root Cause
 - The new `resource-manager-core.js` file defines the actual `ResourceManager` class, but the aggregator shim (`js/resource-manager.js`) only re-exported whatever existed on `window.ResourceManager`.
