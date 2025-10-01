@@ -80,8 +80,8 @@
                 this.checkGameTimer();
             }
 
-            // Update all systems with fixed timestep (only if game is playing)
-            if (this.gameStatus === 'playing') {
+            // Update all systems with fixed timestep (during countdown and playing for player movement)
+            if (this.gameStatus === 'countdown' || this.gameStatus === 'playing') {
                 for (const system of this.systems) {
                     if (system.enabled && system.update) {
                         try {

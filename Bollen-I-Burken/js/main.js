@@ -171,6 +171,14 @@
             });
         }
 
+        // Expose system globals AFTER initialization (so they're not undefined)
+        global.inputSystem = inputSystem;
+        global.movementSystem = movementSystem;
+        global.uiSystem = uiSystem;
+        global.networkSystem = networkSystem;
+        global.aiSystem = aiSystem;
+        global.interactionSystem = interactionSystem;
+
         Utils.log('All systems initialized');
     }
 
@@ -334,20 +342,15 @@
         console.log('=== END CONFIG ===');
     };
 
-    // Expose globals for cross-module access
+    // Expose globals for cross-module access (non-system globals only)
     global.scene = scene;
     global.camera = camera;
     global.renderer = renderer;
     global.gameEngine = gameEngine;
     global.resourceManager = resourceManager;
-    global.inputSystem = inputSystem;
-    global.movementSystem = movementSystem;
-    global.uiSystem = uiSystem;
-    global.networkSystem = networkSystem;
-    global.aiSystem = aiSystem;
-    global.interactionSystem = interactionSystem;
     global.gameLoop = gameLoop;
     global.gameLoopStarted = gameLoopStarted;
+    // NOTE: Systems are exposed in initializeSystems() after they're created
 
     // Start the game when DOM is ready
     if (document.readyState === 'loading') {

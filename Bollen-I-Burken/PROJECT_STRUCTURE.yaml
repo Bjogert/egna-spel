@@ -1,0 +1,940 @@
+# ==========================================
+# BOLLEN-I-BURKEN PROJECT STRUCTURE
+# Complete file system documentation
+# Generated: 2025-10-01
+# ==========================================
+
+project: "Bollen-I-Burken"
+description: "3D Hide-and-Seek Arena Game - Swedish 'Can in the Can' Game"
+architecture: "KISS (Keep It Simple, Stupid)"
+technology_stack:
+  - "Three.js 0.158.0 (3D Graphics)"
+  - "Vanilla JavaScript (ES6+)"
+  - "ECS Architecture (Entity-Component-System)"
+  - "HTML5 Canvas/WebGL"
+
+# ==========================================
+# FILE SIZE RULES
+# ==========================================
+rules:
+  max_file_size: 500
+  target_file_size: "400-500 lines"
+  enforcement: "MANDATORY - Files exceeding 500 lines MUST be split"
+  file_organization: "One concern per file"
+  naming_convention: "kebab-case.js for files, PascalCase for classes"
+
+  critical_root_files:
+    description: "Files that MUST stay in root - DO NOT MOVE"
+    files:
+      - "js/main.js - Bootstrap and game loop entry point"
+      - "js/utils.js - Core utilities, constants, and GAME_STATES"
+      - "js/debug-commands.js - Development debugging helpers"
+
+  forbidden_patterns:
+    - pattern: "aggregator files"
+      description: "Files that only re-export other modules"
+      examples:
+        - "js/player.js (DELETED - was re-exporting PlayerManager/Factory)"
+        - "js/arena.js (DELETED - was re-exporting ArenaBuilder)"
+        - "js/ai.js (DELETED - was re-exporting AISystem)"
+        - "js/interaction.js (DELETED - was re-exporting InteractionSystem)"
+        - "js/networking.js (DELETED - was re-exporting NetworkSystem)"
+        - "js/game.js (DELETED - was aggregating core components)"
+
+    - pattern: "enterprise patterns"
+      description: "Over-engineered Singleton/Observer/Strategy patterns"
+      examples:
+        - "js/config-manager.js (DELETED - 747 lines, replaced by simple CONFIG)"
+        - "js/error-handler.js (DELETED - 605 lines of enterprise error handling)"
+        - "js/component-validator.js (DELETED - 600 lines of unused validation)"
+      replacement: "Simple CONFIG object in js/core/config.js"
+
+    - pattern: "monolithic files"
+      description: "Single files containing multiple systems"
+      action: "Split into focused modules (see arena/ and interaction/ examples)"
+
+# ==========================================
+# ROOT FILES
+# ==========================================
+root_files:
+  - file: "index.html"
+    purpose: "Main HTML entry point with Three.js CDN and script loading order"
+    line_count: ~134
+    status: "COMPLETE"
+    dependencies: ["css/*.css", "js/main.js", "Three.js CDN"]
+    notes: "Loads scripts in specific order for dependency management"
+
+  - file: "index_temp.html"
+    purpose: "Temporary/backup HTML file"
+    status: "BACKUP"
+    action: "Consider removing if not needed"
+
+# ==========================================
+# CSS DIRECTORY
+# ==========================================
+folders:
+  css/:
+    purpose: "Styling and visual presentation"
+    files:
+      - file: "style.css"
+        purpose: "Main game styling (arena, canvas, base UI)"
+        status: "COMPLETE"
+
+      - file: "ui.css"
+        purpose: "Game UI components (menus, overlays, HUD)"
+        status: "COMPLETE"
+
+      - file: "responsive.css"
+        purpose: "Mobile and responsive design adaptations"
+        status: "COMPLETE"
+
+  # ==========================================
+  # JAVASCRIPT ROOT
+  # ==========================================
+  js/:
+    purpose: "Main JavaScript directory - KISS architecture"
+
+    root_files:
+      - file: "main.js"
+        purpose: "Bootstrap Three.js, game engine initialization, main game loop"
+        exports: ["bootstrapGame", "gameLoop", "global scene/camera/renderer"]
+        dependencies: ["Three.js", "GameEngine", "all systems"]
+        line_count: ~367
+        status: "KEEP - CRITICAL ROOT FILE"
+        notes: "MUST stay in root - entry point and game loop controller"
+
+      - file: "utils.js"
+        purpose: "Core utility functions and game constants"
+        exports: ["Utils class", "GAME_CONFIG", "GAME_STATES", "PLAYER_STATES"]
+        dependencies: ["None - pure utilities"]
+        line_count: ~240
+        status: "KEEP - CRITICAL ROOT FILE"
+        notes: "MUST stay in root - used by all modules"
+
+      - file: "debug-commands.js"
+        purpose: "Development debugging console commands"
+        exports: ["debugInteractions", "debugObstacles", "testAIVision", etc.]
+        dependencies: ["Utils", "global systems"]
+        line_count: ~305
+        status: "KEEP - CRITICAL ROOT FILE"
+        notes: "MUST stay in root - development tool"
+
+    # ==========================================
+    # CORE DIRECTORY - ECS PRIMITIVES
+    # ==========================================
+    core/:
+      purpose: "Entity-Component-System (ECS) architecture core"
+
+      files:
+        - file: "config.js"
+          purpose: "Simple KISS configuration - replaces enterprise ConfigManager"
+          exports: ["CONFIG", "getConfig()", "setConfig()", "ConfigManager (compatibility)"]
+          dependencies: ["None"]
+          line_count: ~489
+          status: "COMPLETE"
+          notes: "Plain JavaScript object - NO Singleton/Observer patterns"
+
+        - file: "entity.js"
+          purpose: "ECS entity container with component management"
+          exports: ["Entity class"]
+          dependencies: ["Utils"]
+          line_count: ~132
+          status: "COMPLETE"
+          notes: "Smart component name resolution for object literals"
+
+        - file: "system.js"
+          purpose: "Base System class for all game systems"
+          exports: ["System class"]
+          dependencies: ["None"]
+          line_count: ~22
+          status: "COMPLETE"
+          notes: "Minimal interface: update() and render()"
+
+        - file: "game-state.js"
+          purpose: "Central game state manager with entity/player tracking"
+          exports: ["GameState class"]
+          dependencies: ["Entity", "Utils", "GAME_STATES"]
+          line_count: ~96
+          status: "COMPLETE"
+          notes: "Manages entities, players, game phase"
+
+        - file: "game-engine.js"
+          purpose: "Game loop, tick management, system orchestration"
+          exports: ["GameEngine class"]
+          dependencies: ["GameState", "System", "Utils"]
+          line_count: ~231
+          status: "COMPLETE"
+          notes: "Fixed timestep updates, variable render interpolation"
+
+      # ==========================================
+      # COMPONENTS DIRECTORY
+      # ==========================================
+      components/:
+        purpose: "ECS components (data containers)"
+        pattern: "One component per file"
+
+        files:
+          - file: "transform.js"
+            purpose: "Position, rotation, velocity, scale"
+            exports: ["Transform component"]
+            line_count: ~50
+            status: "COMPLETE"
+
+          - file: "player-input.js"
+            purpose: "Player input state (keyboard/gamepad/touch)"
+            exports: ["PlayerInput component"]
+            line_count: ~40
+            status: "COMPLETE"
+
+          - file: "renderable.js"
+            purpose: "Three.js mesh reference and visibility"
+            exports: ["Renderable component"]
+            line_count: ~30
+            status: "COMPLETE"
+
+          - file: "movement.js"
+            purpose: "Movement speed and physics properties"
+            exports: ["Movement component"]
+            line_count: ~35
+            status: "COMPLETE"
+
+          - file: "player.js"
+            purpose: "Player identity and local/remote state"
+            exports: ["Player component"]
+            line_count: ~30
+            status: "COMPLETE"
+
+          - file: "interactable.js"
+            purpose: "Interaction type, distance, and callbacks"
+            exports: ["Interactable component"]
+            line_count: ~45
+            status: "COMPLETE"
+
+          - file: "hideable.js"
+            purpose: "Hiding spot capacity and radius"
+            exports: ["Hideable component"]
+            line_count: ~35
+            status: "COMPLETE"
+
+          - file: "collider.js"
+            purpose: "Collision detection bounds and physics"
+            exports: ["Collider component"]
+            line_count: ~60
+            status: "COMPLETE"
+
+          - file: "ai-hunter.js"
+            purpose: "AI hunter state machine and behavior"
+            exports: ["AIHunter component"]
+            line_count: ~50
+            status: "COMPLETE"
+
+          - file: "vision-cone.js"
+            purpose: "AI vision cone angle and range"
+            exports: ["VisionCone component"]
+            line_count: ~30
+            status: "COMPLETE"
+
+    # ==========================================
+    # SYSTEMS DIRECTORY
+    # ==========================================
+    systems/:
+      purpose: "Game systems (logic processors) - ONE SYSTEM PER FILE"
+      pattern: "Each system in its own file or subfolder"
+
+      files:
+        - file: "movement-system.js"
+          purpose: "Movement physics, collision detection, boundary checks"
+          exports: ["MovementSystem class"]
+          dependencies: ["System", "Transform", "Movement", "Collider"]
+          line_count: ~400
+          status: "COMPLETE"
+          notes: "Handles player and AI movement with collision"
+
+      subfolders:
+        input/:
+          purpose: "Input handling system"
+          files:
+            - file: "input-system.js"
+              purpose: "Keyboard, touch, gamepad input processing"
+              exports: ["InputSystem class"]
+              dependencies: ["System", "PlayerInput", "Utils"]
+              line_count: ~365
+              status: "COMPLETE"
+              notes: "Moved from controls.js during KISS refactor"
+
+        audio/:
+          purpose: "Audio and sound system"
+          files:
+            - file: "audio-system.js"
+              purpose: "Sound effects and background music"
+              exports: ["AudioSystem class"]
+              dependencies: ["System", "Web Audio API"]
+              line_count: ~200
+              status: "DISABLED"
+              notes: "Currently disabled in main.js (line 143)"
+
+        ui/:
+          purpose: "User interface systems"
+          files:
+            - file: "ui-system.js"
+              purpose: "HUD, stats display, in-game UI"
+              exports: ["UISystem class"]
+              dependencies: ["System", "Utils", "CONFIG"]
+              line_count: ~450
+              status: "COMPLETE"
+              notes: "Split from monolithic ui.js"
+
+            - file: "menu-overlay.js"
+              purpose: "Start menu, game over screen, difficulty selector"
+              exports: ["MenuOverlay singleton"]
+              dependencies: ["UISystem", "GameLifecycle", "CONFIG"]
+              line_count: ~350
+              status: "COMPLETE"
+              notes: "Handles menu state and difficulty selection"
+
+        ai/:
+          purpose: "AI behavior system"
+          files:
+            - file: "ai-system.js"
+              purpose: "AI hunter patrol, chase, vision, line-of-sight"
+              exports: ["AISystem class"]
+              dependencies: ["System", "AIHunter", "VisionCone", "Transform"]
+              line_count: ~550
+              status: "NEEDS_SPLIT"
+              notes: "Exceeds 500 lines - consider splitting into ai-patrol.js, ai-vision.js"
+
+        interaction/:
+          purpose: "Player-object interaction system"
+          files:
+            - file: "interaction-system.js"
+              purpose: "Main interaction orchestration"
+              exports: ["InteractionSystem class"]
+              dependencies: ["System", "Interactable", "Transform"]
+              line_count: ~250
+              status: "COMPLETE"
+
+            - file: "interaction-handlers.js"
+              purpose: "Specific interaction type handlers"
+              exports: ["InteractionHandlers utilities"]
+              dependencies: ["Interactable", "Utils"]
+              line_count: ~180
+              status: "COMPLETE"
+
+            - file: "interaction-visuals.js"
+              purpose: "Visual feedback for interactions"
+              exports: ["InteractionVisuals utilities"]
+              dependencies: ["Three.js", "Renderable"]
+              line_count: ~120
+              status: "COMPLETE"
+
+        network/:
+          purpose: "Networking system (future multiplayer)"
+          files:
+            - file: "network-system.js"
+              purpose: "Network state synchronization (currently local mode)"
+              exports: ["NetworkSystem class"]
+              dependencies: ["System", "Utils"]
+              line_count: ~200
+              status: "COMPLETE"
+              notes: "Placeholder for future multiplayer"
+
+    # ==========================================
+    # MANAGERS DIRECTORY
+    # ==========================================
+    managers/:
+      purpose: "Specific manager classes for game objects"
+
+      files:
+        - file: "game-lifecycle.js"
+          purpose: "Round initialization, cleanup, game over handling"
+          exports: ["GameLifecycle singleton"]
+          dependencies: ["ArenaBuilder", "PlayerManager", "GameEngine"]
+          line_count: ~217
+          status: "COMPLETE"
+          notes: "Coordinates game rounds and restarts"
+
+        - file: "player-manager.js"
+          purpose: "Player and AI entity creation/destruction"
+          exports: ["PlayerManager class"]
+          dependencies: ["Three.js", "GameEngine", "Transform", "Player"]
+          line_count: ~259
+          status: "COMPLETE"
+          notes: "Handles player meshes and AI hunters with difficulty"
+
+        - file: "player-factory.js"
+          purpose: "Player entity creation factory"
+          exports: ["PlayerFactory utilities"]
+          dependencies: ["Entity", "Components"]
+          line_count: ~100
+          status: "COMPLETE"
+
+      # ==========================================
+      # ARENA SUBFOLDER
+      # ==========================================
+      arena/:
+        purpose: "Arena building system (split from monolithic arena.js)"
+        pattern: "Modular arena creation - one concern per file"
+
+        files:
+          - file: "arena-builder.js"
+            purpose: "Main arena coordinator - delegates to helpers"
+            exports: ["ArenaBuilder class"]
+            dependencies: ["All arena-* modules", "ResourceManager"]
+            line_count: ~91
+            status: "COMPLETE"
+            notes: "Thin coordinator - delegates actual work"
+
+          - file: "arena-floor.js"
+            purpose: "Floor mesh creation"
+            exports: ["ArenaFloor utilities"]
+            dependencies: ["Three.js", "CONFIG"]
+            line_count: ~80
+            status: "COMPLETE"
+
+          - file: "arena-walls.js"
+            purpose: "Wall mesh creation"
+            exports: ["ArenaWalls utilities"]
+            dependencies: ["Three.js", "CONFIG"]
+            line_count: ~120
+            status: "COMPLETE"
+
+          - file: "arena-lighting.js"
+            purpose: "Scene lighting setup"
+            exports: ["ArenaLighting utilities"]
+            dependencies: ["Three.js", "CONFIG"]
+            line_count: ~100
+            status: "COMPLETE"
+
+          - file: "arena-can.js"
+            purpose: "Central Swedish can creation"
+            exports: ["ArenaCan utilities"]
+            dependencies: ["Three.js", "CONFIG"]
+            line_count: ~90
+            status: "COMPLETE"
+
+          - file: "arena-obstacles.js"
+            purpose: "Procedural obstacle generation with difficulty"
+            exports: ["ArenaObstacles utilities"]
+            dependencies: ["Three.js", "CONFIG", "arena-helpers"]
+            line_count: ~280
+            status: "COMPLETE"
+            notes: "Uses difficulty system for dynamic obstacle count"
+
+          - file: "arena-helpers.js"
+            purpose: "Shared helper functions for arena generation"
+            exports: ["ArenaHelpers utilities"]
+            dependencies: ["Utils", "CONFIG"]
+            line_count: ~150
+            status: "COMPLETE"
+
+          - file: "arena-cleanup.js"
+            purpose: "Arena resource cleanup and disposal"
+            exports: ["ArenaCleanup utilities"]
+            dependencies: ["Three.js", "ResourceManager"]
+            line_count: ~120
+            status: "COMPLETE"
+
+      # ==========================================
+      # RESOURCE SUBFOLDER
+      # ==========================================
+      resource/:
+        purpose: "Resource management system (memory cleanup)"
+        pattern: "Split from monolithic resource-manager.js"
+
+        files:
+          - file: "resource-manager-core.js"
+            purpose: "Main resource manager with cleanup tracking"
+            exports: ["ResourceManager singleton"]
+            dependencies: ["ResourceFactories", "ResourceObservers"]
+            line_count: ~300
+            status: "COMPLETE"
+            notes: "Tracks Three.js resources for disposal"
+
+          - file: "resource-factories.js"
+            purpose: "Resource creation factories"
+            exports: ["ResourceFactories utilities"]
+            dependencies: ["Three.js"]
+            line_count: ~150
+            status: "COMPLETE"
+
+          - file: "resource-observers.js"
+            purpose: "Resource lifecycle observers"
+            exports: ["ResourceObservers utilities"]
+            dependencies: ["ResourceManager"]
+            line_count: ~100
+            status: "COMPLETE"
+
+    # ==========================================
+    # NETWORK DIRECTORY (LEGACY)
+    # ==========================================
+    network/:
+      purpose: "Legacy networking implementations"
+
+      legacy/:
+        purpose: "Old networking code - not currently used"
+        status: "DEPRECATED"
+
+        files:
+          - file: "webrtc-network.js"
+            purpose: "WebRTC peer-to-peer networking"
+            exports: ["WebRTCNetwork class"]
+            line_count: ~400
+            status: "LEGACY - NOT USED"
+            notes: "Future multiplayer implementation"
+
+          - file: "websocket-network.js"
+            purpose: "WebSocket server-client networking"
+            exports: ["WebSocketNetwork class"]
+            line_count: ~300
+            status: "LEGACY - NOT USED"
+            notes: "Future multiplayer implementation"
+
+# ==========================================
+# BACKUPS DIRECTORY
+# ==========================================
+backups/:
+  purpose: "Backup and archived files from refactoring"
+
+  files:
+    - file: "ai-backup.js"
+      purpose: "Backup of AI system before refactoring"
+      status: "BACKUP"
+
+    - file: "ai-old.js"
+      purpose: "Old AI implementation"
+      status: "BACKUP"
+
+  LegacyArchive/:
+    purpose: "DELETED files from KISS refactor (October 2025)"
+    status: "ARCHIVE - DO NOT REINTRODUCE"
+
+    deleted_files:
+      - file: "ai.js"
+        reason: "Aggregator file - just re-exported AISystem"
+        replacement: "Import directly from systems/ai/ai-system.js"
+
+      - file: "arena.js"
+        reason: "Aggregator file - just re-exported ArenaBuilder"
+        replacement: "Import directly from managers/arena/arena-builder.js"
+
+      - file: "component-validator.js"
+        reason: "600 lines of unused validation - over-engineering"
+        line_count: ~600
+        replacement: "None - validation removed (KISS)"
+
+      - file: "config-manager.js"
+        reason: "747 lines of Singleton/Observer/Strategy bloat"
+        line_count: ~747
+        replacement: "Simple CONFIG object in core/config.js"
+
+      - file: "error-handler.js"
+        reason: "605 lines of enterprise error handling"
+        line_count: ~605
+        replacement: "Simple try-catch and console.error"
+
+      - file: "game.js"
+        reason: "Aggregator for core components"
+        replacement: "Import directly from core/"
+
+      - file: "interaction.js"
+        reason: "Aggregator file - just re-exported InteractionSystem"
+        replacement: "Import directly from systems/interaction/"
+
+      - file: "networking.js"
+        reason: "Aggregator file - just re-exported NetworkSystem"
+        replacement: "Import directly from systems/network/network-system.js"
+
+      - file: "player.js"
+        reason: "Aggregator file - just re-exported PlayerManager/Factory"
+        replacement: "Import directly from managers/player-manager.js"
+
+      - file: "resource-manager.js"
+        reason: "Aggregator file - split into resource/ subfolder"
+        replacement: "Import from managers/resource/resource-manager-core.js"
+
+# ==========================================
+# CONFIGURATION DIRECTORY
+# ==========================================
+.claude/:
+  purpose: "Claude AI assistant configuration"
+  files:
+    - file: "settings.local.json"
+      purpose: "Local Claude settings"
+      status: "CONFIGURATION"
+
+# ==========================================
+# FEATURE ADDITIONS GUIDE
+# ==========================================
+future_additions:
+  description: "Guidelines for adding new features"
+
+  new_systems:
+    location: "js/systems/[category]/[system-name].js"
+    examples:
+      - "js/systems/particle/particle-system.js - Visual effects"
+      - "js/systems/scoring/scoring-system.js - Score tracking"
+      - "js/systems/achievements/achievement-system.js - Achievements"
+    rules:
+      - "One system per file"
+      - "Extend System base class"
+      - "Keep under 500 lines"
+      - "If larger, split into subfolder like interaction/"
+
+  new_managers:
+    location: "js/managers/[manager-name].js"
+    examples:
+      - "js/managers/save-manager.js - Save/load game state"
+      - "js/managers/settings-manager.js - User settings"
+      - "js/managers/achievement-manager.js - Achievement tracking"
+    rules:
+      - "One concern per manager"
+      - "NO aggregator files"
+      - "Clear dependencies"
+
+  new_components:
+    location: "js/core/components/[component-name].js"
+    examples:
+      - "js/core/components/health.js - Health points"
+      - "js/core/components/inventory.js - Item storage"
+      - "js/core/components/powerup.js - Power-up effects"
+    rules:
+      - "Pure data containers"
+      - "Minimal logic"
+      - "One component per file"
+
+  new_arena_features:
+    location: "js/managers/arena/arena-[feature].js"
+    examples:
+      - "js/managers/arena/arena-powerups.js - Spawn powerups"
+      - "js/managers/arena/arena-weather.js - Weather effects"
+      - "js/managers/arena/arena-traps.js - Trap placement"
+    rules:
+      - "Follow arena-* naming pattern"
+      - "Use ArenaHelpers for shared logic"
+      - "Register with ArenaBuilder"
+
+# ==========================================
+# NAMING CONVENTIONS
+# ==========================================
+naming_conventions:
+  files:
+    pattern: "kebab-case.js"
+    examples:
+      - "game-engine.js"
+      - "player-manager.js"
+      - "interaction-system.js"
+
+  classes:
+    pattern: "PascalCase"
+    examples:
+      - "GameEngine"
+      - "PlayerManager"
+      - "InteractionSystem"
+
+  components:
+    pattern: "PascalCase (singular noun)"
+    examples:
+      - "Transform"
+      - "Renderable"
+      - "Interactable"
+
+  systems:
+    pattern: "PascalCase + 'System' suffix"
+    examples:
+      - "InputSystem"
+      - "MovementSystem"
+      - "AISystem"
+
+  managers:
+    pattern: "PascalCase + 'Manager' suffix"
+    examples:
+      - "PlayerManager"
+      - "ResourceManager"
+      - "GameLifecycle (exception)"
+
+  utilities:
+    pattern: "PascalCase for class, camelCase for functions"
+    examples:
+      - "Utils.log()"
+      - "ArenaHelpers.randomBetween()"
+
+# ==========================================
+# DIFFICULTY SYSTEM
+# ==========================================
+difficulty_system:
+  description: "10-level dynamic difficulty system"
+  implementation: "CONFIG.difficulties array in core/config.js"
+  current_level: "Stored in CONFIG.currentDifficulty (default: 1)"
+
+  levels:
+    - id: 0
+      name: "Barnkalas (Children's Party)"
+      obstacles: 45
+      description: "Super Easy - Maximum hiding spots"
+
+    - id: 1
+      name: "Fyllekäring på Midsommar (Drunk Uncle)"
+      obstacles: 35
+      description: "Easy - Can't see well after shots"
+
+    - id: 2
+      name: "Dagisfröken Övervakar (Daycare Teacher)"
+      obstacles: 28
+      description: "Normal - Eyes in the back of head"
+
+    - id: 3
+      name: "Kvarterspolisen (Neighborhood Cop)"
+      obstacles: 22
+      description: "Balanced - Patrols like a pro"
+
+    - id: 4
+      name: "Fotbollstränaren (Soccer Coach)"
+      obstacles: 18
+      description: "Challenging - Sees from sideline"
+
+    - id: 5
+      name: "Gymnasieläraren (High School Teacher)"
+      obstacles: 14
+      description: "Hard - No phone cheating"
+
+    - id: 6
+      name: "Vakten på Ikea (IKEA Security)"
+      obstacles: 10
+      description: "Very Hard - Watches shortcuts"
+
+    - id: 7
+      name: "Säkerhetspolisen (Secret Service)"
+      obstacles: 7
+      description: "Expert - Sees you before you see him"
+
+    - id: 8
+      name: "Guds Öga (God's Eye)"
+      obstacles: 4
+      description: "Nightmare - Sees all, knows all"
+
+    - id: 9
+      name: "Systemet Stänger (Liquor Store Closing)"
+      obstacles: 2
+      description: "PANIC! - Full chaos, no time to hide"
+
+  mechanics:
+    principle: "Fewer obstacles = harder difficulty"
+    ai_scaling:
+      - "Patrol speed increases with difficulty"
+      - "Chase speed increases with difficulty"
+      - "Vision range increases with difficulty"
+      - "Vision angle widens with difficulty"
+
+    obstacle_scaling:
+      - "High difficulty = fewer, smaller obstacles"
+      - "Low difficulty = many, larger obstacles"
+      - "Low obstacle ratio increases (more partial cover)"
+
+  usage:
+    - "Selected via dropdown in menu-overlay.js"
+    - "Applied during arena creation in arena-obstacles.js"
+    - "AI stats set in player-manager.js addAIHunter()"
+
+# ==========================================
+# KEY ARCHITECTURAL DECISIONS
+# ==========================================
+architecture_decisions:
+  ecs_pattern:
+    description: "Entity-Component-System architecture"
+    benefits:
+      - "Clean separation of data and logic"
+      - "Flexible entity composition"
+      - "Easy to extend with new components/systems"
+
+  kiss_principle:
+    description: "Keep It Simple, Stupid - avoid over-engineering"
+    implementation:
+      - "Plain JavaScript objects instead of classes where possible"
+      - "Direct imports instead of aggregator files"
+      - "Simple CONFIG object instead of ConfigManager"
+      - "No validation layer (trust the data)"
+      - "Explicit over clever"
+
+  file_size_limits:
+    description: "Enforce 400-500 line maximum per file"
+    rationale:
+      - "Easier to understand and maintain"
+      - "Forces good separation of concerns"
+      - "Prevents monolithic code"
+    action: "Split into subfolder modules when exceeding 500 lines"
+
+  no_aggregators:
+    description: "Ban files that only re-export other modules"
+    rationale:
+      - "Extra indirection adds no value"
+      - "Makes dependency tracking harder"
+      - "Increases bundle size"
+    action: "Import directly from source files"
+
+  modular_systems:
+    description: "Complex systems split into subfolders"
+    examples:
+      - "systems/ui/ → ui-system.js + menu-overlay.js"
+      - "systems/interaction/ → interaction-system.js + handlers + visuals"
+      - "managers/arena/ → 8 focused modules"
+    benefits:
+      - "Each file has single responsibility"
+      - "Easy to test in isolation"
+      - "Clear dependency graph"
+
+# ==========================================
+# DEPENDENCY GRAPH (HIGH-LEVEL)
+# ==========================================
+dependency_graph:
+  description: "Core dependency flow (simplified)"
+
+  layer_1_foundation:
+    - "utils.js (GAME_STATES, Utils, constants)"
+    - "core/config.js (CONFIG object)"
+
+  layer_2_core:
+    - "core/entity.js (Entity)"
+    - "core/system.js (System base class)"
+    - "core/components/* (all components)"
+
+  layer_3_engine:
+    - "core/game-state.js (GameState)"
+    - "core/game-engine.js (GameEngine)"
+
+  layer_4_systems:
+    - "systems/input/input-system.js"
+    - "systems/movement-system.js"
+    - "systems/ai/ai-system.js"
+    - "systems/interaction/interaction-system.js"
+    - "systems/ui/ui-system.js"
+    - "systems/network/network-system.js"
+
+  layer_5_managers:
+    - "managers/player-manager.js"
+    - "managers/arena/arena-builder.js"
+    - "managers/resource/resource-manager-core.js"
+    - "managers/game-lifecycle.js"
+
+  layer_6_bootstrap:
+    - "systems/ui/menu-overlay.js"
+    - "main.js (entry point)"
+
+# ==========================================
+# TESTING COMMANDS
+# ==========================================
+debug_commands:
+  description: "Console commands available in debug-commands.js"
+
+  commands:
+    - command: "debugGame()"
+      description: "Show all game state and system references"
+
+    - command: "debugResources()"
+      description: "Show ResourceManager tracked resources"
+
+    - command: "debugConfig()"
+      description: "Show CONFIG object"
+
+    - command: "debugInteractions()"
+      description: "Show all interactable entities and stats"
+
+    - command: "debugObstacles()"
+      description: "Show obstacle count and collision state"
+
+    - command: "debugMovement()"
+      description: "Show movement system and player state"
+
+    - command: "testCanInteraction()"
+      description: "Teleport player to can and test interaction"
+
+    - command: "testObstacleCollision()"
+      description: "Test collision with first obstacle"
+
+    - command: "testAIVision()"
+      description: "Test AI line-of-sight system"
+
+    - command: "testKeyboard()"
+      description: "Log raw keyboard events"
+
+    - command: "disableCollision()"
+      description: "Temporarily disable all collision"
+
+    - command: "enableCollision()"
+      description: "Re-enable collision detection"
+
+    - command: "getConfig(path, default)"
+      description: "Get config value with dot notation"
+
+    - command: "setConfig(path, value)"
+      description: "Set config value with dot notation"
+
+# ==========================================
+# CURRENT STATUS SUMMARY
+# ==========================================
+status_summary:
+  total_js_files: 43
+  core_files: 5
+  components: 10
+  systems: 11
+  managers: 11
+  legacy_files: 2
+  backup_files: 12
+
+  files_needing_attention:
+    - file: "systems/ai/ai-system.js"
+      issue: "~550 lines - exceeds 500 line limit"
+      action: "Split into ai-patrol.js, ai-vision.js, ai-chase.js"
+
+    - file: "network/legacy/*.js"
+      issue: "Unused legacy networking code"
+      action: "Consider moving to Backups/ or removing"
+
+  completed_refactoring:
+    - "Removed all aggregator files"
+    - "Removed enterprise ConfigManager (replaced with simple CONFIG)"
+    - "Removed error-handler.js and component-validator.js"
+    - "Split arena into 8 focused modules"
+    - "Split interaction into 3 focused modules"
+    - "Split resource management into 3 modules"
+    - "Added 10-level difficulty system"
+    - "Implemented menu overlay with difficulty selector"
+
+# ==========================================
+# MAINTENANCE NOTES
+# ==========================================
+maintenance:
+  when_adding_features:
+    - "Check if file exceeds 500 lines after changes"
+    - "Never create aggregator files"
+    - "Follow KISS principles"
+    - "Update this YAML file"
+    - "Test with debug commands"
+
+  when_refactoring:
+    - "Preserve KISS architecture"
+    - "Keep critical root files in place"
+    - "Don't reintroduce deleted patterns"
+    - "Update index.html script order if needed"
+    - "Run game to verify no breakage"
+
+  code_review_checklist:
+    - "File size under 500 lines?"
+    - "No aggregator patterns?"
+    - "No Singleton/Observer unless justified?"
+    - "Clear single responsibility?"
+    - "Proper error handling (try-catch)?"
+    - "Uses CONFIG instead of hardcoded values?"
+    - "Follows naming conventions?"
+
+# ==========================================
+# VERSION HISTORY
+# ==========================================
+version_history:
+  - version: "1.0.0"
+    date: "2025-10-01"
+    changes:
+      - "Initial YAML documentation created"
+      - "Documented complete file structure post-KISS refactor"
+      - "Added difficulty system documentation"
+      - "Included deleted files archive"
+      - "Comprehensive rules and guidelines"
