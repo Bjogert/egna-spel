@@ -1,4 +1,24 @@
 {
     "claude-code.useNodeExecution": true,
-    "claude-code.environmentVariables": []
+    "claude-code.environmentVariables": [],
+    "workbench.view.alwaysShowHeaderActions": true,
+    "workbench.view.showQuietly": {
+        "workbench.panel.output": false
+    },
+    "workbench.editor.alwaysShowEditorActions": false,
+    "workbench.editor.centeredLayoutFixedWidth": false,
+    "workbench.editor.closeEmptyGroups": false,
+    "workbench.editor.editorActionsLocation": "default",
+    "workbench.editor.enablePreviewFromCodeNavigation": false,
+    "workbench.editor.enablePreviewFromQuickOpen": false,
+    "workbench.editor.labelFormat": "default",
+    "workbench.editor.limit.enabled": false,
+    "workbench.editor.languageDetection": true,
+    "workbench.editor.limit.perEditorGroup": false,
+    "workbench.editor.navigationScope": "default",
+    "workbench.editor.pinnedTabSizing": "normal",
+    "workbench.editor.pinnedTabsOnSeparateRow": false,
+    "workbench.editor.restoreViewState": true,
+    "workbench.editor.showTabIndex": false,
+    "workbench.editor.showTabs": "multiple"
 }

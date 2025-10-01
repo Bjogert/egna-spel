@@ -9,6 +9,8 @@
     let startButtonElement;
     let menuStatusElement;
     let menuSummaryElement;
+    let difficultySelectElement;
+    let difficultyDescriptionElement;
 
     class MenuOverlay {
         constructor() {
@@ -20,10 +22,34 @@
             startButtonElement = document.getElementById('startButton');
             menuStatusElement = document.getElementById('menuStatus');
             menuSummaryElement = document.getElementById('menuSummary');
+            difficultySelectElement = document.getElementById('difficultySelect');
+            difficultyDescriptionElement = document.getElementById('difficultyDescription');
 
             if (!startButtonElement) {
                 Utils.warn('Start button not found in DOM');
                 return;
+            }
+
+            // Difficulty selector handler
+            if (difficultySelectElement) {
+                difficultySelectElement.addEventListener('change', (event) => {
+                    const selectedLevel = parseInt(event.target.value, 10);
+                    CONFIG.currentDifficulty = selectedLevel;
+
+                    // Update description text
+                    const difficulty = CONFIG.difficulties[selectedLevel];
+                    if (difficultyDescriptionElement && difficulty) {
+                        difficultyDescriptionElement.textContent = difficulty.description;
+                    }
+
+                    Utils.log(`Difficulty changed to: ${difficulty.name} (Level ${selectedLevel + 1})`);
+                });
+
+                // Set initial description
+                const initialDifficulty = CONFIG.difficulties[CONFIG.currentDifficulty];
+                if (difficultyDescriptionElement && initialDifficulty) {
+                    difficultyDescriptionElement.textContent = initialDifficulty.description;
+                }
             }
 
             startButtonElement.addEventListener('click', () => {
