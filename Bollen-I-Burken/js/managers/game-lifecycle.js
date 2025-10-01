@@ -148,9 +148,19 @@
                 global.MenuOverlay.hideLoadingScreen();
             }
 
-            // Set game state to COUNTDOWN
+            // Set game state to COUNTDOWN (don't start game engine yet!)
             if (this.gameEngine.gameState && typeof this.gameEngine.gameState.setGamePhase === 'function') {
                 this.gameEngine.gameState.setGamePhase(GAME_STATES.COUNTDOWN);
+            }
+
+            // Set game status to indicate countdown phase
+            this.gameEngine.gameStatus = 'countdown';
+            this.gameEngine.gameStartTime = 0; // Don't start timer yet
+
+            // Ensure the game loop is running
+            if (global.gameLoopStarted !== undefined && !global.gameLoopStarted) {
+                requestAnimationFrame(global.gameLoop);
+                global.gameLoopStarted = true;
             }
 
             // Start 5 second countdown
@@ -183,18 +193,12 @@
                         global.uiSystem.hideCountdown();
                     }
 
-                    // Start the actual game
+                    // NOW start the actual game (this sets phase to PLAYING)
                     this.gameEngine.start();
 
-                    Utils.log('Game started successfully');
+                    Utils.log('Game started successfully - Hunter is now active!');
                 }
             }, 1000);
-
-            // Ensure the game loop is running (it persists across rounds)
-            if (global.gameLoopStarted !== undefined && !global.gameLoopStarted) {
-                requestAnimationFrame(global.gameLoop);
-                global.gameLoopStarted = true;
-            }
         }
     }
 
