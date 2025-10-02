@@ -18,9 +18,9 @@ const CONFIG = {
 
     // ========== ARENA SETTINGS ==========
     arena: {
-        size: 15,               // Arena size in units (15x15 square)
-        wallHeight: 3,          // How tall the walls are
-        wallThickness: 0.2,     // How thick the walls are
+        size: 30,               // Arena size in units (30x30 square - 4x area)
+        wallHeight: 6,          // How tall the walls are (2x scale)
+        wallThickness: 0.4,     // How thick the walls are (2x scale)
         floorColor: 0xcccccc,   // Floor color (light gray)
         wallColor: 0x999999,    // Wall color (gray)
         floorY: 0               // Floor Y position
@@ -28,12 +28,12 @@ const CONFIG = {
 
     // ========== CAMERA SETTINGS ==========
     camera: {
-        height: 25,             // How high camera is above arena
-        distance: 15,           // How far back camera is
+        height: 50,             // How high camera is above arena (2x scale)
+        distance: 30,           // How far back camera is (2x scale)
         fov: 60,                // Field of view (degrees)
         lookAtOffset: {         // Where camera looks
             x: 0,
-            y: -3,
+            y: -6,              // 2x scale to maintain same angle
             z: 0
         }
     },
@@ -71,9 +71,9 @@ const CONFIG = {
             },
             color: 0xff4444,     // AI color (red)
             spawnPosition: {     // Where AI hunter starts
-                x: -5,
+                x: -10,          // 2x scale
                 y: 0.5,
-                z: 5
+                z: 10            // 2x scale
             },
             // Patrol behavior timing
             patrolChangeTimeMin: 1500,  // Min ms before changing direction
@@ -316,9 +316,9 @@ const CONFIG = {
             description: "Övervakar alla genvägar!",
             descriptionEnglish: "Watches all the shortcuts!",
             obstacles: {
-                count: 10,
-                minDistanceBetween: 4.0,
-                canExclusionRadius: 6.0,
+                count: 10,                  // Keep same (user wants "way less")
+                minDistanceBetween: 8.0,    // 2x scale (was 4.0)
+                canExclusionRadius: 12.0,   // 2x scale (was 6.0)
                 heightScaling: {
                     nearMin: 0.5, nearMax: 0.6,
                     midMin: 0.6, midMax: 1.5,
@@ -326,9 +326,9 @@ const CONFIG = {
                 }
             },
             ai: {
-                patrolSpeed: 0.12,
-                chaseSpeed: 0.18,
-                visionRange: 14,
+                patrolSpeed: 0.18,          // Increased for more threatening patrol
+                chaseSpeed: 0.20,           // Slightly faster chase
+                visionRange: 28,            // 2x scale (was 14)
                 visionAngle: 90
             }
         },

@@ -178,6 +178,46 @@
             }
         }
 
+        playerWin() {
+            if (this.gameStatus !== 'playing') return; // Already ended
+
+            this.gameStatus = 'player_win';
+            this.gameState.setGamePhase(GAME_STATES.PLAYER_WIN);
+
+            const elapsedTime = Date.now() - this.gameStartTime;
+            this.gameStartTime = 0;
+
+            Utils.log('Player reached the can and won!');
+
+            // Stop all AI movement
+            const aiSystem = this.getSystem('AISystem');
+            if (aiSystem) {
+                for (const hunter of aiSystem.getHunters()) {
+                    const transform = hunter.getComponent('Transform');
+                    if (transform) {
+                        transform.velocity.x = 0;
+                        transform.velocity.z = 0;
+                    }
+                }
+            }
+
+            // Show win menu
+            Utils.log('Attempting to show win menu...');
+            if (typeof global !== 'undefined' && typeof global.showStartMenu === 'function') {
+                Utils.log('showStartMenu function found, calling it...');
+                global.showStartMenu({
+                    gameOver: true,
+                    message: 'DU VÄN FÖR DIG!',
+                    reason: 'won',
+                    elapsedMs: elapsedTime
+                });
+            } else {
+                Utils.warn('showStartMenu function not found!');
+                Utils.warn('global:', global);
+                Utils.warn('global.showStartMenu:', global ? global.showStartMenu : 'global is undefined');
+            }
+        }
+
         getRemainingTime() {
             if (this.gameStartTime === 0 || this.gameStatus !== 'playing') return 0;
 

@@ -196,8 +196,8 @@
                 aiComponent.raceLockUntil = now + 2000;  // Lock in for 2 seconds
             }
 
-            // If lock expired and far from can, return to patrol
-            if (now > aiComponent.raceLockUntil && distance > 3.0) {
+            // If lock expired and far from can, return to patrol (2x scale)
+            if (now > aiComponent.raceLockUntil && distance > 6.0) {
                 aiComponent.state = AI_STATES.PATROL;
                 aiComponent.raceLockUntil = null;
                 return;
@@ -214,8 +214,8 @@
             aiComponent.heading = direction;
             transform.rotation.y = direction;
 
-            // Win condition
-            if (distance < 0.8) {
+            // Win condition (2x scale)
+            if (distance < 1.6) {
                 Utils.log('AI reached can first! AI WINS the race!');
                 this.triggerAIWins(gameState);
             }
@@ -240,6 +240,45 @@
                 return;
             }
 
+            const aiComponent = hunter.getComponent('AIHunter');
+            if (!aiComponent) {
+                return;
+            }
+
+            // DYNAMIC VISION: Calculate vision parameters based on what AI is looking at
+            const baseVision = {
+                range: visionCone.baseRange || visionCone.range,
+                angle: visionCone.baseAngle || visionCone.angle
+            };
+
+            // Store base values if not already stored
+            if (!visionCone.baseRange) {
+                visionCone.baseRange = visionCone.range;
+                visionCone.baseAngle = visionCone.angle;
+            }
+
+            // Get scan target from guard state
+            const scanTarget = DynamicVision.getScanTargetInfo(aiComponent, aiTransform);
+
+            // Calculate dynamic vision parameters
+            let dynamicVision;
+            try {
+                dynamicVision = DynamicVision.computeDynamicVision(
+                    aiComponent,
+                    aiTransform,
+                    scanTarget,
+                    baseVision
+                );
+
+                // Apply dynamic vision to cone
+                DynamicVision.applyDynamicVision(visionCone, dynamicVision);
+            } catch (error) {
+                // Fallback to base vision if dynamic vision fails
+                console.warn('Dynamic vision calculation failed, using base vision:', error);
+                visionCone.range = baseVision.range;
+                visionCone.angle = baseVision.angle;
+            }
+
             const localPlayer = gameState.getLocalPlayer();
             if (!localPlayer) {
                 return;
@@ -254,6 +293,22 @@
             const dz = playerTransform.position.z - aiTransform.position.z;
             const distance = Math.sqrt(dx * dx + dz * dz);
 
+            // DEBUG: Log vision parameters occasionally
+            if (Math.random() < 0.01) {  // 1% chance per frame
+                console.log('[VISION DEBUG]', {
+                    range: visionCone.range,
+                    angle: visionCone.angle,
+                    baseRange: visionCone.baseRange,
+                    baseAngle: visionCone.baseAngle,
+                    distanceToPlayer: distance.toFixed(2),
+                    isFocusing: visionCone.isFocusing,
+                    aiHeading: aiComponent.heading ? (aiComponent.heading * 180 / Math.PI).toFixed(1) : 'undefined',
+                    transformRotation: (aiTransform.rotation.y * 180 / Math.PI).toFixed(1),
+                    scanTarget: aiComponent.guardState?.scanTarget ? (aiComponent.guardState.scanTarget * 180 / Math.PI).toFixed(1) : 'none'
+                });
+            }
+
+            // Use DYNAMIC range (changes based on what AI is looking at)
             if (distance > visionCone.range) {
                 return;
             }
@@ -265,6 +320,7 @@
             while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
             while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
 
+            // Use DYNAMIC angle (narrower when focused on distant targets)
             const visionAngleRad = (visionCone.angle * Math.PI) / 180;
             const halfVisionAngle = visionAngleRad / 2;
 

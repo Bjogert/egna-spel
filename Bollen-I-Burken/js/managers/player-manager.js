@@ -139,7 +139,8 @@
             this.scene.add(visionCone);
 
             const aiEntity = this.gameEngine.gameState.createEntity();
-            aiEntity.addComponent(new Transform(spawnPos.x, spawnPos.y, spawnPos.z));
+            const aiTransform = new Transform(spawnPos.x, spawnPos.y, spawnPos.z);
+            aiEntity.addComponent(aiTransform);
             aiEntity.addComponent(new Movement(patrolSpeed));
             aiEntity.addComponent(new Renderable(mesh));
 

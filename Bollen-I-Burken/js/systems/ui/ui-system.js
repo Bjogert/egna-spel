@@ -345,6 +345,10 @@ class UISystem extends System {
                     messages.innerHTML = '';
                 }
                 break;
+            case GAME_STATES.PLAYER_WIN:
+                gameContainer.className = 'game-player-win';
+                this.showMessage('YOU WIN!', 'You reached the can!');
+                break;
         }
     }
 

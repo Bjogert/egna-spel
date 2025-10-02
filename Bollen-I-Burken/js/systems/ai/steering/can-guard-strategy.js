@@ -24,7 +24,7 @@
         // Initialize patrol state
         if (!ai.guardState) {
             ai.guardState = {
-                orbitRadius: 3.0,           // Distance from can to patrol (3 meters)
+                orbitRadius: 6.0,           // Distance from can to patrol (6 meters - 2x scale)
                 orbitAngle: Math.random() * Math.PI * 2,  // Current angle around can
                 orbitDirection: Math.random() < 0.5 ? 1 : -1,  // Clockwise or counter-clockwise
                 scanTarget: 0,              // Current scan target angle
@@ -32,7 +32,7 @@
                 nextScanChange: 2000,       // When to change scan direction (ms)
                 mode: 'ORBIT',              // ORBIT | REPOSITION | PAUSE | INVESTIGATE
                 moveSpeedMultiplier: 1.0,   // Varies movement speed (0.3 - 2.0)
-                turnSpeedMultiplier: 1.0,   // Varies turn speed (0.5 - 3.0)
+                turnSpeedMultiplier: 1.5,   // Varies turn speed (0.5 - 3.0)
                 nextBehaviorChange: 3000,   // When to change tempo (ms)
                 behaviorTimer: 0,
                 currentObstacleIndex: 0,    // Which obstacle to check next
@@ -64,7 +64,7 @@
 
         if (state.behaviorTimer > state.nextBehaviorChange && isSettled) {
             state.behaviorTimer = 0;
-            state.nextBehaviorChange = 2000 + Math.random() * 4000;  // 2-6 seconds
+            state.nextBehaviorChange = 1000 + Math.random() * 2000;  // 1-3 seconds (faster transitions!)
 
             // Random behavior changes (SCARY variations):
             const roll = Math.random();
@@ -108,12 +108,12 @@
         // Decide behavior based on distance from can
         let steering = { linear: { x: 0, z: 0 }, angular: 0 };
 
-        // If too far from can (>5m), return urgently
-        if (distanceFromCan > 5.0) {
+        // If too far from can (>10m), return urgently (2x scale)
+        if (distanceFromCan > 10.0) {
             steering = returnToCan(ai, transform, canPosition, state.orbitRadius);
         }
-        // If too close to can (<1.8m), move away
-        else if (distanceFromCan < 1.8) {
+        // If too close to can (<3.6m), move away (2x scale)
+        else if (distanceFromCan < 3.6) {
             steering = moveAwayFromCan(ai, transform, canPosition);
         }
         // At good distance - orbit/reposition with varied tempo
@@ -172,8 +172,8 @@
             // INTELLIGENT SCANNING: Focus on obstacles (hiding spots)
             state.scanDuration += deltaTime * 1000;
 
-            // Change scan direction periodically (faster when cautious)
-            const baseScanInterval = 1500;
+            // Change scan direction periodically (look around more often!)
+            const baseScanInterval = 800;  // Reduced from 1500ms - AI looks around faster
             const scanInterval = baseScanInterval / state.turnSpeedMultiplier;
 
             if (state.scanDuration > scanInterval) {
@@ -187,12 +187,16 @@
                     const toObstacleZ = targetObstacle.position.z - transform.position.z;
                     state.scanTarget = Math.atan2(toObstacleX, toObstacleZ);
 
+                    // Store obstacle reference for dynamic vision distance calculation
+                    state.scanTargetObstacle = targetObstacle;
+
                     console.log(`[GUARD] Checking obstacle ${state.currentObstacleIndex + 1}/${obstacles.length}`);
                 } else {
                     // No obstacles - scan opposite side (fallback)
                     const oppositeAngle = angleFromCan + Math.PI;
                     const scanRange = Math.PI / 2;
                     state.scanTarget = oppositeAngle + (Math.random() - 0.5) * scanRange;
+                    state.scanTargetObstacle = null;  // No obstacle to focus on
                 }
 
                 state.scanDuration = 0;

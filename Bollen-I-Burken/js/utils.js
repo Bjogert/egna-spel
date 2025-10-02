@@ -21,7 +21,8 @@ const GAME_STATES = {
     COUNTDOWN: 'countdown',  // Hunter counting before game starts
     PLAYING: 'playing',
     PAUSED: 'paused',
-    GAME_OVER: 'game_over'
+    GAME_OVER: 'game_over',
+    PLAYER_WIN: 'player_win'  // Player reached can and won!
 };
 
 // Player States
