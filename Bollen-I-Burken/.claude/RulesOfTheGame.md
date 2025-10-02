@@ -43,24 +43,23 @@
 - **Hunter AI**: Automatically guards can, searches for player, and eliminates when spotted
 
 ### 🎨 **Game Features**
-- **3D Arena**: Swedish-themed environment with hiding spots
-- **AI Hunter**: Intelligent AI that guards the can and hunts players
-- **Central Can**: Interactive Swedish can that players must reach
+- **3D Arena**: ugly environment with hiding spots
+- **AI Hunter**: "Intelligent" AI that guards the can and hunts players
+- **Central Can**: Interactive beer can from dad that players must reach
 - **Obstacle Avoidance**: AI navigates around obstacles while hunting
-- **Line-of-Sight**: Realistic vision system - AI can't see through walls
+- **Line-of-Sight**: "Realistic" vision system - AI can't see through walls
 - **Strategic Gameplay**: Players must time their approach and use cover
 
 ### 📝 **Traditional Variations**
 - **Multiple Players**: In the original game, multiple children can play simultaneously
-- **Different Objects**: The "can" could be any object (stone, tree, pole)
+- **Different Objects**: The "can" could be any object (stone, tree, pole, your mother)
 - **Elimination Rules**: Various ways to eliminate players exist in different regions
-- **Winning Phrases**: Different regions use different phrases when touching the can
+- **Winning Phrases**: Different regions use different phrases when touching the can, but "Dunk för [name] is tje correct phrase. all other phrases is stupid. 
 
 ### 🇸🇪 **Cultural Context**
 This is a beloved Swedish childhood game that teaches:
 - **Strategic thinking** - When to move and when to hide
 - **Risk assessment** - Balancing safety vs. opportunity  
+- **The joy of bullying
 - **Motor skills** - Running, hiding, quick reactions
 - **Group dynamics** - Social interaction and fair play
-
-The digital version captures the essence of this classic game in a 3D environment where players experience the thrill of sneaking to the can while avoiding the AI hunter!
