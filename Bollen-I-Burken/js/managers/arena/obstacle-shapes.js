@@ -28,47 +28,45 @@
     // Based on distance from center can
     // ==========================================
     function calculateHeightFromDistance(distanceFromCan, difficulty) {
-        const heightScaling = difficulty.obstacles.heightScaling || {
-            nearMin: 0.5, nearMax: 1.2,
-            midMin: 1.2, midMax: 2.5,
-            farMin: 2.5, farMax: 4.5
-        };
+        // MUCH MORE RANDOM - short obstacles can be far back, tall can be near
+        // Just use full range with slight bias towards taller = further
 
-        let minHeight, maxHeight;
+        const minHeight = 0.5;  // Minimum possible
+        const maxHeight = 4.5;  // Maximum possible
 
-        if (distanceFromCan < 3.0) {
-            // Near can: low obstacles (can see over)
-            minHeight = heightScaling.nearMin;
-            maxHeight = heightScaling.nearMax;
-        } else if (distanceFromCan < 7.0) {
-            // Mid range: medium obstacles
-            minHeight = heightScaling.midMin;
-            maxHeight = heightScaling.midMax;
-        } else {
-            // Far from can: tall walls
-            minHeight = heightScaling.farMin;
-            maxHeight = heightScaling.farMax;
+        // Random base height from full range
+        let height = minHeight + Math.random() * (maxHeight - minHeight);
+
+        // Slight bias: obstacles further from can have +20% chance to be taller
+        if (distanceFromCan > 7.0 && Math.random() < 0.3) {
+            // Boost far obstacles slightly (but still random!)
+            height = Math.max(height, 2.0 + Math.random() * 2.5);
         }
 
-        // Linear interpolation with random variance (±10%)
-        const baseHeight = minHeight + Math.random() * (maxHeight - minHeight);
-        const variance = baseHeight * 0.1 * (Math.random() * 2 - 1);
-        return Math.max(0.5, baseHeight + variance);
+        return height;
     }
 
     // ==========================================
     // COLOR CALCULATION
-    // Based on obstacle height
+    // More variety - 8 colors based on height
     // ==========================================
     function getColorForHeight(height) {
-        if (height < 1.2) {
-            return 0x22c55e;  // Green (low obstacles)
-        } else if (height < 2.0) {
+        if (height < 0.8) {
+            return 0x10b981;  // Bright green (very low)
+        } else if (height < 1.2) {
+            return 0x22c55e;  // Green (low)
+        } else if (height < 1.8) {
             return 0xfbbf24;  // Yellow (medium-low)
+        } else if (height < 2.4) {
+            return 0xfb923c;  // Light orange
         } else if (height < 3.0) {
             return 0xf97316;  // Orange (medium-high)
+        } else if (height < 3.6) {
+            return 0xdc2626;  // Red (tall)
+        } else if (height < 4.2) {
+            return 0x991b1b;  // Dark red (very tall)
         } else {
-            return 0x8B4513;  // Brown (tall walls)
+            return 0x78350f;  // Dark brown (massive walls)
         }
     }
 
@@ -309,19 +307,24 @@
         // Near obstacles: prefer small cubes and short walls
         let weights;
 
-        // SIMPLE SHAPES ONLY - straight walls and cubes (collision matches visuals)
+        // ALL SHAPES ENABLED - compound colliders make everything work perfectly!
         if (distanceFromCan < 4.0) {
-            // Near can: mix of walls and cubes
+            // Near can: variety of shapes
             weights = [
-                { type: SHAPE_TYPES.STRAIGHT, weight: 0.60 },
+                { type: SHAPE_TYPES.STRAIGHT, weight: 0.30 },
+                { type: SHAPE_TYPES.L_CORNER, weight: 0.25 },
                 { type: SHAPE_TYPES.SHORT, weight: 0.20 },
-                { type: SHAPE_TYPES.SMALL_CUBE, weight: 0.20 }
+                { type: SHAPE_TYPES.T_JUNCTION, weight: 0.15 },
+                { type: SHAPE_TYPES.SMALL_CUBE, weight: 0.10 }
             ];
         } else {
-            // Far from can: mostly long straight walls
+            // Far from can: more complex walls
             weights = [
-                { type: SHAPE_TYPES.STRAIGHT, weight: 0.80 },
-                { type: SHAPE_TYPES.SHORT, weight: 0.20 }
+                { type: SHAPE_TYPES.STRAIGHT, weight: 0.35 },
+                { type: SHAPE_TYPES.L_CORNER, weight: 0.25 },
+                { type: SHAPE_TYPES.T_JUNCTION, weight: 0.20 },
+                { type: SHAPE_TYPES.Z_SHAPE, weight: 0.15 },
+                { type: SHAPE_TYPES.SHORT, weight: 0.05 }
             ];
         }
 

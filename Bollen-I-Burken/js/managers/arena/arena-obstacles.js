@@ -135,7 +135,8 @@
             height: height,
             color: color,
             boxCount: shapeBoxes.length,
-            shapeType: getShapeTypeName(shapeBoxes.length)
+            shapeType: getShapeTypeName(shapeBoxes.length),
+            boxes: shapeBoxes  // Include box definitions for compound colliders
         };
     }
 
@@ -176,7 +177,7 @@
         group.position.set(position.x, position.y, position.z);
         group.name = `obstacle-group-${index}`;
 
-        // Add to scene (don't track group - ResourceManager doesn't support it)
+        // Add to scene
         builder.scene.add(group);
         builder.arenaObjects.push(group);
 

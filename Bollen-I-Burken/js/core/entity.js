@@ -38,6 +38,8 @@
                     componentName = 'Hideable';
                 } else if (component.type !== undefined && component.bounds !== undefined && component.blockMovement !== undefined) {
                     componentName = 'Collider';
+                } else if (component.children !== undefined && Array.isArray(component.children)) {
+                    componentName = 'Parent';
                 } else {
                     // Fallback: use a unique identifier to prevent collisions
                     componentName = `UnknownComponent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

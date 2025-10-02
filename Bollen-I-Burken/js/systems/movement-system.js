@@ -156,6 +156,26 @@
                 if (collider && transform && collider.isStatic && collider.blockMovement) {
                     this.staticColliders.push({ entity, collider, transform });
                 }
+
+                // Also collect child colliders for compound obstacles
+                const parent = entity.getComponent('Parent');
+                if (parent && parent.hasChildren()) {
+                    for (const childId of parent.children) {
+                        const childEntity = gameState.entities.get(childId);
+                        if (childEntity) {
+                            const childCollider = childEntity.getComponent('Collider');
+                            const childTransform = childEntity.getComponent('Transform');
+
+                            if (childCollider && childTransform && childCollider.isStatic && childCollider.blockMovement) {
+                                this.staticColliders.push({
+                                    entity: childEntity,
+                                    collider: childCollider,
+                                    transform: childTransform
+                                });
+                            }
+                        }
+                    }
+                }
             }
         }
 

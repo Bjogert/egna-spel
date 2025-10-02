@@ -100,30 +100,52 @@
             const obstacleEntities = [];
 
             obstacles.forEach((obstacle, index) => {
-                // Create entity for this obstacle shape
+                // Create PARENT entity for this obstacle shape (visual only)
                 const obstacleEntity = this.gameEngine.gameState.createEntity();
 
-                // Add Transform component
+                // Add Transform component (center of shape group)
                 obstacleEntity.addComponent(new Transform(
                     obstacle.position.x,
                     obstacle.position.y,
                     obstacle.position.z
                 ));
 
-                // Add Renderable component (use group)
+                // Add Renderable component (the visual mesh group)
                 obstacleEntity.addComponent(new Renderable(obstacle.group));
 
-                // Add Collider component using bounds
-                const colliderSize = {
-                    width: obstacle.bounds.width,
-                    height: obstacle.height,
-                    depth: obstacle.bounds.depth
-                };
-                obstacleEntity.addComponent(new Collider('box', colliderSize));
+                // Add Parent component to track child colliders
+                const parentComponent = new Parent();
+                obstacleEntity.addComponent(parentComponent);
 
-                // Add Hideable component
+                // Add Hideable component (hiding logic attached to parent)
                 const hideRadius = Math.max(obstacle.bounds.width, obstacle.bounds.depth) + 1.0;
                 obstacleEntity.addComponent(new Hideable(1, hideRadius));
+
+                // Create CHILD entities for each box (colliders only)
+                obstacle.boxes.forEach((box, boxIndex) => {
+                    const colliderEntity = this.gameEngine.gameState.createEntity();
+
+                    // Calculate world position of this box
+                    const worldX = obstacle.position.x + box.x;
+                    const worldY = obstacle.position.y + box.y;
+                    const worldZ = obstacle.position.z + box.z;
+
+                    // Add Transform (world position of this specific box)
+                    colliderEntity.addComponent(new Transform(worldX, worldY + box.height / 2, worldZ));
+
+                    // Add Collider (exact box size)
+                    const boxCollider = new Collider('box', {
+                        width: box.width,
+                        height: box.height,
+                        depth: box.depth
+                    });
+                    colliderEntity.addComponent(boxCollider);
+
+                    // Link child to parent
+                    parentComponent.addChild(colliderEntity);
+
+                    obstacleEntities.push(colliderEntity);
+                });
 
                 obstacleEntities.push(obstacleEntity);
             });
