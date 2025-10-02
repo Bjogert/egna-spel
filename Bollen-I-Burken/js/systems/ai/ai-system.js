@@ -9,9 +9,8 @@
     }
 
     const AI_STATES = {
-        PATROL: 'PATROL',
-        HUNTING: 'HUNTING',
-        SEARCHING: 'SEARCHING'
+        PATROL: 'PATROL',      // Orbit can at ~3m radius
+        RACE: 'RACE'           // Sprint straight to can
     };
 
     class AISystem extends System {
@@ -68,13 +67,10 @@
 
             switch (aiComponent.state) {
                 case AI_STATES.PATROL:
-                    this.updatePatrolBehavior(aiComponent, transform, movement, deltaTime);
+                    this.updatePatrolBehavior(aiComponent, transform, movement, deltaTime, gameState);
                     break;
-                case AI_STATES.HUNTING:
-                    this.updateHuntingBehavior(aiComponent, transform, movement, deltaTime);
-                    break;
-                case AI_STATES.SEARCHING:
-                    this.updateSearchingBehavior(aiComponent, transform, movement, deltaTime);
+                case AI_STATES.RACE:
+                    this.updateRaceBehavior(aiComponent, transform, movement, deltaTime, gameState);
                     break;
             }
 
@@ -85,68 +81,154 @@
             this.checkPlayerCollision(hunter, gameState);
         }
 
-        updatePatrolBehavior(aiComponent, transform, movement, deltaTime) {
-            const patrolSpeed = movement.speed || aiComponent.speed;
+        updatePatrolBehavior(aiComponent, transform, movement, deltaTime, gameState) {
+            const dt = deltaTime / 1000;  // Convert to seconds
 
-            if (!aiComponent.target || aiComponent.patrolTimer <= 0) {
-                aiComponent.patrolTimer = randomInRange(1500, 3500);
-                aiComponent.patrolDirection = Math.random() * Math.PI * 2;
-                aiComponent.targetDirection = aiComponent.patrolDirection;
+            // Check if stuck and need emergency unstuck
+            if (ObstacleAvoidance.isStuckOnWall(aiComponent, transform, deltaTime)) {
+                ObstacleAvoidance.unstuck(aiComponent);
+                Utils.log('AI unstuck - rotated away from wall');
             }
 
-            aiComponent.patrolTimer -= deltaTime;
+            // Get obstacle avoidance steering and obstacle positions
+            const staticColliders = this.getStaticColliders(gameState);
+            const avoidance = ObstacleAvoidance.computeObstacleAvoidance(
+                transform,
+                aiComponent,
+                staticColliders,
+                3.0  // Look ahead 3.0 meters
+            );
 
-            const turnSpeed = 2.0;
-            let angleDiff = aiComponent.targetDirection - aiComponent.patrolDirection;
-            while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-            while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+            // Extract obstacle positions for intelligent scanning
+            const obstacles = staticColliders
+                .filter(o => !o.collider.isWall)  // Ignore walls, focus on hiding spots
+                .map(o => ({ position: { x: o.transform.position.x, z: o.transform.position.z } }));
 
-            const turnStep = turnSpeed * (deltaTime / 1000);
-            if (Math.abs(angleDiff) > turnStep) {
-                aiComponent.patrolDirection += Math.sign(angleDiff) * turnStep;
-            } else {
-                aiComponent.patrolDirection = aiComponent.targetDirection;
+            // Use CAN-GUARDING strategy (orbit can, check obstacles systematically)
+            const canPosition = this.getCanPosition(gameState);
+            const guardPatrol = CanGuardStrategy.computeCanGuardPatrol(
+                aiComponent,
+                transform,
+                canPosition,
+                dt,
+                obstacles  // Pass obstacles so AI knows where to look
+            );
+
+            // Combine guard patrol + avoidance (balanced for smooth navigation)
+            const combinedSteering = SteeringBehaviors.combineSteeringBehaviors([
+                { steering: guardPatrol, weight: 1.0 },
+                { steering: avoidance, weight: 3.0 }  // Avoidance 3x important (reduced from 5x to avoid corner sticking)
+            ]);
+
+            // Update heading (rotation)
+            aiComponent.heading += combinedSteering.angular * dt;
+            aiComponent.heading = SteeringBehaviors.normalizeAngle(aiComponent.heading);
+
+            // Update velocity with acceleration
+            aiComponent.velocity.x += combinedSteering.linear.x * dt;
+            aiComponent.velocity.z += combinedSteering.linear.z * dt;
+
+            // Clamp to max patrol speed
+            const currentSpeed = Math.sqrt(
+                aiComponent.velocity.x * aiComponent.velocity.x +
+                aiComponent.velocity.z * aiComponent.velocity.z
+            );
+
+            if (currentSpeed > aiComponent.maxSpeed) {
+                const scale = aiComponent.maxSpeed / currentSpeed;
+                aiComponent.velocity.x *= scale;
+                aiComponent.velocity.z *= scale;
             }
 
-            transform.velocity.x = Math.sin(aiComponent.patrolDirection) * patrolSpeed;
-            transform.velocity.z = Math.cos(aiComponent.patrolDirection) * patrolSpeed;
+            // Apply friction (less friction for more responsive movement)
+            const friction = 0.92;
+            aiComponent.velocity.x *= friction;
+            aiComponent.velocity.z *= friction;
+
+            // Update transform (apply to entity)
+            transform.velocity.x = aiComponent.velocity.x;
+            transform.velocity.z = aiComponent.velocity.z;
+            transform.rotation.y = aiComponent.heading;
         }
 
-        updateHuntingBehavior(aiComponent, transform, movement, deltaTime) {
-            const visionCone = this.getVisionConeFromAI(aiComponent);
-
-            if (visionCone && visionCone.lastSeenPosition) {
-                const dx = visionCone.lastSeenPosition.x - transform.position.x;
-                const dz = visionCone.lastSeenPosition.z - transform.position.z;
-                const distance = Math.sqrt(dx * dx + dz * dz);
-
-                if (distance > 0.5) {
-                    const huntingDirection = Math.atan2(dz, dx);
-
-                    let angleDiff = huntingDirection - aiComponent.patrolDirection;
-                    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-                    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-
-                    const maxTurnSpeed = 3.0;
-                    const turnStep = maxTurnSpeed * (deltaTime / 1000);
-
-                    if (Math.abs(angleDiff) > turnStep) {
-                        aiComponent.patrolDirection += Math.sign(angleDiff) * turnStep;
-                    } else {
-                        aiComponent.patrolDirection = huntingDirection;
+        getCanPosition(gameState) {
+            // Find can entity in game state
+            for (const entity of gameState.entities.values()) {
+                if (entity.getComponent('Interactable')) {
+                    const interactable = entity.getComponent('Interactable');
+                    if (interactable.type === 'can') {
+                        const transform = entity.getComponent('Transform');
+                        if (transform) {
+                            return { x: transform.position.x, y: transform.position.y, z: transform.position.z };
+                        }
                     }
-
-                    const huntingSpeed = aiComponent.huntingSpeed;
-                    transform.velocity.x = Math.cos(aiComponent.patrolDirection) * huntingSpeed;
-                    transform.velocity.z = Math.sin(aiComponent.patrolDirection) * huntingSpeed;
                 }
-            } else {
-                this.updatePatrolBehavior(aiComponent, transform, movement, deltaTime);
+            }
+
+            // Fallback: can is at center (0, 0.3, 0)
+            return { x: 0, y: 0.3, z: 0 };
+        }
+
+        getStaticColliders(gameState) {
+            const colliders = [];
+            for (const entity of gameState.entities.values()) {
+                const collider = entity.getComponent('Collider');
+                const transform = entity.getComponent('Transform');
+
+                if (collider && transform && collider.isStatic && collider.blockMovement) {
+                    colliders.push({ collider, transform });
+                }
+            }
+            return colliders;
+        }
+
+        updateRaceBehavior(aiComponent, transform, movement, deltaTime, gameState) {
+            const canPosition = this.getCanPosition(gameState);
+
+            // Calculate direction to can
+            const dx = canPosition.x - transform.position.x;
+            const dz = canPosition.z - transform.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+
+            // Check race lock timer - once racing, commit for 2 seconds
+            const now = Date.now();
+            if (!aiComponent.raceLockUntil) {
+                aiComponent.raceLockUntil = now + 2000;  // Lock in for 2 seconds
+            }
+
+            // If lock expired and far from can, return to patrol
+            if (now > aiComponent.raceLockUntil && distance > 3.0) {
+                aiComponent.state = AI_STATES.PATROL;
+                aiComponent.raceLockUntil = null;
+                return;
+            }
+
+            // ALWAYS run directly to can (ignore player position entirely)
+            const direction = Math.atan2(dx, dz);
+
+            // Set velocity directly (no steering, no acceleration - just GO!)
+            transform.velocity.x = Math.sin(direction) * aiComponent.maxSpeedHunting;
+            transform.velocity.z = Math.cos(direction) * aiComponent.maxSpeedHunting;
+
+            // Align heading with movement
+            aiComponent.heading = direction;
+            transform.rotation.y = direction;
+
+            // Win condition
+            if (distance < 0.8) {
+                Utils.log('AI reached can first! AI WINS the race!');
+                this.triggerAIWins(gameState);
             }
         }
 
-        updateSearchingBehavior(aiComponent, transform, movement, deltaTime) {
-            this.updatePatrolBehavior(aiComponent, transform, movement, deltaTime);
+        triggerAIWins(gameState) {
+            Utils.log('AI Won! Player was too slow to reach the can.');
+
+            if (global.GameEngine && global.GameEngine.gameOver) {
+                global.GameEngine.gameOver('ai_won');
+            } else {
+                alert('AI WON! The hunter reached the can before you could kick it. Game Over.');
+            }
         }
 
         updateVision(hunter, visionCone, gameState) {
@@ -201,12 +283,10 @@
 
                     const aiComponent = hunter.getComponent('AIHunter');
                     if (aiComponent && aiComponent.state === AI_STATES.PATROL) {
-                        aiComponent.state = AI_STATES.HUNTING;
-                        aiComponent.huntingStartTime = Date.now();
-                        Utils.log('AI spotted player, switching to HUNTING mode');
+                        aiComponent.state = AI_STATES.RACE;
+                        aiComponent.raceLockUntil = Date.now() + 2000;  // Lock in race for 2 seconds
+                        Utils.log('AI spotted player! RACE TO CAN BEGINS!');
                     }
-
-                    Utils.log(`AI can see player. Distance: ${distance.toFixed(2)}, Angle: ${(angleDiff * 180 / Math.PI).toFixed(1)} deg`);
                 } else {
                     Utils.log('Player in vision cone but line of sight blocked by obstacle');
                 }
