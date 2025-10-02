@@ -1,13 +1,14 @@
 /* ==========================================
    ARENA OBSTACLE BUILDER
-   Generates random playground obstacles
+   Generates Tetris-like wall obstacles using shape system
    ========================================== */
 
 (function (global) {
     const helpers = global.ArenaHelpers;
+    const shapes = global.ObstacleShapes;
 
     function createRandomObstacles(builder) {
-        Utils.log('Creating random Swedish playground obstacles...');
+        Utils.log('Creating Tetris-like wall obstacles...');
 
         const enabled = CONFIG.obstacles.enabled;
         if (!enabled) {
@@ -24,62 +25,43 @@
 
         // Use difficulty-specific settings
         const count = difficulty.obstacles.count;
-        const canExclusionRadius = difficulty.obstacles.canExclusionRadius;
+        const clearZoneRadius = difficulty.obstacles.canExclusionRadius;
         const minDistanceBetween = difficulty.obstacles.minDistanceBetween;
         const minDistanceFromWalls = CONFIG.obstacles.minDistanceFromWalls;
         const maxAttempts = CONFIG.obstacles.maxPlacementAttempts;
 
-        const minWidth = difficulty.obstacles.minWidth;
-        const maxWidth = difficulty.obstacles.maxWidth;
-        const minHeight = difficulty.obstacles.minHeight;
-        const maxHeight = difficulty.obstacles.maxHeight;
-        const minDepth = difficulty.obstacles.minDepth;
-        const maxDepth = difficulty.obstacles.maxDepth;
-
-        const lowObstacleRatio = difficulty.obstacles.lowObstacleRatio || 0;
-
-        const color = CONFIG.obstacles.color;
-        const materialType = CONFIG.obstacles.material;
-
         const obstacles = [];
-        const positions = [];
+        const placedShapes = [];  // Track placed shapes for collision detection
 
         for (let i = 0; i < count; i++) {
             let placed = false;
             let attempts = 0;
 
-            // Determine if this should be a low obstacle
-            const isLowObstacle = Math.random() < lowObstacleRatio;
-
             while (!placed && attempts < maxAttempts) {
                 attempts++;
 
-                const size = {
-                    width: helpers.randomBetween(builder, minWidth, maxWidth),
-                    height: isLowObstacle
-                        ? helpers.randomBetween(builder, 0.5, 1.2)  // Low: 0.5-1.2m (can see over)
-                        : helpers.randomBetween(builder, minHeight, maxHeight),  // Normal height
-                    depth: helpers.randomBetween(builder, minDepth, maxDepth)
-                };
+                // Try to place a shape
+                const shapeData = tryPlaceShape(
+                    builder,
+                    difficulty,
+                    clearZoneRadius,
+                    minDistanceFromWalls,
+                    minDistanceBetween,
+                    placedShapes,
+                    i
+                );
 
-                const position = helpers.generateRandomPosition(builder, size, canExclusionRadius, minDistanceFromWalls);
-
-                if (helpers.isValidObstaclePosition(builder, position, size, positions, minDistanceBetween)) {
-                    const obstacleColor = isLowObstacle ? 0x22c55e : color;  // Green for low obstacles
-                    const obstacleMesh = createObstacleMesh(builder, position, size, obstacleColor, materialType, i, isLowObstacle);
-
-                    positions.push({ position, size, mesh: obstacleMesh });
-
-                    obstacles.push({
-                        mesh: obstacleMesh,
-                        position,
-                        size,
-                        isLowObstacle
-                    });
-
+                if (shapeData) {
+                    obstacles.push(shapeData);
+                    placedShapes.push(shapeData);
                     placed = true;
-                    const type = isLowObstacle ? 'LOW' : 'FULL';
-                    Utils.log(`Obstacle ${i + 1} [${type}] placed at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}) - height: ${size.height.toFixed(1)}m`);
+
+                    const colorName = getColorName(shapeData.color);
+                    Utils.log(
+                        `Obstacle ${i + 1} [${shapeData.shapeType}] placed at ` +
+                        `(${shapeData.position.x.toFixed(1)}, ${shapeData.position.z.toFixed(1)}) - ` +
+                        `height: ${shapeData.height.toFixed(1)}m, color: ${colorName}, boxes: ${shapeData.boxCount}`
+                    );
                 }
             }
 
@@ -88,50 +70,204 @@
             }
         }
 
-        Utils.log(`Created ${obstacles.length} Swedish playground obstacles`);
+        Utils.log(`Created ${obstacles.length} Tetris-like wall obstacles`);
         return obstacles;
     }
 
-    function createObstacleMesh(builder, position, size, color, materialType, index, isLowObstacle = false) {
-        const resourceManager = builder.resourceManager;
+    /**
+     * Try to place a single shape obstacle
+     */
+    function tryPlaceShape(builder, difficulty, clearZoneRadius, minDistanceFromWalls, minDistanceBetween, placedShapes, index) {
+        // Generate random position (approximate - will refine)
+        const arenaSize = builder.arenaSize;
+        const roughX = helpers.randomBetween(builder, -arenaSize + 2, arenaSize - 2);
+        const roughZ = helpers.randomBetween(builder, -arenaSize + 2, arenaSize - 2);
+        const roughPosition = { x: roughX, y: 0, z: roughZ };
 
-        const geometry = resourceManager.create(
-            'geometry',
-            'box',
-            [size.width, size.height, size.depth],
-            `obstacle-${index}-geometry`
-        );
+        // Calculate distance from center (for height)
+        const distanceFromCan = helpers.getDistanceFromCenter(builder, roughPosition);
 
-        const materialOptions = { color: color };
-
-        // Make low obstacles slightly transparent to show they're different
-        if (isLowObstacle) {
-            materialOptions.opacity = 0.85;
-            materialOptions.transparent = true;
+        // Check clear zone
+        if (distanceFromCan < clearZoneRadius) {
+            return null;  // Too close to can
         }
 
-        const material = resourceManager.create(
-            'material',
-            materialType,
-            materialOptions,
-            `obstacle-${index}-material`
-        );
+        // Calculate height based on distance
+        const height = shapes.calculateHeightFromDistance(distanceFromCan, difficulty);
 
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(position.x, position.y, position.z);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.name = `swedish-obstacle-${index}${isLowObstacle ? '-low' : ''}`;
-        mesh.userData.isLowObstacle = isLowObstacle;
+        // Generate random shape with random rotation
+        const rotation = [0, 90, 180, 270][Math.floor(Math.random() * 4)];
+        let shapeBoxes = shapes.generateRandomShape(height, distanceFromCan);
+        shapeBoxes = shapes.rotateShape(shapeBoxes, rotation);
 
-        resourceManager.track(mesh, 'mesh', `obstacle-${index}-mesh`);
+        // Calculate shape bounds
+        const bounds = shapes.calculateShapeBounds(shapeBoxes);
 
-        builder.scene.add(mesh);
-        builder.arenaObjects.push(mesh);
+        // Adjust position to center the shape
+        const centerX = roughX - bounds.centerX;
+        const centerZ = roughZ - bounds.centerZ;
+        const shapePosition = { x: centerX, y: 0, z: centerZ };
 
-        return mesh;
+        // Check if shape fits in arena
+        if (!isShapeInArena(builder, shapePosition, bounds, minDistanceFromWalls)) {
+            return null;
+        }
+
+        // Check clear zone with actual bounds
+        if (!isShapeClearOfCan(shapePosition, bounds, clearZoneRadius)) {
+            return null;
+        }
+
+        // Check collision with existing shapes
+        if (!isShapeValidPosition(shapePosition, bounds, placedShapes, minDistanceBetween)) {
+            return null;
+        }
+
+        // Create the shape!
+        const color = shapes.getColorForHeight(height);
+        const materialProps = shapes.getMaterialProperties(height);
+        const group = createShapeGroup(builder, shapePosition, shapeBoxes, height, color, materialProps, index);
+
+        return {
+            group: group,
+            position: shapePosition,
+            bounds: bounds,
+            height: height,
+            color: color,
+            boxCount: shapeBoxes.length,
+            shapeType: getShapeTypeName(shapeBoxes.length)
+        };
     }
 
+    /**
+     * Create THREE.Group containing all boxes in shape
+     */
+    function createShapeGroup(builder, position, boxes, height, color, materialProps, index) {
+        const resourceManager = builder.resourceManager;
+        const group = new THREE.Group();
+
+        // Create each box in the shape
+        boxes.forEach((box, boxIndex) => {
+            const geometry = resourceManager.create(
+                'geometry',
+                'box',
+                [box.width, box.height, box.depth],
+                `obstacle-${index}-box-${boxIndex}-geometry`
+            );
+
+            const material = resourceManager.create(
+                'material',
+                'standard',
+                materialProps,
+                `obstacle-${index}-box-${boxIndex}-material`
+            );
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(box.x, box.y + box.height / 2, box.z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.name = `obstacle-${index}-box-${boxIndex}`;
+
+            group.add(mesh);
+            resourceManager.track(mesh, 'mesh', `obstacle-${index}-box-${boxIndex}-mesh`);
+        });
+
+        // Position the group
+        group.position.set(position.x, position.y, position.z);
+        group.name = `obstacle-group-${index}`;
+
+        // Add to scene (don't track group - ResourceManager doesn't support it)
+        builder.scene.add(group);
+        builder.arenaObjects.push(group);
+
+        return group;
+    }
+
+    /**
+     * Check if shape fits within arena bounds
+     */
+    function isShapeInArena(builder, position, bounds, minDistanceFromWalls) {
+        const arenaSize = builder.arenaSize;
+
+        const minX = position.x + bounds.minX;
+        const maxX = position.x + bounds.maxX;
+        const minZ = position.z + bounds.minZ;
+        const maxZ = position.z + bounds.maxZ;
+
+        const validMin = -arenaSize + minDistanceFromWalls;
+        const validMax = arenaSize - minDistanceFromWalls;
+
+        return minX >= validMin && maxX <= validMax && minZ >= validMin && maxZ <= validMax;
+    }
+
+    /**
+     * Check if shape is clear of can exclusion zone
+     */
+    function isShapeClearOfCan(position, bounds, clearZoneRadius) {
+        // Check if any corner of the bounding box enters clear zone
+        const corners = [
+            { x: position.x + bounds.minX, z: position.z + bounds.minZ },
+            { x: position.x + bounds.maxX, z: position.z + bounds.minZ },
+            { x: position.x + bounds.minX, z: position.z + bounds.maxZ },
+            { x: position.x + bounds.maxX, z: position.z + bounds.maxZ }
+        ];
+
+        for (const corner of corners) {
+            const distFromCenter = Math.sqrt(corner.x * corner.x + corner.z * corner.z);
+            if (distFromCenter < clearZoneRadius) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if shape position is valid (no overlap with existing shapes)
+     */
+    function isShapeValidPosition(position, bounds, placedShapes, minDistance) {
+        for (const existing of placedShapes) {
+            // Simple bounding box check with padding
+            const dx = Math.abs(position.x - existing.position.x);
+            const dz = Math.abs(position.z - existing.position.z);
+
+            const combinedWidth = (bounds.width + existing.bounds.width) / 2 + minDistance;
+            const combinedDepth = (bounds.depth + existing.bounds.depth) / 2 + minDistance;
+
+            if (dx < combinedWidth && dz < combinedDepth) {
+                return false;  // Overlap!
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Get human-readable color name
+     */
+    function getColorName(colorHex) {
+        switch (colorHex) {
+            case 0x22c55e: return 'green (low)';
+            case 0xfbbf24: return 'yellow (medium-low)';
+            case 0xf97316: return 'orange (medium-high)';
+            case 0x8B4513: return 'brown (tall)';
+            default: return 'unknown';
+        }
+    }
+
+    /**
+     * Get shape type name from box count
+     */
+    function getShapeTypeName(boxCount) {
+        if (boxCount <= 4) return 'small';
+        if (boxCount <= 8) return 'medium';
+        if (boxCount <= 12) return 'large';
+        return 'huge';
+    }
+
+    // ==========================================
+    // EXPORTS
+    // ==========================================
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = { createRandomObstacles };
     } else {

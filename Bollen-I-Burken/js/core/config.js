@@ -175,10 +175,11 @@ const CONFIG = {
                 count: 45,
                 minDistanceBetween: 2.0,
                 canExclusionRadius: 3.0,
-                minWidth: 2.5, maxWidth: 5.0,
-                minDepth: 2.5, maxDepth: 5.0,
-                minHeight: 1.5, maxHeight: 3.0,
-                lowObstacleRatio: 0.0  // No low obstacles (all full cover)
+                heightScaling: {
+                    nearMin: 0.5, nearMax: 1.2,  // 0-3m from can
+                    midMin: 1.2, midMax: 2.5,    // 3-7m from can
+                    farMin: 2.5, farMax: 4.5     // 7m+ from can
+                }
             },
             ai: {
                 patrolSpeed: 0.06,
@@ -198,10 +199,11 @@ const CONFIG = {
                 count: 35,
                 minDistanceBetween: 2.2,
                 canExclusionRadius: 3.5,
-                minWidth: 2.0, maxWidth: 4.5,
-                minDepth: 2.0, maxDepth: 4.5,
-                minHeight: 1.2, maxHeight: 2.8,
-                lowObstacleRatio: 0.1
+                heightScaling: {
+                    nearMin: 0.5, nearMax: 1.2,
+                    midMin: 1.2, midMax: 2.8,
+                    farMin: 2.8, farMax: 4.5
+                }
             },
             ai: {
                 patrolSpeed: 0.07,
@@ -221,10 +223,11 @@ const CONFIG = {
                 count: 28,
                 minDistanceBetween: 2.5,
                 canExclusionRadius: 4.0,
-                minWidth: 1.8, maxWidth: 4.0,
-                minDepth: 1.8, maxDepth: 4.0,
-                minHeight: 1.0, maxHeight: 2.5,
-                lowObstacleRatio: 0.15
+                heightScaling: {
+                    nearMin: 0.5, nearMax: 1.0,
+                    midMin: 1.0, midMax: 2.5,
+                    farMin: 2.5, farMax: 4.5
+                }
             },
             ai: {
                 patrolSpeed: 0.08,
@@ -244,10 +247,11 @@ const CONFIG = {
                 count: 22,
                 minDistanceBetween: 2.8,
                 canExclusionRadius: 4.5,
-                minWidth: 1.5, maxWidth: 3.5,
-                minDepth: 1.5, maxDepth: 3.5,
-                minHeight: 0.8, maxHeight: 2.2,
-                lowObstacleRatio: 0.2
+                heightScaling: {
+                    nearMin: 0.5, nearMax: 0.8,
+                    midMin: 0.8, midMax: 2.2,
+                    farMin: 2.2, farMax: 4.5
+                }
             },
             ai: {
                 patrolSpeed: 0.09,
@@ -267,10 +271,11 @@ const CONFIG = {
                 count: 18,
                 minDistanceBetween: 3.0,
                 canExclusionRadius: 5.0,
-                minWidth: 1.2, maxWidth: 3.0,
-                minDepth: 1.2, maxDepth: 3.0,
-                minHeight: 0.7, maxHeight: 2.0,
-                lowObstacleRatio: 0.3
+                heightScaling: {
+                    nearMin: 0.5, nearMax: 0.7,
+                    midMin: 0.7, midMax: 2.0,
+                    farMin: 2.0, farMax: 4.0
+                }
             },
             ai: {
                 patrolSpeed: 0.10,
@@ -290,10 +295,11 @@ const CONFIG = {
                 count: 14,
                 minDistanceBetween: 3.5,
                 canExclusionRadius: 5.5,
-                minWidth: 1.0, maxWidth: 2.5,
-                minDepth: 1.0, maxDepth: 2.5,
-                minHeight: 0.6, maxHeight: 1.8,
-                lowObstacleRatio: 0.4
+                heightScaling: {
+                    nearMin: 0.5, nearMax: 0.6,
+                    midMin: 0.6, midMax: 1.8,
+                    farMin: 1.8, farMax: 4.0
+                }
             },
             ai: {
                 patrolSpeed: 0.11,
@@ -313,10 +319,11 @@ const CONFIG = {
                 count: 10,
                 minDistanceBetween: 4.0,
                 canExclusionRadius: 6.0,
-                minWidth: 0.8, maxWidth: 2.0,
-                minDepth: 0.8, maxDepth: 2.0,
-                minHeight: 0.5, maxHeight: 1.5,
-                lowObstacleRatio: 0.5
+                heightScaling: {
+                    nearMin: 0.5, nearMax: 0.6,
+                    midMin: 0.6, midMax: 1.5,
+                    farMin: 1.5, farMax: 3.5
+                }
             },
             ai: {
                 patrolSpeed: 0.12,
@@ -336,10 +343,11 @@ const CONFIG = {
                 count: 7,
                 minDistanceBetween: 5.0,
                 canExclusionRadius: 7.0,
-                minWidth: 0.8, maxWidth: 1.5,
-                minDepth: 0.8, maxDepth: 1.5,
-                minHeight: 0.5, maxHeight: 1.2,
-                lowObstacleRatio: 0.6
+                heightScaling: {
+                    nearMin: 0.5, nearMax: 0.5,
+                    midMin: 0.5, midMax: 1.2,
+                    farMin: 1.2, farMax: 3.0
+                }
             },
             ai: {
                 patrolSpeed: 0.13,
@@ -359,10 +367,11 @@ const CONFIG = {
                 count: 4,
                 minDistanceBetween: 6.0,
                 canExclusionRadius: 8.0,
-                minWidth: 0.8, maxWidth: 1.2,
-                minDepth: 0.8, maxDepth: 1.2,
-                minHeight: 0.5, maxHeight: 1.0,
-                lowObstacleRatio: 0.75
+                heightScaling: {
+                    nearMin: 0.5, nearMax: 0.5,
+                    midMin: 0.5, midMax: 1.0,
+                    farMin: 1.0, farMax: 2.5
+                }
             },
             ai: {
                 patrolSpeed: 0.14,
@@ -382,10 +391,11 @@ const CONFIG = {
                 count: 2,
                 minDistanceBetween: 8.0,
                 canExclusionRadius: 10.0,
-                minWidth: 0.8, maxWidth: 1.0,
-                minDepth: 0.8, maxDepth: 1.0,
-                minHeight: 0.5, maxHeight: 0.8,
-                lowObstacleRatio: 1.0  // All obstacles are low (useless cover!)
+                heightScaling: {
+                    nearMin: 0.5, nearMax: 0.5,
+                    midMin: 0.5, midMax: 0.8,
+                    farMin: 0.8, farMax: 2.0  // Even far obstacles are low = PANIC!
+                }
             },
             ai: {
                 patrolSpeed: 0.15,

@@ -100,7 +100,7 @@
             const obstacleEntities = [];
 
             obstacles.forEach((obstacle, index) => {
-                // Create entity for this obstacle
+                // Create entity for this obstacle shape
                 const obstacleEntity = this.gameEngine.gameState.createEntity();
 
                 // Add Transform component
@@ -110,14 +110,19 @@
                     obstacle.position.z
                 ));
 
-                // Add Renderable component
-                obstacleEntity.addComponent(new Renderable(obstacle.mesh));
+                // Add Renderable component (use group)
+                obstacleEntity.addComponent(new Renderable(obstacle.group));
 
-                // Add Collider component for solid collision
-                obstacleEntity.addComponent(new Collider('box', obstacle.size));
+                // Add Collider component using bounds
+                const colliderSize = {
+                    width: obstacle.bounds.width,
+                    height: obstacle.height,
+                    depth: obstacle.bounds.depth
+                };
+                obstacleEntity.addComponent(new Collider('box', colliderSize));
 
-                // Add Hideable component - can hide behind obstacles
-                const hideRadius = Math.max(obstacle.size.width, obstacle.size.depth) + 1.0;
+                // Add Hideable component
+                const hideRadius = Math.max(obstacle.bounds.width, obstacle.bounds.depth) + 1.0;
                 obstacleEntity.addComponent(new Hideable(1, hideRadius));
 
                 obstacleEntities.push(obstacleEntity);
