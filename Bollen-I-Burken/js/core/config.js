@@ -59,6 +59,8 @@ const CONFIG = {
 
     // ========== AI SETTINGS ==========
     ai: {
+        numHunters: 2,           // Number of AI hunters (they spawn evenly around arena)
+
         hunter: {
             speed: 0.08,         // AI movement speed (slower than player for balance)
             maxSpeed: 0.12,      // Maximum AI velocity
@@ -70,7 +72,7 @@ const CONFIG = {
                 depth: 0.9
             },
             color: 0xff4444,     // AI color (red)
-            spawnPosition: {     // Where AI hunter starts
+            spawnPosition: {     // Where AI hunter starts (only used if numHunters = 1)
                 x: -10,          // 2x scale
                 y: 0.5,
                 z: 10            // 2x scale
@@ -171,12 +173,13 @@ const CONFIG = {
             nameEnglish: "Children's Party",
             description: "Mer gömställen än barn på festen!",
             descriptionEnglish: "More hiding spots than kids at the party!",
+            numHunters: 1,  // Just 1 slow hunter
             obstacles: {
                 count: 45,
                 minDistanceBetween: 2.0,
                 canExclusionRadius: 3.0,
                 heightScaling: {
-                    nearMin: 0.5, nearMax: 1.2,  // 0-3m from can
+                    nearMin: 0.3, nearMax: 0.6,  // 0-3m from can - SHORT & GREEN
                     midMin: 1.2, midMax: 2.5,    // 3-7m from can
                     farMin: 2.5, farMax: 4.5     // 7m+ from can
                 }
@@ -195,12 +198,13 @@ const CONFIG = {
             nameEnglish: "Drunk Uncle at Midsummer",
             description: "Han ser inte så bra efter alla snapsar...",
             descriptionEnglish: "Can't see well after all those shots...",
+            numHunters: 1,  // Still just 1
             obstacles: {
-                count: 35,
+                count: 40,  // More obstacles
                 minDistanceBetween: 2.2,
-                canExclusionRadius: 3.5,
+                canExclusionRadius: 4.0,  // Farther from can
                 heightScaling: {
-                    nearMin: 0.5, nearMax: 1.2,
+                    nearMin: 0.3, nearMax: 0.6,  // SHORT & GREEN near can
                     midMin: 1.2, midMax: 2.8,
                     farMin: 2.8, farMax: 4.5
                 }
@@ -219,12 +223,13 @@ const CONFIG = {
             nameEnglish: "Daycare Teacher Watching",
             description: "Hon har ögon i nacken!",
             descriptionEnglish: "She has eyes in the back of her head!",
+            numHunters: 2,  // 2 hunters now!
             obstacles: {
-                count: 28,
+                count: 35,  // More obstacles
                 minDistanceBetween: 2.5,
-                canExclusionRadius: 4.0,
+                canExclusionRadius: 5.0,  // Farther from can
                 heightScaling: {
-                    nearMin: 0.5, nearMax: 1.0,
+                    nearMin: 0.3, nearMax: 0.5,  // SHORT & GREEN
                     midMin: 1.0, midMax: 2.5,
                     farMin: 2.5, farMax: 4.5
                 }
@@ -243,12 +248,13 @@ const CONFIG = {
             nameEnglish: "Neighborhood Cop",
             description: "Patrullerar som ett proffs",
             descriptionEnglish: "Patrols like a pro",
+            numHunters: 2,
             obstacles: {
-                count: 22,
+                count: 30,  // More obstacles
                 minDistanceBetween: 2.8,
-                canExclusionRadius: 4.5,
+                canExclusionRadius: 6.0,  // Farther from can
                 heightScaling: {
-                    nearMin: 0.5, nearMax: 0.8,
+                    nearMin: 0.3, nearMax: 0.5,  // SHORT & GREEN
                     midMin: 0.8, midMax: 2.2,
                     farMin: 2.2, farMax: 4.5
                 }
@@ -267,12 +273,13 @@ const CONFIG = {
             nameEnglish: "Soccer Coach",
             description: "Ser allt från sidan!",
             descriptionEnglish: "Sees everything from the sideline!",
+            numHunters: 3,  // 3 hunters!
             obstacles: {
-                count: 18,
+                count: 25,  // More obstacles
                 minDistanceBetween: 3.0,
-                canExclusionRadius: 5.0,
+                canExclusionRadius: 7.0,  // Farther from can
                 heightScaling: {
-                    nearMin: 0.5, nearMax: 0.7,
+                    nearMin: 0.3, nearMax: 0.4,  // SUPER SHORT & GREEN
                     midMin: 0.7, midMax: 2.0,
                     farMin: 2.0, farMax: 4.0
                 }
@@ -291,12 +298,13 @@ const CONFIG = {
             nameEnglish: "High School Teacher",
             description: "Inget mobilfuskande här!",
             descriptionEnglish: "No phone cheating here!",
+            numHunters: 3,
             obstacles: {
-                count: 14,
+                count: 22,  // More obstacles
                 minDistanceBetween: 3.5,
-                canExclusionRadius: 5.5,
+                canExclusionRadius: 8.0,  // Farther from can
                 heightScaling: {
-                    nearMin: 0.5, nearMax: 0.6,
+                    nearMin: 0.3, nearMax: 0.4,  // SUPER SHORT & GREEN
                     midMin: 0.6, midMax: 1.8,
                     farMin: 1.8, farMax: 4.0
                 }
@@ -315,20 +323,21 @@ const CONFIG = {
             nameEnglish: "IKEA Security Guard",
             description: "Övervakar alla genvägar!",
             descriptionEnglish: "Watches all the shortcuts!",
+            numHunters: 4,  // 4 hunters!
             obstacles: {
-                count: 10,                  // Keep same (user wants "way less")
-                minDistanceBetween: 8.0,    // 2x scale (was 4.0)
-                canExclusionRadius: 12.0,   // 2x scale (was 6.0)
+                count: 18,  // More obstacles but farther away
+                minDistanceBetween: 8.0,
+                canExclusionRadius: 12.0,  // FAR from can
                 heightScaling: {
-                    nearMin: 0.5, nearMax: 0.6,
+                    nearMin: 0.3, nearMax: 0.4,  // SUPER SHORT & GREEN (but far from can!)
                     midMin: 0.6, midMax: 1.5,
                     farMin: 1.5, farMax: 3.5
                 }
             },
             ai: {
-                patrolSpeed: 0.18,          // Increased for more threatening patrol
-                chaseSpeed: 0.20,           // Slightly faster chase
-                visionRange: 28,            // 2x scale (was 14)
+                patrolSpeed: 0.18,
+                chaseSpeed: 0.20,
+                visionRange: 28,
                 visionAngle: 90
             }
         },
@@ -339,12 +348,13 @@ const CONFIG = {
             nameEnglish: "Secret Service",
             description: "Ser dig innan du ens ser honom...",
             descriptionEnglish: "Sees you before you see him...",
+            numHunters: 4,
             obstacles: {
-                count: 7,
+                count: 15,  // More obstacles
                 minDistanceBetween: 5.0,
-                canExclusionRadius: 7.0,
+                canExclusionRadius: 10.0,  // Very far from can
                 heightScaling: {
-                    nearMin: 0.5, nearMax: 0.5,
+                    nearMin: 0.3, nearMax: 0.3,  // ULTRA SHORT & GREEN
                     midMin: 0.5, midMax: 1.2,
                     farMin: 1.2, farMax: 3.0
                 }
@@ -363,12 +373,13 @@ const CONFIG = {
             nameEnglish: "God's Eye",
             description: "Ser allt, vet allt...",
             descriptionEnglish: "Sees all, knows all...",
+            numHunters: 5,  // 5 hunters!
             obstacles: {
-                count: 4,
+                count: 12,  // More obstacles
                 minDistanceBetween: 6.0,
-                canExclusionRadius: 8.0,
+                canExclusionRadius: 11.0,  // Very far from can
                 heightScaling: {
-                    nearMin: 0.5, nearMax: 0.5,
+                    nearMin: 0.3, nearMax: 0.3,  // ULTRA SHORT & GREEN
                     midMin: 0.5, midMax: 1.0,
                     farMin: 1.0, farMax: 2.5
                 }
@@ -387,14 +398,15 @@ const CONFIG = {
             nameEnglish: "Liquor Store Closing in 5 Minutes",
             description: "Full panik! Ingen tid för gömlek!",
             descriptionEnglish: "Full panic! No time for hide and seek!",
+            numHunters: 6,  // 6 HUNTERS - INSANE!
             obstacles: {
-                count: 2,
+                count: 10,  // Some obstacles but all far away
                 minDistanceBetween: 8.0,
-                canExclusionRadius: 10.0,
+                canExclusionRadius: 12.0,  // VERY far from can
                 heightScaling: {
-                    nearMin: 0.5, nearMax: 0.5,
+                    nearMin: 0.3, nearMax: 0.3,  // ULTRA SHORT & GREEN
                     midMin: 0.5, midMax: 0.8,
-                    farMin: 0.8, farMax: 2.0  // Even far obstacles are low = PANIC!
+                    farMin: 0.8, farMax: 2.0
                 }
             },
             ai: {

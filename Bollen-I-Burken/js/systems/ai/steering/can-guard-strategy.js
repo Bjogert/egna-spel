@@ -21,21 +21,21 @@
      * @returns {Object} Steering { linear: {x, z}, angular: number }
      */
     function computeCanGuardPatrol(ai, transform, canPosition, deltaTime, obstacles = []) {
-        // Initialize patrol state
+        // Initialize patrol state with RANDOMIZED timings for each hunter
         if (!ai.guardState) {
             ai.guardState = {
-                orbitRadius: 6.0,           // Distance from can to patrol (6 meters - 2x scale)
-                orbitAngle: Math.random() * Math.PI * 2,  // Current angle around can
-                orbitDirection: Math.random() < 0.5 ? 1 : -1,  // Clockwise or counter-clockwise
-                scanTarget: 0,              // Current scan target angle
-                scanDuration: 0,            // Time spent scanning current direction
-                nextScanChange: 2000,       // When to change scan direction (ms)
+                orbitRadius: 4.5 + Math.random() * 3.0,  // RANDOM 4.5-7.5m - each hunter patrols at different distance!
+                orbitAngle: Math.random() * Math.PI * 2,  // RANDOM starting angle
+                orbitDirection: Math.random() < 0.5 ? 1 : -1,  // RANDOM direction
+                scanTarget: Math.random() * Math.PI * 2,  // RANDOM initial scan target
+                scanDuration: Math.random() * 500,        // RANDOM offset (0-500ms)
+                nextScanChange: 500 + Math.random() * 1500,  // RANDOM 0.5-2s
                 mode: 'ORBIT',              // ORBIT | REPOSITION | PAUSE | INVESTIGATE
-                moveSpeedMultiplier: 1.0,   // Varies movement speed (0.3 - 2.0)
-                turnSpeedMultiplier: 1.5,   // Varies turn speed (0.5 - 3.0)
-                nextBehaviorChange: 3000,   // When to change tempo (ms)
-                behaviorTimer: 0,
-                currentObstacleIndex: 0,    // Which obstacle to check next
+                moveSpeedMultiplier: 0.8 + Math.random() * 0.4,  // RANDOM 0.8-1.2x speed
+                turnSpeedMultiplier: 1.2 + Math.random() * 1.0,  // RANDOM 1.2-2.2x turn speed
+                nextBehaviorChange: 1000 + Math.random() * 3000,  // RANDOM 1-4s
+                behaviorTimer: Math.random() * 1000,  // RANDOM offset
+                currentObstacleIndex: Math.floor(Math.random() * Math.max(1, obstacles.length)),  // RANDOM starting obstacle
                 checkedObstacles: []        // Track which obstacles checked this patrol cycle
             };
         }
@@ -172,14 +172,15 @@
             // INTELLIGENT SCANNING: Focus on obstacles (hiding spots)
             state.scanDuration += deltaTime * 1000;
 
-            // Change scan direction periodically (look around more often!)
-            const baseScanInterval = 800;  // Reduced from 1500ms - AI looks around faster
+            // Change scan direction periodically - RANDOMIZED per hunter
+            const baseScanInterval = 600 + Math.random() * 400;  // RANDOM 600-1000ms per hunter
             const scanInterval = baseScanInterval / state.turnSpeedMultiplier;
 
             if (state.scanDuration > scanInterval) {
                 if (hasObstacles) {
-                    // Cycle through obstacles systematically
-                    state.currentObstacleIndex = (state.currentObstacleIndex + 1) % obstacles.length;
+                    // Sometimes skip obstacles to create variety
+                    const skipCount = Math.random() < 0.3 ? 1 + Math.floor(Math.random() * 2) : 1;  // Skip 1-2 obstacles randomly
+                    state.currentObstacleIndex = (state.currentObstacleIndex + skipCount) % obstacles.length;
                     const targetObstacle = obstacles[state.currentObstacleIndex];
 
                     // Calculate angle to obstacle from AI position
@@ -192,10 +193,8 @@
 
                     console.log(`[GUARD] Checking obstacle ${state.currentObstacleIndex + 1}/${obstacles.length}`);
                 } else {
-                    // No obstacles - scan opposite side (fallback)
-                    const oppositeAngle = angleFromCan + Math.PI;
-                    const scanRange = Math.PI / 2;
-                    state.scanTarget = oppositeAngle + (Math.random() - 0.5) * scanRange;
+                    // No obstacles - scan random directions
+                    state.scanTarget = Math.random() * Math.PI * 2;  // Completely random direction
                     state.scanTargetObstacle = null;  // No obstacle to focus on
                 }
 

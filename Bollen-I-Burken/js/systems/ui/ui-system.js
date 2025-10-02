@@ -347,7 +347,7 @@ class UISystem extends System {
                 break;
             case GAME_STATES.PLAYER_WIN:
                 gameContainer.className = 'game-player-win';
-                this.showMessage('YOU WIN!', 'You reached the can!');
+                // No popup message - menu will show instead
                 break;
         }
     }

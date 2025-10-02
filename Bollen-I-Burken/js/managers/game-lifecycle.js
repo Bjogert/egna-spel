@@ -162,9 +162,25 @@
             }
 
             this.playerManager.addLocalPlayer(this.localPlayerId);
-            this.playerManager.addAIHunter('ai-hunter-1');
 
-            Utils.log('Local player and AI hunter created');
+            // Spawn multiple AI hunters at different positions based on difficulty
+            const difficulty = CONFIG.difficulties[CONFIG.currentDifficulty];
+            const numHunters = difficulty.numHunters || CONFIG.ai.numHunters || 1;
+            const arenaSize = CONFIG.arena.size;
+            const spawnRadius = arenaSize * 0.6; // Spawn 60% out from center
+
+            Utils.log(`Spawning ${numHunters} hunters for difficulty: ${difficulty.name}`);
+
+            for (let i = 0; i < numHunters; i++) {
+                // Distribute hunters evenly around the arena
+                const angle = (Math.PI * 2 * i) / numHunters;
+                const x = Math.cos(angle) * spawnRadius;
+                const z = Math.sin(angle) * spawnRadius;
+
+                this.playerManager.addAIHunter(`ai-hunter-${i + 1}`, { x, y: 0.5, z });
+            }
+
+            Utils.log(`Local player and ${numHunters} AI hunter(s) created for ${difficulty.name}`);
         }
 
         startGame() {
