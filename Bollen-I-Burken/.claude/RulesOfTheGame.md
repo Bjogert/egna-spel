@@ -2,7 +2,7 @@
 ## Traditional Swedish Hide-and-Seek Game
 
 ### 🎯 **Game Overview**
-"Dunkgömme" (also called "Dunkgömme" or "Burken") is a classic Swedish children's game - an advanced version of hide-and-seek where players must reach a central object (the "can") to save themselves.
+"Dunkgömme" (also called "Bollen i Burken" or "Burken") is a classic Swedish children's game - an advanced version of hide-and-seek where players must reach a central object (the "can") to save themselves.
 
 ### 🏛️ **Game Setup**
 - **Central Object**: A "can" (burken) placed in the center of the play area
