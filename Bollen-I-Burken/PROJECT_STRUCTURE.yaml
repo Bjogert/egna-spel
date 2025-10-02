@@ -1,7 +1,7 @@
 # ==========================================
 # BOLLEN-I-BURKEN PROJECT STRUCTURE
 # Complete file system documentation
-# Generated: 2025-10-01
+# Generated: 2025-10-02
 # ==========================================
 
 project: "Bollen-I-Burken"
@@ -105,11 +105,13 @@ folders:
 
       - file: "utils.js"
         purpose: "Core utility functions and game constants"
-        exports: ["Utils class", "GAME_CONFIG", "GAME_STATES", "PLAYER_STATES"]
+        exports: ["Utils class", "GAME_CONFIG", "GAME_STATES (with PLAYER_WIN)", "PLAYER_STATES"]
         dependencies: ["None - pure utilities"]
         line_count: ~240
         status: "KEEP - CRITICAL ROOT FILE"
-        notes: "MUST stay in root - used by all modules"
+        notes: "MUST stay in root - used by all modules. PLAYER_WIN state added Oct 2025"
+        recent_changes:
+          - "Added PLAYER_WIN to GAME_STATES (player reaches can and wins)"
 
       - file: "debug-commands.js"
         purpose: "Development debugging console commands"
@@ -130,9 +132,16 @@ folders:
           purpose: "Simple KISS configuration - replaces enterprise ConfigManager"
           exports: ["CONFIG", "getConfig()", "setConfig()", "ConfigManager (compatibility)"]
           dependencies: ["None"]
-          line_count: ~489
-          status: "COMPLETE"
-          notes: "Plain JavaScript object - NO Singleton/Observer patterns"
+          line_count: ~510
+          status: "COMPLETE - EXCEEDS LIMIT"
+          notes: "Plain JavaScript object - NO Singleton/Observer patterns. Contains difficulty system"
+          recent_changes:
+            - "Added numHunters property to each difficulty level (1-6 hunters)"
+            - "Level 1: 1 hunter, Level 3+: 2-6 hunters (scales with difficulty)"
+            - "Added obstacle heightScaling with nearMin/nearMax for can exclusion zone"
+            - "Near-can obstacles always 0.3-0.6m height (short & green)"
+            - "Far obstacles can be 2.0-4.5m tall depending on difficulty"
+          action_needed: "Consider splitting into config.js + difficulty-config.js to get under 500 lines"
 
         - file: "entity.js"
           purpose: "ECS entity container with component management"
@@ -162,9 +171,13 @@ folders:
           purpose: "Game loop, tick management, system orchestration"
           exports: ["GameEngine class"]
           dependencies: ["GameState", "System", "Utils"]
-          line_count: ~231
+          line_count: ~270
           status: "COMPLETE"
           notes: "Fixed timestep updates, variable render interpolation"
+          recent_changes:
+            - "Added playerWin() method for player win condition"
+            - "Player can reach can + press space to trigger victory"
+            - "Shows win menu with 'DU VÄN FÖR DIG!' message"
 
       # ==========================================
       # COMPONENTS DIRECTORY
@@ -234,6 +247,13 @@ folders:
             line_count: ~30
             status: "COMPLETE"
 
+          - file: "parent.js"
+            purpose: "Parent-child relationship tracking for compound obstacles"
+            exports: ["Parent component"]
+            line_count: ~35
+            status: "COMPLETE"
+            notes: "Added for obstacle compound collider system"
+
     # ==========================================
     # SYSTEMS DIRECTORY
     # ==========================================
@@ -243,12 +263,17 @@ folders:
 
       files:
         - file: "movement-system.js"
-          purpose: "Movement physics, collision detection, boundary checks"
+          purpose: "Movement physics, collision detection, boundary checks, win condition"
           exports: ["MovementSystem class"]
           dependencies: ["System", "Transform", "Movement", "Collider"]
-          line_count: ~400
+          line_count: ~383
           status: "COMPLETE"
           notes: "Handles player and AI movement with collision"
+          recent_changes:
+            - "Added checkPlayerWinCondition() - player reaches can + presses space to win"
+            - "Added updateVisionConeGeometry() - dynamically updates vision cone mesh to match detection cone"
+            - "Vision cone color changes: red (player detected), bright yellow (focused), orange (patrol)"
+            - "Win condition: within 2m of can + action1 key (space) triggers playerWin()"
 
       subfolders:
         input/:
@@ -280,9 +305,14 @@ folders:
               purpose: "HUD, stats display, in-game UI"
               exports: ["UISystem class"]
               dependencies: ["System", "Utils", "CONFIG"]
-              line_count: ~450
-              status: "COMPLETE"
-              notes: "Split from monolithic ui.js"
+              line_count: ~628
+              status: "COMPLETE - EXCEEDS LIMIT"
+              notes: "Split from monolithic ui.js. Handles countdown display, game timer, player win state"
+              recent_changes:
+                - "Added showCountdown() and hideCountdown() for 5-second countdown before game starts"
+                - "PLAYER_WIN state support - no popup message, menu shows instead"
+                - "Countdown shows 'Vakten räknar... Hitta gömställe!' subtitle"
+              action_needed: "Consider splitting into ui-system.js + ui-messages.js to get under 500 lines"
 
             - file: "menu-overlay.js"
               purpose: "Start menu, game over screen, difficulty selector"
@@ -296,12 +326,78 @@ folders:
           purpose: "AI behavior system"
           files:
             - file: "ai-system.js"
-              purpose: "AI hunter patrol, chase, vision, line-of-sight"
-              exports: ["AISystem class"]
-              dependencies: ["System", "AIHunter", "VisionCone", "Transform"]
-              line_count: ~550
-              status: "NEEDS_SPLIT"
-              notes: "Exceeds 500 lines - consider splitting into ai-patrol.js, ai-vision.js"
+              purpose: "AI hunter patrol, chase, vision, line-of-sight, dynamic vision integration"
+              exports: ["AISystem class", "AI_STATES"]
+              dependencies: ["System", "AIHunter", "VisionCone", "Transform", "DynamicVision"]
+              line_count: ~526
+              status: "COMPLETE - EXCEEDS LIMIT"
+              notes: "Handles AI states: PATROL (orbit can), RACE (sprint to can when player spotted)"
+              recent_changes:
+                - "Integrated DynamicVision system for adaptive vision range/angle"
+                - "Vision adapts based on what AI is looking at (scan target distance)"
+                - "AI_STATES: PATROL (guard can at 4.5-7.5m radius), RACE (sprint to can)"
+                - "Multiple hunters support with circle formation spawning"
+                - "Dynamic vision: narrow beam when focused far, wide peripheral when close"
+              action_needed: "Consider splitting into ai-system.js + ai-vision.js to get under 500 lines"
+
+            - file: "dynamic-vision.js"
+              purpose: "Dynamic vision cone calculator - adaptive AI vision system"
+              exports: ["DynamicVision class"]
+              dependencies: ["None - pure calculation"]
+              line_count: ~192
+              status: "COMPLETE - NEW FILE (Oct 2025)"
+              notes: "Trade-off system: range vs angle based on scan target distance"
+              architecture:
+                concept: "AI vision adapts to what it's looking at"
+                trade_offs:
+                  - "Looking FAR (at obstacles) → NARROW cone (focused), LONGER range (2.875x)"
+                  - "Looking NEAR (general patrol) → WIDE cone (peripheral), SHORTER range (0.8x)"
+                  - "Mid-range → NORMAL vision (1.0x range, 1.0x angle)"
+                key_features:
+                  - "Smoothing to prevent vision twitching (10% new, 90% old distance)"
+                  - "computeRangeFactor(): Close 0.8x, Mid 1.0x, Far 2.875x range"
+                  - "computeAngleFactor(): Close 1.2x, Mid 1.0x, Far 0.15x angle (85% narrower!)"
+                  - "getScanTargetInfo(): Gets what AI is currently looking at from guard state"
+                  - "Uses REAL distance to obstacles when AI focuses on them"
+                integration:
+                  - "Called from ai-system.js updateVision() every frame"
+                  - "Works with can-guard-strategy.js scan targets"
+                  - "Vision cone mesh geometry updated in movement-system.js"
+
+          steering/:
+            purpose: "AI steering behaviors and strategies"
+            files:
+              - file: "steering-behaviors.js"
+                purpose: "Core steering behavior primitives"
+                exports: ["SteeringBehaviors utilities"]
+                dependencies: ["None - pure math"]
+                line_count: ~180
+                status: "COMPLETE"
+                notes: "Seek, flee, arrive, face, wander behaviors"
+
+              - file: "obstacle-avoidance.js"
+                purpose: "Obstacle detection and avoidance steering"
+                exports: ["ObstacleAvoidance utilities"]
+                dependencies: ["SteeringBehaviors"]
+                line_count: ~220
+                status: "COMPLETE"
+                notes: "Raycasting ahead, wall detection, unstuck logic"
+
+              - file: "can-guard-strategy.js"
+                purpose: "AI hunter can-guarding patrol strategy with obstacle scanning"
+                exports: ["computeCanGuardPatrol"]
+                dependencies: ["SteeringBehaviors"]
+                line_count: ~292
+                status: "COMPLETE"
+                notes: "AI orbits can at randomized radius, scans obstacles systematically"
+                recent_changes:
+                  - "RANDOMIZED patrol for each hunter: different orbit radius (4.5-7.5m), speed (0.8-1.2x), turn rate (1.2-2.2x)"
+                  - "Each hunter starts at random angle, random direction (clockwise/counter-clockwise)"
+                  - "Scan timing randomized per hunter: 600-1000ms intervals with random offsets"
+                  - "Obstacle-aware scanning: AI looks at hiding spots, not random air"
+                  - "Dynamic behavior modes: PAUSE (stop & look), REPOSITION (quick move), SLOW CREEP, FAST PATROL"
+                  - "Passes scan target obstacles to dynamic-vision.js for accurate distance calculation"
+                  - "Sometimes skips 1-2 obstacles randomly to create variety in patrol patterns"
 
         interaction/:
           purpose: "Player-object interaction system"
@@ -346,12 +442,17 @@ folders:
 
       files:
         - file: "game-lifecycle.js"
-          purpose: "Round initialization, cleanup, game over handling"
+          purpose: "Round initialization, cleanup, game over handling, multiple hunter spawning"
           exports: ["GameLifecycle singleton"]
           dependencies: ["ArenaBuilder", "PlayerManager", "GameEngine"]
-          line_count: ~217
+          line_count: ~259
           status: "COMPLETE"
           notes: "Coordinates game rounds and restarts"
+          recent_changes:
+            - "Spawns multiple AI hunters based on difficulty.numHunters (1-6 hunters)"
+            - "Hunters distributed evenly in circle formation around arena (60% radius)"
+            - "Each hunter spawned at angle: (2π * i / numHunters)"
+            - "startCountdown(5) triggers 5-second countdown before game starts"
 
         - file: "player-manager.js"
           purpose: "Player and AI entity creation/destruction"
@@ -413,12 +514,26 @@ folders:
             status: "COMPLETE"
 
           - file: "arena-obstacles.js"
-            purpose: "Procedural obstacle generation with difficulty"
+            purpose: "Procedural obstacle generation with difficulty and height-based coloring"
             exports: ["ArenaObstacles utilities"]
-            dependencies: ["Three.js", "CONFIG", "arena-helpers"]
+            dependencies: ["Three.js", "CONFIG", "arena-helpers", "obstacle-shapes"]
             line_count: ~280
             status: "COMPLETE"
-            notes: "Uses difficulty system for dynamic obstacle count"
+            notes: "Uses difficulty system for dynamic obstacle count and height scaling"
+            recent_changes:
+              - "Height-based color system: 0-1m green, 1-2m yellow, 2-3m orange, 3m+ red"
+              - "Near-can obstacles forced to 0.3-0.6m height (short & green) using heightScaling.nearMin/nearMax"
+              - "Mid-range obstacles (3-7m from can) use midMin/midMax scaling"
+              - "Far obstacles (7m+) use farMin/farMax scaling (can be tall)"
+              - "Difficulty-based canExclusionRadius (3m-12m) keeps obstacles away from can"
+
+          - file: "obstacle-shapes.js"
+            purpose: "Compound obstacle shape generation (L-shapes, T-shapes, etc.)"
+            exports: ["ObstacleShapes utilities"]
+            dependencies: ["Three.js"]
+            line_count: ~150
+            status: "COMPLETE"
+            notes: "Creates multi-box compound obstacles with proper colliders"
 
           - file: "arena-helpers.js"
             purpose: "Shared helper functions for arena generation"
@@ -562,6 +677,14 @@ backups/:
       purpose: "Local Claude settings"
       status: "CONFIGURATION"
 
+    - file: "claude.md"
+      purpose: "Project guidelines and recent updates"
+      status: "DOCUMENTATION"
+
+    - file: "Architecture-Overview.md"
+      purpose: "System architecture documentation"
+      status: "DOCUMENTATION"
+
 # ==========================================
 # FEATURE ADDITIONS GUIDE
 # ==========================================
@@ -623,6 +746,7 @@ naming_conventions:
       - "game-engine.js"
       - "player-manager.js"
       - "interaction-system.js"
+      - "dynamic-vision.js"
 
   classes:
     pattern: "PascalCase"
@@ -630,6 +754,7 @@ naming_conventions:
       - "GameEngine"
       - "PlayerManager"
       - "InteractionSystem"
+      - "DynamicVision"
 
   components:
     pattern: "PascalCase (singular noun)"
@@ -662,78 +787,172 @@ naming_conventions:
 # DIFFICULTY SYSTEM
 # ==========================================
 difficulty_system:
-  description: "10-level dynamic difficulty system"
+  description: "10-level dynamic difficulty system with multiple hunters"
   implementation: "CONFIG.difficulties array in core/config.js"
   current_level: "Stored in CONFIG.currentDifficulty (default: 1)"
 
   levels:
     - id: 0
       name: "Barnkalas (Children's Party)"
+      numHunters: 1
       obstacles: 45
-      description: "Super Easy - Maximum hiding spots"
+      description: "Super Easy - Maximum hiding spots, 1 slow hunter"
 
     - id: 1
       name: "Fyllekäring på Midsommar (Drunk Uncle)"
-      obstacles: 35
-      description: "Easy - Can't see well after shots"
+      numHunters: 1
+      obstacles: 40
+      description: "Easy - Can't see well after shots, 1 hunter"
 
     - id: 2
       name: "Dagisfröken Övervakar (Daycare Teacher)"
-      obstacles: 28
-      description: "Normal - Eyes in the back of head"
+      numHunters: 2
+      obstacles: 35
+      description: "Normal - 2 hunters with eyes in back of head"
 
     - id: 3
       name: "Kvarterspolisen (Neighborhood Cop)"
-      obstacles: 22
-      description: "Balanced - Patrols like a pro"
+      numHunters: 2
+      obstacles: 30
+      description: "Balanced - 2 hunters patrol like pros"
 
     - id: 4
       name: "Fotbollstränaren (Soccer Coach)"
-      obstacles: 18
-      description: "Challenging - Sees from sideline"
+      numHunters: 3
+      obstacles: 25
+      description: "Challenging - 3 hunters see from sideline"
 
     - id: 5
       name: "Gymnasieläraren (High School Teacher)"
-      obstacles: 14
-      description: "Hard - No phone cheating"
+      numHunters: 3
+      obstacles: 22
+      description: "Hard - 3 hunters, no phone cheating"
 
     - id: 6
       name: "Vakten på Ikea (IKEA Security)"
-      obstacles: 10
-      description: "Very Hard - Watches shortcuts"
+      numHunters: 4
+      obstacles: 18
+      description: "Very Hard - 4 hunters watch shortcuts"
 
     - id: 7
       name: "Säkerhetspolisen (Secret Service)"
-      obstacles: 7
-      description: "Expert - Sees you before you see him"
+      numHunters: 4
+      obstacles: 15
+      description: "Expert - 4 hunters see before you see them"
 
     - id: 8
       name: "Guds Öga (God's Eye)"
-      obstacles: 4
-      description: "Nightmare - Sees all, knows all"
+      numHunters: 5
+      obstacles: 12
+      description: "Nightmare - 5 hunters see all, know all"
 
     - id: 9
       name: "Systemet Stänger (Liquor Store Closing)"
-      obstacles: 2
-      description: "PANIC! - Full chaos, no time to hide"
+      numHunters: 6
+      obstacles: 10
+      description: "PANIC! - 6 hunters, full chaos, no time to hide"
 
   mechanics:
-    principle: "Fewer obstacles = harder difficulty"
+    principle: "Fewer obstacles = harder difficulty, more hunters = harder"
+    hunter_scaling:
+      - "Level 0-1: 1 hunter (learning mode)"
+      - "Level 2-3: 2 hunters (balanced challenge)"
+      - "Level 4-5: 3 hunters (hard mode)"
+      - "Level 6-7: 4 hunters (expert mode)"
+      - "Level 8: 5 hunters (nightmare)"
+      - "Level 9: 6 hunters (impossible mode)"
+      - "Each hunter has randomized patrol radius (4.5-7.5m)"
+      - "Each hunter has randomized speeds (0.8-1.2x move, 1.2-2.2x turn)"
+      - "Hunters spawn in circle formation around arena"
+
     ai_scaling:
-      - "Patrol speed increases with difficulty"
-      - "Chase speed increases with difficulty"
-      - "Vision range increases with difficulty"
-      - "Vision angle widens with difficulty"
+      - "Patrol speed increases with difficulty (0.06 → 0.15)"
+      - "Chase speed increases with difficulty (0.10 → 0.25)"
+      - "Vision range increases with difficulty (8 → 18 units)"
+      - "Vision angle widens with difficulty (60° → 110°)"
+      - "Dynamic vision adapts range/angle based on scan target"
 
     obstacle_scaling:
-      - "High difficulty = fewer, smaller obstacles"
-      - "Low difficulty = many, larger obstacles"
-      - "Low obstacle ratio increases (more partial cover)"
+      - "High difficulty = fewer, farther obstacles"
+      - "Low difficulty = many, closer obstacles"
+      - "Near-can obstacles always short (0.3-0.6m) & green"
+      - "Mid-range obstacles (3-7m) medium height"
+      - "Far obstacles (7m+) can be tall (up to 4.5m)"
+      - "Height-based colors: green (0-1m), yellow (1-2m), orange (2-3m), red (3m+)"
 
   usage:
     - "Selected via dropdown in menu-overlay.js"
     - "Applied during arena creation in arena-obstacles.js"
     - "AI stats set in player-manager.js addAIHunter()"
+    - "Multiple hunters spawned in game-lifecycle.js"
+
+# ==========================================
+# GAME FEATURES (OCTOBER 2025)
+# ==========================================
+game_features:
+  description: "Major features added in October 2025"
+
+  dynamic_vision:
+    file: "js/systems/ai/dynamic-vision.js"
+    description: "AI vision adapts based on what it's looking at"
+    mechanics:
+      - "Trade-off: Range vs Angle"
+      - "Looking FAR → NARROW cone (focused), 2.875x range"
+      - "Looking NEAR → WIDE cone (peripheral), 0.8x range"
+      - "Smoothing prevents vision twitching"
+      - "Uses real obstacle distances for accurate focusing"
+    integration:
+      - "Called from ai-system.js every frame"
+      - "Vision cone mesh updates in movement-system.js"
+      - "Works with can-guard-strategy.js scan targets"
+
+  multiple_hunters:
+    description: "Difficulty-based hunter counts (1-6 hunters)"
+    implementation:
+      - "Each difficulty level has numHunters property"
+      - "Hunters spawn in circle formation (60% radius)"
+      - "Each hunter has randomized patrol parameters"
+      - "Independent patrol radii (4.5-7.5m per hunter)"
+      - "Randomized speeds, turn rates, scan timings"
+      - "Hunters spawned in game-lifecycle.js"
+
+  player_win_condition:
+    description: "Player can reach can and press space to win"
+    implementation:
+      - "checkPlayerWinCondition() in movement-system.js"
+      - "Within 2m of can + action1 key (space) = win"
+      - "playerWin() method in game-engine.js"
+      - "Shows 'DU VÄN FÖR DIG!' message"
+      - "PLAYER_WIN state added to GAME_STATES"
+      - "No popup message - menu shows instead (ui-system.js)"
+
+  independent_hunter_behavior:
+    description: "Each hunter has unique patrol patterns"
+    implementation:
+      - "Randomized orbit radius per hunter (4.5-7.5m)"
+      - "Random starting angle and direction"
+      - "Random speeds: move (0.8-1.2x), turn (1.2-2.2x)"
+      - "Random scan intervals (600-1000ms)"
+      - "Dynamic behavior modes: PAUSE, REPOSITION, SLOW CREEP, FAST PATROL"
+      - "Sometimes skip obstacles randomly for variety"
+
+  improved_obstacles:
+    description: "Height-based coloring and difficulty-based spacing"
+    implementation:
+      - "Height-based colors: green→yellow→orange→red (0-4m)"
+      - "Near-can obstacles forced short (0.3-0.6m) & green"
+      - "Difficulty-based canExclusionRadius (3-12m)"
+      - "heightScaling with nearMin/nearMax for zones"
+      - "Compound colliders with Parent component"
+
+  arena_scaling:
+    description: "4x bigger arena (30x30 units)"
+    implementation:
+      - "CONFIG.arena.size: 15 → 30 (double width/length)"
+      - "Wall height scaled 2x (3m → 6m)"
+      - "Camera height/distance scaled 2x"
+      - "Hunters spawn at 60% radius (~18m from center)"
+      - "Patrol radii scaled (4.5-7.5m for 30x30 arena)"
 
 # ==========================================
 # KEY ARCHITECTURAL DECISIONS
@@ -762,6 +981,10 @@ architecture_decisions:
       - "Forces good separation of concerns"
       - "Prevents monolithic code"
     action: "Split into subfolder modules when exceeding 500 lines"
+    current_violations:
+      - "config.js: 510 lines (difficulty system - consider splitting)"
+      - "ai-system.js: 526 lines (vision integration - consider splitting)"
+      - "ui-system.js: 628 lines (many features - consider splitting)"
 
   no_aggregators:
     description: "Ban files that only re-export other modules"
@@ -777,6 +1000,7 @@ architecture_decisions:
       - "systems/ui/ → ui-system.js + menu-overlay.js"
       - "systems/interaction/ → interaction-system.js + handlers + visuals"
       - "managers/arena/ → 8 focused modules"
+      - "systems/ai/steering/ → 3 focused modules + dynamic-vision.js"
     benefits:
       - "Each file has single responsibility"
       - "Easy to test in isolation"
@@ -789,31 +1013,34 @@ dependency_graph:
   description: "Core dependency flow (simplified)"
 
   layer_1_foundation:
-    - "utils.js (GAME_STATES, Utils, constants)"
-    - "core/config.js (CONFIG object)"
+    - "utils.js (GAME_STATES with PLAYER_WIN, Utils, constants)"
+    - "core/config.js (CONFIG object with difficulty system)"
 
   layer_2_core:
     - "core/entity.js (Entity)"
     - "core/system.js (System base class)"
-    - "core/components/* (all components)"
+    - "core/components/* (all components including Parent)"
 
   layer_3_engine:
     - "core/game-state.js (GameState)"
-    - "core/game-engine.js (GameEngine)"
+    - "core/game-engine.js (GameEngine with playerWin())"
 
   layer_4_systems:
     - "systems/input/input-system.js"
-    - "systems/movement-system.js"
-    - "systems/ai/ai-system.js"
+    - "systems/movement-system.js (with win condition)"
+    - "systems/ai/dynamic-vision.js (NEW - adaptive vision)"
+    - "systems/ai/ai-system.js (uses DynamicVision)"
+    - "systems/ai/steering/*.js (behaviors + can-guard)"
     - "systems/interaction/interaction-system.js"
-    - "systems/ui/ui-system.js"
+    - "systems/ui/ui-system.js (countdown + win state)"
     - "systems/network/network-system.js"
 
   layer_5_managers:
     - "managers/player-manager.js"
     - "managers/arena/arena-builder.js"
+    - "managers/arena/arena-obstacles.js (height-based colors)"
     - "managers/resource/resource-manager-core.js"
-    - "managers/game-lifecycle.js"
+    - "managers/game-lifecycle.js (multiple hunter spawning)"
 
   layer_6_bootstrap:
     - "systems/ui/menu-overlay.js"
@@ -872,18 +1099,35 @@ debug_commands:
 # CURRENT STATUS SUMMARY
 # ==========================================
 status_summary:
-  total_js_files: 43
+  total_js_files: 50
   core_files: 5
-  components: 10
-  systems: 11
+  components: 11
+  systems: 15
   managers: 11
   legacy_files: 2
   backup_files: 12
 
+  new_files_october_2025:
+    - file: "js/systems/ai/dynamic-vision.js"
+      lines: 192
+      purpose: "Adaptive AI vision system"
+
+    - file: "js/core/components/parent.js"
+      lines: 35
+      purpose: "Parent-child relationships for compound obstacles"
+
   files_needing_attention:
+    - file: "core/config.js"
+      issue: "~510 lines - slightly exceeds 500 line limit"
+      action: "Consider splitting difficulty system into separate file"
+
     - file: "systems/ai/ai-system.js"
-      issue: "~550 lines - exceeds 500 line limit"
-      action: "Split into ai-patrol.js, ai-vision.js, ai-chase.js"
+      issue: "~526 lines - exceeds 500 line limit"
+      action: "Consider extracting vision logic to ai-vision.js"
+
+    - file: "systems/ui/ui-system.js"
+      issue: "~628 lines - exceeds 500 line limit"
+      action: "Consider splitting into ui-system.js + ui-messages.js"
 
     - file: "network/legacy/*.js"
       issue: "Unused legacy networking code"
@@ -896,8 +1140,13 @@ status_summary:
     - "Split arena into 8 focused modules"
     - "Split interaction into 3 focused modules"
     - "Split resource management into 3 modules"
-    - "Added 10-level difficulty system"
+    - "Added 10-level difficulty system with numHunters"
     - "Implemented menu overlay with difficulty selector"
+    - "Added dynamic vision system (Oct 2025)"
+    - "Added multiple hunter support (Oct 2025)"
+    - "Added player win condition (Oct 2025)"
+    - "Added height-based obstacle coloring (Oct 2025)"
+    - "Scaled arena to 4x size (30x30) (Oct 2025)"
 
 # ==========================================
 # MAINTENANCE NOTES
@@ -938,3 +1187,40 @@ version_history:
       - "Added difficulty system documentation"
       - "Included deleted files archive"
       - "Comprehensive rules and guidelines"
+
+  - version: "1.1.0"
+    date: "2025-10-02"
+    changes:
+      - "Added dynamic vision system (dynamic-vision.js - 192 lines)"
+      - "Integrated adaptive AI vision (range/angle trade-off)"
+      - "Added multiple AI hunters support (1-6 hunters per difficulty)"
+      - "Added player win condition (reach can + press space)"
+      - "Added randomized hunter behaviors (patrol radius, speeds, scan timing)"
+      - "Improved obstacle system (height-based coloring, difficulty-based spacing)"
+      - "Scaled arena to 4x size (30x30 units)"
+      - "Added PLAYER_WIN to GAME_STATES"
+      - "Added playerWin() method to GameEngine"
+      - "Added Parent component for compound obstacles"
+      - "Updated difficulty system with numHunters per level"
+      - "Added vision cone geometry updates in movement-system.js"
+      - "Added 5-second countdown before game starts"
+      - "Documented all October 2025 changes"
+
+  - version: "1.2.0"
+    date: "2025-10-02"
+    changes:
+      - "Fine-tuned dynamic vision: 15% angle (85% narrower) when focused, 2.875x range (15% further)"
+      - "Fixed vision mode switching by calculating REAL obstacle distances in getScanTargetInfo()"
+      - "Dynamic vision now truly adaptive - switches between wide (close) and narrow (far)"
+      - "Comprehensive hunter randomization: orbit radius (4.5-7.5m), speeds (0.8-1.2x move, 1.2-2.2x turn)"
+      - "Variable scan intervals per hunter (600-1000ms) with random offsets"
+      - "Random obstacle skipping (30% chance to skip 1-2 obstacles) for unpredictable patterns"
+      - "Obstacle-aware scanning: AI looks at ACTUAL hiding spots with real distance calculation"
+      - "Dynamic behavior modes: PAUSE (0.0 move), REPOSITION (2.0 move), SLOW CREEP (0.3), FAST PATROL (1.6)"
+      - "Each hunter completely independent - different timing, radius, speed, direction"
+      - "Player win condition: reach can (within 2.3m) + press Space = victory"
+      - "Removed unnecessary popup on win - menu shows directly with 'DU VÄN FÖR DIG!' message"
+      - "Difficulty-based hunter counts: Level 1=1, Level 3-4=2, Level 5-6=3, Level 7-8=4, Level 9=5, Level 10=6"
+      - "Near-can obstacles always short (0.3-0.6m) and green for fair gameplay"
+      - "Higher difficulties have MORE obstacles but FARTHER from can (canExclusionRadius 3m→12m)"
+      - "Updated claude.md, PROJECT_STRUCTURE.yaml, and Architecture-Overview.md with comprehensive documentation"

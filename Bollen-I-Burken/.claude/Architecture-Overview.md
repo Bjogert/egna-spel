@@ -1,35 +1,30 @@
-# Dunkgömme - Architecture Overview (KISS Edition)
+# Bollen-I-Burken - Architecture Overview (KISS Edition)
 
-**Last Updated**: September 29, 2025
-**Status**: Post-Revert, Refactoring In Progress
+**Last Updated**: October 2, 2025
+**Status**: Active Development - Recent Major Updates
 **Philosophy**: **Keep It Simple, Stupid (KISS)**
 
 ---
 
 ## 📋 Executive Summary
 
-This document outlines the **simplified, maintainable architecture** for Dunkgömme after identifying and removing over-engineering that caused the AI vision system to break.
+This document outlines the **simplified, maintainable architecture** for Bollen-I-Burken, a 3D hide-and-seek arena game built with Three.js and vanilla JavaScript.
 
 ### Core Philosophy: KISS Over Enterprise
 
-**Before (Broken)**:
-- 6,500 lines of code with 38% enterprise bloat
-- ConfigManager (746 lines), ErrorHandler (604 lines), ComponentValidator (599 lines)
-- Vision system buried in 678-line ai.js file
-- ComponentValidator bug destroyed object prototypes
-- Impossible to test systems independently
-
-**After (Target)**:
-- ~4,000 lines of focused, simple code
-- Plain JavaScript config object (50 lines)
+**Current State (Optimized)**:
+- ~4,500 lines of focused, simple code
+- Plain JavaScript CONFIG object (510 lines with difficulty system)
 - Simple try-catch error handling
 - No component validation overhead
-- Vision system extracted (independently testable)
-- Clear folder structure: core/, systems/, managers/, utils/
+- Dynamic vision system independently testable (192 lines)
+- Multiple hunter support with randomized behaviors
+- Player win condition system
+- Clear folder structure: core/, systems/, managers/
 
 ### Key Principles
 ✅ **One concern per file** - Each file has single, clear responsibility
-✅ **Small files** - Target 200-400 lines; never exceed 500
+✅ **Small files** - Target 200-400 lines; never exceed 500 (current violations noted)
 ✅ **No enterprise patterns** - Avoid Singleton/Observer/Strategy unless truly needed
 ✅ **Explicit over clever** - Simple code beats abstract frameworks
 ✅ **Test in isolation** - Systems should work independently
@@ -37,7 +32,7 @@ This document outlines the **simplified, maintainable architecture** for Dunkgö
 
 ---
 
-## 🗂️ Proposed Folder Structure
+## 🗂️ Current Folder Structure
 
 ```
 Bollen-I-Burken/
@@ -52,92 +47,340 @@ Bollen-I-Burken/
 │   │
 │   ├── core/                       ⭐ CORE GAME ENGINE
 │   │   ├── entity.js               (130 lines) Entity class
-│   │   ├── components.js           (250 lines) All component definitions
-│   │   ├── collision.js            (150 lines) Collider + collision math
-│   │   ├── game-engine.js          (200 lines) GameEngine, GameState, System
-│   │   └── config.js               (50 lines) Simple configuration object
+│   │   ├── components/             (11 component files)
+│   │   │   ├── transform.js        Position, rotation, velocity
+│   │   │   ├── player-input.js     Input state
+│   │   │   ├── renderable.js       Three.js mesh reference
+│   │   │   ├── movement.js         Movement properties
+│   │   │   ├── player.js           Player identity
+│   │   │   ├── interactable.js     Interaction callbacks
+│   │   │   ├── hideable.js         Hiding spot data
+│   │   │   ├── collider.js         Collision bounds
+│   │   │   ├── ai-hunter.js        AI state machine
+│   │   │   ├── vision-cone.js      Vision parameters
+│   │   │   └── parent.js           Parent-child relationships (NEW)
+│   │   ├── game-state.js           (96 lines) Entity/player tracking
+│   │   ├── game-engine.js          (270 lines) Game loop + playerWin() (NEW)
+│   │   ├── system.js               (22 lines) Base System class
+│   │   └── config.js               (510 lines) Simple config + difficulty system
 │   │
 │   ├── systems/                    ⭐ GAME SYSTEMS (one per file)
-│   │   ├── input-system.js         (300 lines) Keyboard, touch, gamepad
-│   │   ├── movement-system.js      (200 lines) Player and AI movement
-│   │   ├── ai-behavior.js          (250 lines) AI state machine
-│   │   ├── vision-system.js        (200 lines) Vision cone + line-of-sight
-│   │   ├── interaction-system.js   (300 lines) Object interactions
-│   │   ├── ui-system.js            (400 lines) UI rendering
-│   │   └── audio-system.js         (350 lines) Sound management
+│   │   ├── input/
+│   │   │   └── input-system.js     (365 lines) Keyboard, touch, gamepad
+│   │   │
+│   │   ├── movement-system.js      (383 lines) Physics + win condition (NEW)
+│   │   │
+│   │   ├── ai/
+│   │   │   ├── ai-system.js        (526 lines) Main AI + dynamic vision (EXCEEDS LIMIT)
+│   │   │   ├── dynamic-vision.js   (192 lines) Adaptive vision system (NEW - Oct 2025)
+│   │   │   └── steering/
+│   │   │       ├── steering-behaviors.js    (180 lines) Core steering
+│   │   │       ├── obstacle-avoidance.js    (220 lines) Avoidance logic
+│   │   │       └── can-guard-strategy.js    (292 lines) Randomized patrol (NEW)
+│   │   │
+│   │   ├── ui/
+│   │   │   ├── ui-system.js        (628 lines) HUD + countdown (EXCEEDS LIMIT)
+│   │   │   └── menu-overlay.js     (350 lines) Menus + difficulty selector
+│   │   │
+│   │   ├── interaction/
+│   │   │   ├── interaction-system.js        (250 lines) Main orchestration
+│   │   │   ├── interaction-handlers.js      (180 lines) Type handlers
+│   │   │   └── interaction-visuals.js       (120 lines) Visual feedback
+│   │   │
+│   │   ├── audio/
+│   │   │   └── audio-system.js     (200 lines) Sound effects (DISABLED)
+│   │   │
+│   │   └── network/
+│   │       └── network-system.js   (200 lines) Network sync (LOCAL MODE)
 │   │
 │   ├── managers/                   ⭐ DOMAIN MANAGERS
-│   │   ├── arena-builder.js        (400 lines) Arena creation
-│   │   ├── player-manager.js       (200 lines) Player spawning
-│   │   └── resource-manager.js     (300 lines) Three.js cleanup
+│   │   ├── arena/
+│   │   │   ├── arena-builder.js            (91 lines) Main coordinator
+│   │   │   ├── arena-floor.js              (80 lines) Floor creation
+│   │   │   ├── arena-walls.js              (120 lines) Wall creation
+│   │   │   ├── arena-lighting.js           (100 lines) Lighting setup
+│   │   │   ├── arena-can.js                (90 lines) Central can
+│   │   │   ├── arena-obstacles.js          (280 lines) Obstacle generation (NEW colors)
+│   │   │   ├── obstacle-shapes.js          (150 lines) Compound shapes
+│   │   │   ├── arena-helpers.js            (150 lines) Shared helpers
+│   │   │   └── arena-cleanup.js            (120 lines) Resource cleanup
+│   │   │
+│   │   ├── player-manager.js       (259 lines) Player spawning
+│   │   ├── player-factory.js       (100 lines) Entity creation
+│   │   ├── game-lifecycle.js       (259 lines) Round init + multiple hunters (NEW)
+│   │   │
+│   │   └── resource/
+│   │       ├── resource-manager-core.js    (300 lines) Main manager
+│   │       ├── resource-factories.js       (150 lines) Creation factories
+│   │       └── resource-observers.js       (100 lines) Lifecycle observers
 │   │
-│   └── utils/                      ⭐ UTILITIES
-│       ├── utils.js                (200 lines) Vector math, helpers
-│       ├── collision-utils.js      (150 lines) Ray-box intersection
-│       └── constants.js            (50 lines) Game constants
+│   └── ROOT FILES (MUST STAY IN ROOT)
+│       ├── main.js                 (367 lines) Bootstrap + game loop
+│       ├── utils.js                (240 lines) Utilities + GAME_STATES (PLAYER_WIN added)
+│       └── debug-commands.js       (305 lines) Debug console commands
 │
-├── assets/                         (Future)
-│   ├── sounds/
-│   ├── images/
-│   └── models/
-│
-└── documentation/
-    ├── README.md
-    ├── Architecture-Overview.md    (This file)
-    ├── Function-Glossary.md        (Complete function reference)
-    ├── Bug.md
-    └── documentation.md
+└── .claude/
+    ├── claude.md                   Project guidelines + recent updates
+    ├── Architecture-Overview.md    This file
+    └── settings.local.json         Claude settings
 ```
-
-**Benefits**:
-- Find code by category (all systems in systems/)
-- File sizes manageable (<400 lines)
-- Test systems independently
-- Clear import relationships
-- Professional without over-engineering
 
 ---
 
-## 🎯 What Went Wrong (Root Cause Analysis)
+## 🎯 Major Features (October 2025)
 
-### The Enterprise Bloat Problem
+### 1. Dynamic Vision System (NEW)
 
-**Files That Caused Issues**:
-1. **config-manager.js (746 lines)** - Singleton + Observer + Strategy patterns for simple config
-2. **error-handler.js (604 lines)** - Complex categorization and recovery for basic errors
-3. **component-validator.js (599 lines)** - Spread operator bug (line 454) destroyed prototypes
+**File**: `js/systems/ai/dynamic-vision.js` (192 lines)
 
-**Total Bloat**: 1,949 lines (38% of codebase) providing **ZERO gameplay value**
+**Concept**: AI vision adapts based on what it's looking at
 
-### The ComponentValidator Bug
+**Trade-Off System**:
+- **Looking FAR** (distant obstacles) → **NARROW cone** (focused), **2.875x range**
+- **Looking NEAR** (general patrol) → **WIDE cone** (peripheral), **0.8x range**
+- **Mid-range** → **NORMAL vision** (1.0x both)
 
-**What Happened**:
+**Key Features**:
 ```javascript
-// component-validator.js line 454
-const corrected = { ...component }; // ❌ Strips all methods!
+// Smoothing prevents vision twitching
+smoothingFactor = 0.1 (10% new, 90% old distance)
+
+// Range calculation
+computeRangeFactor(normalizedDistance):
+  - Close (<0.3): 0.8x → 1.0x
+  - Mid (0.3-0.6): 1.0x
+  - Far (>0.6): 1.0x → 2.875x
+
+// Angle calculation
+computeAngleFactor(normalizedDistance):
+  - Close (<0.3): 1.2x → 1.0x (wider peripheral)
+  - Mid (0.3-0.6): 1.0x
+  - Far (>0.6): 1.0x → 0.15x (85% narrower - laser focus!)
 ```
 
-**Impact**:
-- Collider component lost `.checkBoxCollision()` method
-- Vision system depends on collision → vision broke
-- AI can't see player → gameplay broken
-- Cascade failure from "helpful" validation
+**Integration Flow**:
+1. `can-guard-strategy.js` → sets scan target (which obstacle AI is looking at)
+2. `dynamic-vision.js` → calculates dynamic range/angle based on scan distance
+3. `ai-system.js` → applies dynamic vision to VisionCone component
+4. `movement-system.js` → updates vision cone mesh geometry to match
 
-**Lesson**: Enterprise patterns created bugs that wouldn't exist in simple code
+**Visual Feedback** (in movement-system.js):
+- **Red cone**: Player detected
+- **Bright yellow cone**: Focused on distant target (narrow beam)
+- **Orange cone**: Normal patrol (wide peripheral)
 
-### The Vision System Coupling Problem
+---
 
-**Before**: Vision code buried in 678-line ai.js
-- Lines 250-320: Vision cone checking (70 lines)
-- Lines 322-474: Line-of-sight raycasting (152 lines)
-- **Impossible to test vision independently**
-- **Can't debug vision without loading all AI logic**
+### 2. Multiple AI Hunters (NEW)
 
-**After**: Extracted to vision-system.js (200 lines)
-- Test vision separately
-- Reuse for cameras, spotlights
-- Debug vision bugs in isolation
-- Clear separation of concerns
+**Implementation**: `game-lifecycle.js` spawns multiple hunters
+
+**Difficulty-Based Hunter Counts**:
+- Level 0-1: **1 hunter** (learning mode)
+- Level 2-3: **2 hunters** (balanced)
+- Level 4-5: **3 hunters** (challenging)
+- Level 6-7: **4 hunters** (expert)
+- Level 8: **5 hunters** (nightmare - "Guds Öga")
+- Level 9: **6 hunters** (impossible - "Systemet Stänger om 5 Minuter")
+
+**Spawning Logic** (game-lifecycle.js):
+```javascript
+const numHunters = difficulty.numHunters;
+const spawnRadius = arenaSize * 0.6; // 60% out from center
+
+for (let i = 0; i < numHunters; i++) {
+    // Distribute evenly in circle formation
+    const angle = (Math.PI * 2 * i) / numHunters;
+    const x = Math.cos(angle) * spawnRadius;
+    const z = Math.sin(angle) * spawnRadius;
+
+    playerManager.addAIHunter(`ai-hunter-${i + 1}`, { x, y: 0.5, z });
+}
+```
+
+---
+
+### 3. Independent Hunter Behaviors (NEW)
+
+**File**: `js/systems/ai/steering/can-guard-strategy.js` (292 lines)
+
+**Each hunter has unique randomized parameters** (initialized once in guardState):
+
+```javascript
+guardState: {
+    orbitRadius: 4.5 + Math.random() * 3.0,    // RANDOM 4.5-7.5m per hunter
+    orbitAngle: Math.random() * Math.PI * 2,   // RANDOM starting angle
+    orbitDirection: Math.random() < 0.5 ? 1 : -1,  // RANDOM direction
+    scanTarget: Math.random() * Math.PI * 2,   // RANDOM initial scan
+    scanDuration: Math.random() * 500,         // RANDOM offset (0-500ms)
+    nextScanChange: 500 + Math.random() * 1500, // RANDOM 0.5-2s
+    mode: 'ORBIT',
+    moveSpeedMultiplier: 0.8 + Math.random() * 0.4,  // RANDOM 0.8-1.2x
+    turnSpeedMultiplier: 1.2 + Math.random() * 1.0,  // RANDOM 1.2-2.2x
+    currentObstacleIndex: Math.floor(Math.random() * obstacles.length)
+}
+```
+
+**Dynamic Behavior Modes** (20% pause, 15% reposition, 20% creep, 15% fast, 30% normal):
+- **PAUSE**: Stop & look around (scary!) - `moveSpeed: 0.0, turnSpeed: 3.0`
+- **REPOSITION**: Quick move to opposite side - `moveSpeed: 2.0, turnSpeed: 3.0`
+- **SLOW CREEP**: Methodical, tense - `moveSpeed: 0.3, turnSpeed: 2.5`
+- **FAST PATROL**: Quick sweep with reverse - `moveSpeed: 1.6, turnSpeed: 1.5`
+
+**Obstacle-Aware Scanning**:
+- AI looks at actual hiding spots (obstacles), not random air
+- Sometimes skips 1-2 obstacles randomly for variety
+- Passes obstacle reference to dynamic-vision.js for accurate distance calculation
+
+**Emergent Complexity**: 6 hunters with randomized parameters create the illusion of 6 different AI personalities!
+
+---
+
+### 4. Player Win Condition (NEW)
+
+**File**: `js/systems/movement-system.js` (383 lines)
+
+**Win Condition Logic**:
+```javascript
+checkPlayerWinCondition(gameState) {
+    // 1. Check game is playing
+    if (gameState.gamePhase !== GAME_STATES.PLAYING) return;
+
+    // 2. Prevent multiple triggers
+    if (this._playerHasWon) return;
+
+    // 3. Get player and can positions
+    const playerTransform = player.getComponent('Transform');
+    const canPosition = CONFIG.can.position;
+
+    // 4. Calculate distance (2D, ignore Y)
+    const dx = playerTransform.position.x - canPosition.x;
+    const dz = playerTransform.position.z - canPosition.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+
+    // 5. Check win conditions
+    const winDistance = canRadius + 1.5; // ~2m
+    if (distance <= winDistance && playerInput.keys.action1) {
+        this._playerHasWon = true;
+        gameEngine.playerWin(); // Triggers victory!
+    }
+}
+```
+
+**GameEngine.playerWin()** (game-engine.js):
+```javascript
+playerWin() {
+    this.gameStatus = 'player_win';
+    this.gameState.setGamePhase(GAME_STATES.PLAYER_WIN);
+
+    // Stop all AI movement
+    const aiSystem = this.getSystem('AISystem');
+    for (const hunter of aiSystem.getHunters()) {
+        const transform = hunter.getComponent('Transform');
+        transform.velocity.x = 0;
+        transform.velocity.z = 0;
+    }
+
+    // Show victory menu
+    showStartMenu({
+        gameOver: true,
+        message: 'DU VÄN FÖR DIG!',  // Swedish: "You won for you!"
+        reason: 'won',
+        elapsedMs: elapsedTime
+    });
+}
+```
+
+**New Game State**: `PLAYER_WIN` added to `GAME_STATES` in utils.js
+
+---
+
+### 5. Improved Obstacle System (NEW)
+
+**File**: `js/managers/arena/arena-obstacles.js` (280 lines)
+
+**Height-Based Color System**:
+```javascript
+function getObstacleColor(height) {
+    if (height <= 1.0) return 0x228B22;  // Green (0-1m)
+    if (height <= 2.0) return 0xFFD700;  // Yellow (1-2m)
+    if (height <= 3.0) return 0xFF8C00;  // Orange (2-3m)
+    return 0xFF4500;                      // Red (3m+)
+}
+```
+
+**Zone-Based Height Scaling** (from difficulty config):
+```javascript
+heightScaling: {
+    nearMin: 0.3, nearMax: 0.6,  // 0-3m from can - SHORT & GREEN
+    midMin: 1.2, midMax: 2.5,    // 3-7m from can - MEDIUM
+    farMin: 2.5, farMax: 4.5     // 7m+ from can - TALL
+}
+```
+
+**Near-Can Obstacle Rule**:
+- All obstacles within 3-7m of can forced to 0.3-0.6m height
+- Always colored green for visibility
+- Ensures fair gameplay near objective
+
+**Difficulty-Based canExclusionRadius**:
+- Easy levels: 3-4m (obstacles closer to can)
+- Hard levels: 10-12m (obstacles FAR from can, wide open space)
+
+**Compound Colliders**:
+- Parent component tracks child colliders
+- Complex L-shapes, T-shapes supported
+- Each box has precise collision bounds
+
+---
+
+### 6. Arena Scaling (NEW)
+
+**4x Bigger Arena**:
+- **Size**: 30x30 units (was 15x15) - 4x area!
+- **Wall height**: 6m (was 3m) - 2x taller
+- **Camera height**: 50 units (was 25) - 2x higher
+- **Camera distance**: 30 units (was 15) - 2x further
+
+**Hunter Scaling**:
+- Spawn at 60% radius: ~18m from center (was ~9m)
+- Patrol radii: 4.5-7.5m from can (scaled for larger arena)
+
+**Benefits**:
+- More space for stealth gameplay
+- Better camera view of entire arena
+- Room for 6 hunters without overcrowding
+
+---
+
+### 7. 5-Second Countdown (NEW)
+
+**File**: `js/systems/ui/ui-system.js` (628 lines - EXCEEDS LIMIT)
+
+**Countdown Display**:
+```javascript
+showCountdown(seconds) {
+    // Large number display
+    countdownElement.textContent = seconds;
+    countdownElement.style.fontSize = '120px';
+    countdownElement.style.color = '#ffc857';
+
+    // Pulse animation
+    countdownElement.style.animation = 'countdownPulse 0.5s ease-in-out';
+
+    // Subtitle
+    subtitleElement.textContent = 'Vakten räknar... Hitta gömställe!';
+    // "The guard is counting... Find a hiding spot!"
+}
+```
+
+**Game Flow**:
+1. Player clicks "Start Game"
+2. Arena builds, entities spawn
+3. Game enters **COUNTDOWN state** (not PLAYING yet)
+4. UI shows 5 → 4 → 3 → 2 → 1 countdown
+5. **Players can move during countdown** to find hiding spots
+6. Countdown finishes → **PLAYING state** → Hunters activate!
 
 ---
 
@@ -152,10 +395,13 @@ class Entity {
     constructor(id) {
         this.id = id;
         this.components = new Map(); // String key → component object
+        this.active = true;
     }
 
-    addComponent(name, component) {
-        // Use simple string keys (no reflection)
+    addComponent(component) {
+        // Smart component name resolution
+        const name = component.constructor?.name ||
+                     Object.getPrototypeOf(component).constructor.name;
         this.components.set(name, component);
     }
 
@@ -165,14 +411,6 @@ class Entity {
 
     hasComponent(name) {
         return this.components.has(name);
-    }
-
-    removeComponent(name) {
-        this.components.delete(name);
-    }
-
-    destroy() {
-        this.components.clear();
     }
 }
 ```
@@ -184,289 +422,30 @@ class Entity {
 
 ---
 
-### components.js (250 lines)
+### game-engine.js (270 lines)
 
-**Responsibility**: All game component definitions
+**Responsibility**: Game loop, tick management, system orchestration
 
-**Simple Component Objects** - No validation, no methods that get stripped
-
+**New Methods (October 2025)**:
 ```javascript
-// Transform: Position, rotation, velocity
-const Transform = {
-    position: { x: 0, y: 0, z: 0 },
-    rotation: { y: 0 },
-    velocity: { x: 0, y: 0, z: 0 },
-    previousPosition: { x: 0, y: 0, z: 0 }
-};
+playerWin() {
+    // NEW: Handle player victory condition
+    this.gameStatus = 'player_win';
+    this.gameState.setGamePhase(GAME_STATES.PLAYER_WIN);
 
-// Movement: Speed and direction
-const Movement = {
-    speed: 0.15,
-    maxSpeed: 0.2,
-    acceleration: 0.01,
-    friction: 0.9,
-    direction: { x: 0, z: 0 }
-};
-
-// PlayerInput: Key states
-const PlayerInput = {
-    keys: {
-        forward: false,
-        backward: false,
-        left: false,
-        right: false,
-        interact: false,
-        special: false
-    },
-    lastInputTime: 0
-};
-
-// Player: Player-specific data
-const Player = {
-    isLocal: true,
-    playerId: '',
-    team: 'hiders'
-};
-
-// Renderable: Three.js mesh reference
-const Renderable = {
-    mesh: null,
-    visible: true
-};
-
-// Interactable: Objects player can interact with
-const Interactable = {
-    type: 'can', // 'can', 'door', 'hiding_spot'
-    interactDistance: 2.0,
-    isActive: true,
-    onInteract: null // Callback function
-};
-
-// Hideable: Hiding spots
-const Hideable = {
-    hideCapacity: 1,
-    hideRadius: 1.5,
-    occupants: [],
-    hideEffectiveness: 0.8
-};
-
-// AIHunter: AI state machine
-const AIHunter = {
-    state: 'PATROL', // 'PATROL' | 'HUNTING' | 'SEARCHING'
-    patrolPoints: [],
-    currentPatrolIndex: 0,
-    alertLevel: 0.5,
-    lastSeenPlayerPos: null,
-    lastSeenTime: 0
-};
-
-// VisionCone: AI vision parameters
-const VisionCone = {
-    angle: 60,          // Degrees
-    range: 12,          // Units
-    enabled: true,
-    targetSeen: false
-};
-```
-
-**Factory Functions** to create clean component instances:
-```javascript
-function createTransform(x, y, z) {
-    return {
-        position: { x, y, z },
-        rotation: { y: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        previousPosition: { x, y, z }
-    };
-}
-
-function createMovement(speed) {
-    return {
-        speed,
-        maxSpeed: speed * 1.5,
-        acceleration: speed * 0.1,
-        friction: 0.9,
-        direction: { x: 0, z: 0 }
-    };
-}
-
-// ... factory functions for all components
-```
-
----
-
-### collision.js (150 lines)
-
-**Responsibility**: Collision detection and response math
-
-```javascript
-// Collider component
-const Collider = {
-    bounds: { width: 1, height: 1, depth: 1 },
-    offset: { x: 0, y: 0, z: 0 },
-    isTrigger: false,
-    layer: 'default'
-};
-
-// Pure collision functions
-function containsPoint(point, entityPosition, collider) {
-    const halfWidth = collider.bounds.width / 2;
-    const halfDepth = collider.bounds.depth / 2;
-
-    return (
-        point.x >= entityPosition.x - halfWidth &&
-        point.x <= entityPosition.x + halfWidth &&
-        point.z >= entityPosition.z - halfDepth &&
-        point.z <= entityPosition.z + halfDepth
-    );
-}
-
-function checkBoxCollision(posA, boundsA, posB, boundsB) {
-    // AABB collision test
-    return (
-        Math.abs(posA.x - posB.x) < (boundsA.width + boundsB.width) / 2 &&
-        Math.abs(posA.z - posB.z) < (boundsA.depth + boundsB.depth) / 2
-    );
-}
-
-function calculateSlideResponse(oldPos, newPos, entityBounds, obstaclePos, obstacleBounds) {
-    // Calculate sliding collision response
-    // Returns corrected position that slides along obstacle edge
-
-    // Try X-axis slide
-    const slideX = { x: newPos.x, z: oldPos.z };
-    if (!checkBoxCollision(slideX, entityBounds, obstaclePos, obstacleBounds)) {
-        return slideX;
+    // Stop all AI
+    const aiSystem = this.getSystem('AISystem');
+    for (const hunter of aiSystem.getHunters()) {
+        hunter.getComponent('Transform').velocity = { x: 0, z: 0 };
     }
 
-    // Try Z-axis slide
-    const slideZ = { x: oldPos.x, z: newPos.z };
-    if (!checkBoxCollision(slideZ, entityBounds, obstaclePos, obstacleBounds)) {
-        return slideZ;
-    }
-
-    // Can't slide, return old position
-    return oldPos;
-}
-```
-
-**Pure Math** - No classes, no state, just collision geometry
-
----
-
-### game-engine.js (200 lines)
-
-**Responsibility**: Core game loop and system management
-
-```javascript
-class GameState {
-    constructor() {
-        this.currentTick = 0;
-        this.gameTime = 0;
-        this.isRunning = false;
-        this.isPaused = false;
-
-        this.entities = new Map();     // id → Entity
-        this.players = new Set();      // Player entity IDs
-        this.aiHunters = new Set();    // AI hunter entity IDs
-    }
-
-    addEntity(entity) {
-        this.entities.set(entity.id, entity);
-    }
-
-    removeEntity(entityId) {
-        this.entities.delete(entityId);
-        this.players.delete(entityId);
-        this.aiHunters.delete(entityId);
-    }
-
-    getEntity(entityId) {
-        return this.entities.get(entityId);
-    }
-}
-
-class System {
-    // Base class for all systems
-    update(gameState, deltaTime) {
-        // Override in subclass
-    }
-}
-
-class GameEngine {
-    constructor(scene, camera, renderer) {
-        this.scene = scene;
-        this.camera = camera;
-        this.renderer = renderer;
-
-        this.gameState = new GameState();
-        this.systems = [];
-
-        this.tickRate = 60;
-        this.tickInterval = 1000 / this.tickRate;
-        this.accumulator = 0;
-        this.lastTime = 0;
-    }
-
-    addSystem(system) {
-        this.systems.push(system);
-    }
-
-    start() {
-        this.gameState.isRunning = true;
-        this.lastTime = performance.now();
-        this.gameLoop();
-    }
-
-    stop() {
-        this.gameState.isRunning = false;
-    }
-
-    tick() {
-        // Fixed timestep update (60 FPS)
-        if (this.gameState.isPaused) return;
-
-        const deltaTime = this.tickInterval / 1000; // Convert to seconds
-
-        // Update all systems
-        for (const system of this.systems) {
-            try {
-                system.update(this.gameState, deltaTime);
-            } catch (error) {
-                console.error(`System update error:`, system.constructor.name, error);
-            }
-        }
-
-        this.gameState.currentTick++;
-        this.gameState.gameTime += deltaTime;
-    }
-
-    render(interpolation) {
-        // Variable timestep rendering (smooth visuals)
-        this.renderer.render(this.scene, this.camera);
-    }
-
-    gameLoop() {
-        if (!this.gameState.isRunning) return;
-
-        const currentTime = performance.now();
-        const deltaTime = Math.min(currentTime - this.lastTime, 100); // Cap at 100ms
-        this.lastTime = currentTime;
-
-        this.accumulator += deltaTime;
-
-        // Fixed timestep updates
-        while (this.accumulator >= this.tickInterval) {
-            this.tick();
-            this.accumulator -= this.tickInterval;
-        }
-
-        // Variable rendering with interpolation
-        const interpolation = this.accumulator / this.tickInterval;
-        this.render(interpolation);
-
-        requestAnimationFrame(() => this.gameLoop());
-    }
+    // Show victory menu
+    showStartMenu({
+        gameOver: true,
+        message: 'DU VÄN FÖR DIG!',
+        reason: 'won',
+        elapsedMs: Date.now() - this.gameStartTime
+    });
 }
 ```
 
@@ -474,611 +453,410 @@ class GameEngine {
 
 ---
 
-### config.js (50 lines)
+### config.js (510 lines - EXCEEDS LIMIT)
 
-**Responsibility**: Simple game configuration
+**Responsibility**: Simple game configuration + difficulty system
 
-**NO ConfigManager** - Just a plain JavaScript object
+**⚠️ ACTION NEEDED**: Consider splitting into:
+- `config.js` (core config - ~200 lines)
+- `difficulty-config.js` (10 difficulty levels - ~310 lines)
 
+**Difficulty System Structure**:
 ```javascript
-export const CONFIG = {
-    arena: {
-        size: 15,           // 15x15 units
-        wallHeight: 3,
-        floorY: 0
+difficulties: [
+    {
+        id: 0,
+        name: "Barnkalas",
+        numHunters: 1,    // NEW: Hunter count per level
+        obstacles: {
+            count: 45,
+            canExclusionRadius: 3.0,
+            heightScaling: {     // NEW: Zone-based height control
+                nearMin: 0.3, nearMax: 0.6,
+                midMin: 1.2, midMax: 2.5,
+                farMin: 2.5, farMax: 4.5
+            }
+        },
+        ai: {
+            patrolSpeed: 0.06,
+            chaseSpeed: 0.10,
+            visionRange: 8,
+            visionAngle: 60
+        }
     },
-
-    player: {
-        speed: 0.15,
-        size: 0.8,
-        color: 0x4444ff    // Blue
-    },
-
-    ai: {
-        speed: 0.08,        // Slower than player
-        size: 0.8,
-        color: 0xff4444,   // Red
-
-        visionRange: 12,
-        visionAngle: 60,    // Degrees
-
-        patrolChangeInterval: 3000,  // ms
-        searchDuration: 5000,         // ms
-        wallBuffer: 0.5
-    },
-
-    game: {
-        tickRate: 60,
-        maxDeltaTime: 0.1
-    }
-};
-
-// Simple getter (optional convenience)
-export function getConfig(path) {
-    const keys = path.split('.');
-    let value = CONFIG;
-    for (const key of keys) {
-        value = value[key];
-        if (value === undefined) break;
-    }
-    return value;
-}
+    // ... 9 more levels
+]
 ```
-
-**Usage**:
-```javascript
-// Direct access (preferred)
-const arenaSize = CONFIG.arena.size;
-
-// Or with helper
-const playerSpeed = getConfig('player.speed');
-```
-
-**No observers, no validation, no complexity** - Change values directly during development
 
 ---
 
 ## 🎮 Systems Architecture (js/systems/)
 
-### input-system.js (300 lines)
+### movement-system.js (383 lines)
 
-**Responsibility**: Capture player input from all devices
+**Responsibility**: Movement physics, collision, **win condition**, **vision cone updates**
 
+**New Features (October 2025)**:
+
+1. **Player Win Condition**:
 ```javascript
-class InputSystem extends System {
-    constructor() {
-        super();
-        this.keyStates = new Map();
-        this.setupEventListeners();
-    }
-
-    setupEventListeners() {
-        window.addEventListener('keydown', (e) => this.handleKeyDown(e));
-        window.addEventListener('keyup', (e) => this.handleKeyUp(e));
-        window.addEventListener('touchstart', (e) => this.handleTouchStart(e));
-        window.addEventListener('touchend', (e) => this.handleTouchEnd(e));
-    }
-
-    update(gameState, deltaTime) {
-        // Update PlayerInput components from keyStates
-        for (const [id, entity] of gameState.entities) {
-            const playerInput = entity.getComponent('player_input');
-            if (!playerInput) continue;
-
-            // Update from keyboard state
-            playerInput.keys.forward = this.isKeyPressed('KeyW') || this.isKeyPressed('ArrowUp');
-            playerInput.keys.backward = this.isKeyPressed('KeyS') || this.isKeyPressed('ArrowDown');
-            playerInput.keys.left = this.isKeyPressed('KeyA') || this.isKeyPressed('ArrowLeft');
-            playerInput.keys.right = this.isKeyPressed('KeyD') || this.isKeyPressed('ArrowRight');
-            playerInput.keys.interact = this.isKeyPressed('KeyE');
-            playerInput.keys.special = this.isKeyPressed('KeyQ');
-
-            playerInput.lastInputTime = performance.now();
-        }
-    }
-
-    isKeyPressed(keyCode) {
-        return this.keyStates.get(keyCode) === true;
-    }
-
-    handleKeyDown(event) {
-        this.keyStates.set(event.code, true);
-    }
-
-    handleKeyUp(event) {
-        this.keyStates.set(event.code, false);
-    }
-
-    // Touch and gamepad methods...
-
-    destroy() {
-        // Clean up event listeners
+checkPlayerWinCondition(gameState) {
+    if (distanceToCan <= 2.0 && playerInput.keys.action1) {
+        this._playerHasWon = true;
+        gameEngine.playerWin();
     }
 }
 ```
 
-**Multi-platform** - Keyboard, touch, gamepad
+2. **Dynamic Vision Cone Geometry Updates**:
+```javascript
+updateVisionConeGeometry(coneMesh, angleInDegrees, range) {
+    // Skip if no change (optimization)
+    if (coneMesh._cachedAngle === angleInDegrees &&
+        coneMesh._cachedRange === range) return;
+
+    // Rebuild cone geometry with new parameters
+    const vertices = [];
+    const angleInRadians = (angleInDegrees * Math.PI) / 180;
+
+    vertices.push(0, 0, 0); // Apex
+    for (let i = 0; i <= segments; i++) {
+        const angle = (-angleInRadians/2) + (angleInRadians * i / segments);
+        vertices.push(Math.sin(angle) * range, 0, Math.cos(angle) * range);
+    }
+
+    coneMesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+}
+```
+
+3. **Vision Cone Color Coding**:
+- **Red** (`0xff0000`): Player detected - `opacity: 0.9`
+- **Bright Yellow** (`0xffdd00`): Focused (narrow beam) - `opacity: 0.5`
+- **Orange** (`0xffaa00`): Normal patrol - `opacity: 0.4`
 
 ---
 
-### movement-system.js (200 lines)
+### ai-system.js (526 lines - EXCEEDS LIMIT)
 
-**Responsibility**: Move entities based on input and physics
+**Responsibility**: AI hunter patrol, chase, vision, **dynamic vision integration**
 
+**⚠️ ACTION NEEDED**: Consider extracting vision logic to `ai-vision.js`
+
+**New Features (October 2025)**:
+
+1. **Dynamic Vision Integration**:
 ```javascript
-class MovementSystem extends System {
-    update(gameState, deltaTime) {
-        for (const [id, entity] of gameState.entities) {
-            const transform = entity.getComponent('transform');
-            const movement = entity.getComponent('movement');
+updateVision(hunter, visionCone, gameState) {
+    // Get base vision stats
+    const baseVision = {
+        range: visionCone.baseRange || visionCone.range,
+        angle: visionCone.baseAngle || visionCone.angle
+    };
 
-            if (!transform || !movement) continue;
+    // Get what AI is looking at
+    const scanTarget = DynamicVision.getScanTargetInfo(aiComponent, aiTransform);
 
-            // Store previous position for interpolation
-            transform.previousPosition.x = transform.position.x;
-            transform.previousPosition.y = transform.position.y;
-            transform.previousPosition.z = transform.position.z;
+    // Calculate dynamic vision
+    const dynamicVision = DynamicVision.computeDynamicVision(
+        aiComponent, aiTransform, scanTarget, baseVision
+    );
 
-            // Check if this is player or AI
-            if (entity.hasComponent('player_input')) {
-                this.updatePlayerMovement(entity, deltaTime);
-            } else if (entity.hasComponent('ai_hunter')) {
-                this.updateAIMovement(entity, deltaTime);
-            }
+    // Apply to vision cone
+    DynamicVision.applyDynamicVision(visionCone, dynamicVision);
+
+    // Check if player visible with dynamic parameters
+    if (distance <= visionCone.range && withinAngle) {
+        if (hasLineOfSight) {
+            visionCone.canSeePlayer = true;
+            aiComponent.state = AI_STATES.RACE; // Sprint to can!
         }
     }
+}
+```
 
-    updatePlayerMovement(entity, deltaTime) {
-        const transform = entity.getComponent('transform');
-        const movement = entity.getComponent('movement');
-        const input = entity.getComponent('player_input');
+2. **AI States**:
+- **PATROL**: Orbit can at 4.5-7.5m radius, scan obstacles systematically
+- **RACE**: Sprint directly to can when player spotted (2-second lock-in)
 
-        // Calculate direction from input
-        const direction = { x: 0, z: 0 };
+3. **Multiple Hunter Support**:
+- Each hunter operates independently
+- Circle formation spawning
+- Randomized patrol parameters per hunter
 
-        if (input.keys.forward) direction.z -= 1;
-        if (input.keys.backward) direction.z += 1;
-        if (input.keys.left) direction.x -= 1;
-        if (input.keys.right) direction.x += 1;
+---
 
-        // Normalize direction
-        const length = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
-        if (length > 0) {
-            direction.x /= length;
-            direction.z /= length;
+### dynamic-vision.js (192 lines - NEW)
+
+**Responsibility**: Dynamic vision cone calculator - adaptive AI vision
+
+**Core Algorithm**:
+
+```javascript
+class DynamicVision {
+    static computeDynamicVision(ai, transform, scanTarget, baseVision) {
+        // Calculate distance to scan target
+        const targetDistance = calculateDistance(scanTarget, transform);
+
+        // SMOOTHING: Prevent vision twitching
+        if (!ai._visionState) {
+            ai._visionState = { smoothedDistance: targetDistance };
         }
 
-        // Apply movement
-        if (length > 0) {
-            // Accelerate
-            transform.velocity.x += direction.x * movement.acceleration * deltaTime * 60;
-            transform.velocity.z += direction.z * movement.acceleration * deltaTime * 60;
+        const smoothingFactor = 0.1; // 10% new, 90% old
+        ai._visionState.smoothedDistance =
+            ai._visionState.smoothedDistance * 0.9 + targetDistance * 0.1;
+
+        // Normalize distance (0.0 = close, 1.0 = far)
+        const normalizedDistance = Math.min(
+            ai._visionState.smoothedDistance / baseVision.range,
+            1.0
+        );
+
+        // Apply trade-off formulas
+        const rangeFactor = this.computeRangeFactor(normalizedDistance);
+        const angleFactor = this.computeAngleFactor(normalizedDistance);
+
+        return {
+            range: baseVision.range * rangeFactor,
+            angle: baseVision.angle * angleFactor,
+            isFocusing: normalizedDistance > 0.6
+        };
+    }
+
+    static computeRangeFactor(normalizedDistance) {
+        if (normalizedDistance < 0.3) {
+            // Close: 0.8x → 1.0x
+            return 0.8 + (normalizedDistance / 0.3) * 0.2;
+        } else if (normalizedDistance < 0.6) {
+            // Mid: 1.0x
+            return 1.0;
         } else {
-            // Apply friction
-            transform.velocity.x *= movement.friction;
-            transform.velocity.z *= movement.friction;
+            // Far: 1.0x → 2.875x (extended!)
+            const farProgress = (normalizedDistance - 0.6) / 0.4;
+            return 1.0 + farProgress * 1.875;
         }
-
-        // Cap at max speed
-        const speed = Math.sqrt(
-            transform.velocity.x * transform.velocity.x +
-            transform.velocity.z * transform.velocity.z
-        );
-        if (speed > movement.maxSpeed) {
-            const scale = movement.maxSpeed / speed;
-            transform.velocity.x *= scale;
-            transform.velocity.z *= scale;
-        }
-
-        // Update position
-        transform.position.x += transform.velocity.x;
-        transform.position.z += transform.velocity.z;
-
-        // Check arena boundaries
-        this.applyBoundaryCollision(transform, CONFIG.arena.size);
     }
 
-    updateAIMovement(entity, deltaTime) {
-        // Similar to player but using AI direction instead of input
-        // (AI direction set by AISystem)
-    }
-
-    applyBoundaryCollision(transform, arenaSize) {
-        const boundary = arenaSize - 0.5;
-
-        // Clamp position to arena bounds
-        if (transform.position.x < -boundary) {
-            transform.position.x = -boundary;
-            transform.velocity.x = 0;
-        }
-        if (transform.position.x > boundary) {
-            transform.position.x = boundary;
-            transform.velocity.x = 0;
-        }
-        if (transform.position.z < -boundary) {
-            transform.position.z = -boundary;
-            transform.velocity.z = 0;
-        }
-        if (transform.position.z > boundary) {
-            transform.position.z = boundary;
-            transform.velocity.z = 0;
+    static computeAngleFactor(normalizedDistance) {
+        if (normalizedDistance < 0.3) {
+            // Close: 1.2x → 1.0x (wider)
+            return 1.2 - (normalizedDistance / 0.3) * 0.2;
+        } else if (normalizedDistance < 0.6) {
+            // Mid: 1.0x
+            return 1.0;
+        } else {
+            // Far: 1.0x → 0.15x (85% narrower!)
+            const farProgress = (normalizedDistance - 0.6) / 0.4;
+            return 1.0 - farProgress * 0.85;
         }
     }
 }
 ```
 
-**Velocity-based physics** with acceleration and friction
+**Smoothing Explanation**:
+- Without smoothing: Vision twitches as AI looks around
+- With 10% factor: Smooth transitions, realistic focus shifts
+- Formula: `new = old * 0.9 + target * 0.1`
 
 ---
 
-### ai-behavior.js (250 lines)
+### can-guard-strategy.js (292 lines)
 
-**Responsibility**: AI state machine and decision-making
+**Responsibility**: AI hunter can-guarding patrol with randomized behavior
 
+**Randomized Initialization** (per hunter):
 ```javascript
-class AISystem extends System {
-    update(gameState, deltaTime) {
-        // Update all AI hunters
-        for (const hunterId of gameState.aiHunters) {
-            const hunter = gameState.getEntity(hunterId);
-            if (!hunter) continue;
+if (!ai.guardState) {
+    ai.guardState = {
+        orbitRadius: 4.5 + Math.random() * 3.0,        // 4.5-7.5m
+        orbitAngle: Math.random() * Math.PI * 2,       // Random start
+        orbitDirection: Math.random() < 0.5 ? 1 : -1,  // CW or CCW
+        scanTarget: Math.random() * Math.PI * 2,       // Random initial
+        moveSpeedMultiplier: 0.8 + Math.random() * 0.4, // 0.8-1.2x
+        turnSpeedMultiplier: 1.2 + Math.random() * 1.0, // 1.2-2.2x
+        currentObstacleIndex: Math.floor(Math.random() * obstacles.length)
+    };
+}
+```
 
-            this.updateHunter(hunter, gameState, deltaTime);
-        }
-    }
+**Dynamic Behavior Changes** (every 1-3 seconds when settled):
+```javascript
+if (behaviorTimer > nextBehaviorChange && isSettled) {
+    const roll = Math.random();
 
-    updateHunter(hunter, gameState, deltaTime) {
-        const aiComponent = hunter.getComponent('ai_hunter');
-        const transform = hunter.getComponent('transform');
-        const visionCone = hunter.getComponent('vision_cone');
-
-        // Check vision to detect player (uses VisionSystem)
-        const playerSeen = this.checkVision(hunter, gameState);
-
-        // Update AI state based on vision
-        if (playerSeen) {
-            aiComponent.state = 'HUNTING';
-            aiComponent.lastSeenPlayerPos = playerSeen.position;
-            aiComponent.lastSeenTime = performance.now();
-        } else if (aiComponent.state === 'HUNTING') {
-            // Lost sight of player, switch to searching
-            aiComponent.state = 'SEARCHING';
-        } else if (aiComponent.state === 'SEARCHING') {
-            // Check if search timeout
-            const timeSinceSeen = performance.now() - aiComponent.lastSeenTime;
-            if (timeSinceSeen > CONFIG.ai.searchDuration) {
-                aiComponent.state = 'PATROL';
-            }
-        }
-
-        // Execute behavior for current state
-        switch (aiComponent.state) {
-            case 'PATROL':
-                this.updatePatrolBehavior(aiComponent, transform, deltaTime);
-                break;
-            case 'HUNTING':
-                this.updateHuntingBehavior(aiComponent, transform, playerSeen, deltaTime);
-                break;
-            case 'SEARCHING':
-                this.updateSearchingBehavior(aiComponent, transform, deltaTime);
-                break;
-        }
-
-        // Check if hunter caught player
-        this.checkPlayerCollision(hunter, gameState);
-    }
-
-    checkVision(hunter, gameState) {
-        // Use VisionSystem to check if player is visible
-        // This is now a separate, testable system
-
-        const visionSystem = window.visionSystem; // Injected dependency
-        if (!visionSystem) return null;
-
-        const players = Array.from(gameState.players)
-            .map(id => gameState.getEntity(id))
-            .filter(p => p);
-
-        for (const player of players) {
-            const obstacles = this.getObstacles(gameState);
-            if (visionSystem.canSee(hunter, player, obstacles)) {
-                return player;
-            }
-        }
-
-        return null;
-    }
-
-    updatePatrolBehavior(aiComponent, transform, deltaTime) {
-        // Random patrol with periodic direction changes
-        // Simple patrol pattern
-    }
-
-    updateHuntingBehavior(aiComponent, transform, player, deltaTime) {
-        // Move toward player's position
-        // Direct chase
-    }
-
-    updateSearchingBehavior(aiComponent, transform, deltaTime) {
-        // Move toward last known player position
-        // Search area
-    }
-
-    checkPlayerCollision(hunter, gameState) {
-        // Check if hunter touched player (tagging)
-        // Trigger game over if caught
+    if (roll < 0.20) {
+        // 20%: PAUSE - Stop and look
+        mode = 'PAUSE';
+        moveSpeedMultiplier = 0.0;
+        turnSpeedMultiplier = 3.0;
+    } else if (roll < 0.35) {
+        // 15%: REPOSITION - Quick move
+        mode = 'REPOSITION';
+        targetOrbitAngle = currentAngle + Math.PI;
+        moveSpeedMultiplier = 2.0;
+    } else if (roll < 0.55) {
+        // 20%: SLOW CREEP
+        mode = 'ORBIT';
+        moveSpeedMultiplier = 0.3;
+        turnSpeedMultiplier = 2.5;
+    } else if (roll < 0.70) {
+        // 15%: FAST PATROL
+        mode = 'ORBIT';
+        moveSpeedMultiplier = 1.6;
+        orbitDirection *= -1; // Reverse!
+    } else {
+        // 30%: NORMAL
+        mode = 'ORBIT';
+        moveSpeedMultiplier = 1.0;
     }
 }
 ```
 
-**State Machine** - PATROL → HUNTING → SEARCHING
+**Obstacle-Aware Scanning**:
+```javascript
+if (hasObstacles) {
+    // Sometimes skip obstacles for variety
+    const skipCount = Math.random() < 0.3 ?
+        1 + Math.floor(Math.random() * 2) : 1;
+
+    currentObstacleIndex = (currentObstacleIndex + skipCount) % obstacles.length;
+    const targetObstacle = obstacles[currentObstacleIndex];
+
+    // Look directly at obstacle
+    scanTarget = Math.atan2(
+        targetObstacle.position.x - transform.position.x,
+        targetObstacle.position.z - transform.position.z
+    );
+
+    // Store for dynamic vision distance calculation
+    scanTargetObstacle = targetObstacle;
+}
+```
 
 ---
 
-### vision-system.js (200 lines) ⭐
+### ui-system.js (628 lines - EXCEEDS LIMIT)
 
-**Responsibility**: Vision cone and line-of-sight detection
+**Responsibility**: HUD, stats, countdown, **player win state**
 
-**🎯 EXTRACTED FOR INDEPENDENT TESTING**
+**⚠️ ACTION NEEDED**: Consider splitting into:
+- `ui-system.js` (core UI - ~350 lines)
+- `ui-messages.js` (countdown, messages - ~280 lines)
 
+**New Features (October 2025)**:
+
+1. **Countdown Display**:
 ```javascript
-class VisionSystem {
-    canSee(observer, target, obstacles) {
-        // Main vision check
-        // Returns true if target visible to observer
+showCountdown(seconds) {
+    countdownElement.textContent = seconds;
+    countdownElement.style.cssText = `
+        font-size: 120px;
+        color: #ffc857;
+        text-shadow: 0 0 20px rgba(255, 200, 87, 0.8);
+        animation: countdownPulse 0.5s ease-in-out;
+    `;
 
-        const observerTransform = observer.getComponent('transform');
-        const targetTransform = target.getComponent('transform');
-        const visionCone = observer.getComponent('vision_cone');
-
-        if (!observerTransform || !targetTransform || !visionCone) {
-            return false;
-        }
-
-        // 1. Check range
-        const distance = this.calculateDistance(
-            observerTransform.position,
-            targetTransform.position
-        );
-
-        if (distance > visionCone.range) {
-            return false;
-        }
-
-        // 2. Check if within cone angle
-        if (!this.isWithinCone(observerTransform, targetTransform, visionCone)) {
-            return false;
-        }
-
-        // 3. Check line-of-sight (no obstacles blocking)
-        return this.checkLineOfSight(
-            observerTransform.position,
-            targetTransform.position,
-            obstacles
-        );
-    }
-
-    calculateDistance(posA, posB) {
-        const dx = posB.x - posA.x;
-        const dz = posB.z - posA.z;
-        return Math.sqrt(dx * dx + dz * dz);
-    }
-
-    isWithinCone(observerTransform, targetTransform, visionCone) {
-        // Calculate angle from observer to target
-        const dx = targetTransform.position.x - observerTransform.position.x;
-        const dz = targetTransform.position.z - observerTransform.position.z;
-        const angleToTarget = Math.atan2(dx, dz);
-
-        // Observer's facing direction
-        const observerAngle = observerTransform.rotation.y;
-
-        // Calculate angle difference
-        let angleDiff = angleToTarget - observerAngle;
-
-        // Normalize to [-π, π]
-        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
-        // Check if within cone
-        const halfConeAngle = (visionCone.angle * Math.PI / 180) / 2;
-        return Math.abs(angleDiff) <= halfConeAngle;
-    }
-
-    checkLineOfSight(start, end, obstacles) {
-        // Raycast from start to end
-        // Return false if any obstacle blocks ray
-
-        for (const obstacle of obstacles) {
-            const obstacleTransform = obstacle.getComponent('transform');
-            const obstacleCollider = obstacle.getComponent('collider');
-
-            if (!obstacleTransform || !obstacleCollider) continue;
-
-            // Use CollisionUtils for ray-box intersection
-            if (CollisionUtils.rayIntersectsBox(
-                start,
-                end,
-                obstacleTransform.position,
-                obstacleCollider.bounds
-            )) {
-                return false; // Blocked
-            }
-        }
-
-        return true; // Clear line of sight
-    }
-
-    // Debug visualization
-    renderVisionCone(observer, scene) {
-        // Draw debug cone for tuning vision parameters
-        // Useful during development
-    }
+    subtitleElement.textContent = 'Vakten räknar... Hitta gömställe!';
 }
 ```
 
-**Key Benefits of Extraction**:
-✅ Test vision independently: `visionSystem.canSee(hunter, player, [])`
-✅ Reuse for other entities: cameras, spotlights, NPCs
-✅ Debug vision without AI complexity
-✅ Clear separation of concerns
-
----
-
-## 🛠️ Utilities (js/utils/)
-
-### collision-utils.js (150 lines)
-
-**Responsibility**: Advanced collision math (ray casting)
-
+2. **PLAYER_WIN State Support**:
 ```javascript
-class CollisionUtils {
-    static rayIntersectsBox(rayStart, rayEnd, boxCenter, boxBounds) {
-        // Ray-AABB intersection test
-        // Algorithm: Slab method
-
-        const rayDirection = {
-            x: rayEnd.x - rayStart.x,
-            y: rayEnd.y - rayStart.y,
-            z: rayEnd.z - rayStart.z
-        };
-
-        const rayLength = Math.sqrt(
-            rayDirection.x * rayDirection.x +
-            rayDirection.y * rayDirection.y +
-            rayDirection.z * rayDirection.z
-        );
-
-        // Normalize direction
-        rayDirection.x /= rayLength;
-        rayDirection.y /= rayLength;
-        rayDirection.z /= rayLength;
-
-        // Box bounds
-        const halfWidth = boxBounds.width / 2;
-        const halfHeight = boxBounds.height / 2;
-        const halfDepth = boxBounds.depth / 2;
-
-        const boxMin = {
-            x: boxCenter.x - halfWidth,
-            y: boxCenter.y - halfHeight,
-            z: boxCenter.z - halfDepth
-        };
-
-        const boxMax = {
-            x: boxCenter.x + halfWidth,
-            y: boxCenter.y + halfHeight,
-            z: boxCenter.z + halfDepth
-        };
-
-        // Slab method: calculate t values for each axis
-        let tMin = 0;
-        let tMax = rayLength;
-
-        // X axis
-        if (Math.abs(rayDirection.x) > 0.0001) {
-            const t1 = (boxMin.x - rayStart.x) / rayDirection.x;
-            const t2 = (boxMax.x - rayStart.x) / rayDirection.x;
-            tMin = Math.max(tMin, Math.min(t1, t2));
-            tMax = Math.min(tMax, Math.max(t1, t2));
-        }
-
-        // Y axis
-        if (Math.abs(rayDirection.y) > 0.0001) {
-            const t1 = (boxMin.y - rayStart.y) / rayDirection.y;
-            const t2 = (boxMax.y - rayStart.y) / rayDirection.y;
-            tMin = Math.max(tMin, Math.min(t1, t2));
-            tMax = Math.min(tMax, Math.max(t1, t2));
-        }
-
-        // Z axis
-        if (Math.abs(rayDirection.z) > 0.0001) {
-            const t1 = (boxMin.z - rayStart.z) / rayDirection.z;
-            const t2 = (boxMax.z - rayStart.z) / rayDirection.z;
-            tMin = Math.max(tMin, Math.min(t1, t2));
-            tMax = Math.min(tMax, Math.max(t1, t2));
-        }
-
-        // Check intersection
-        if (tMax < tMin || tMax < 0) {
-            return false; // No intersection
-        }
-
-        return true; // Intersection
-    }
-}
+case GAME_STATES.PLAYER_WIN:
+    gameContainer.className = 'game-player-win';
+    // No popup message - menu shows instead
+    break;
 ```
-
-**Complex Math Extracted** - Pure functions, no game logic mixed in
 
 ---
 
 ## 📊 Key Architectural Decisions
 
-### Decision 1: Remove Enterprise Patterns
+### Decision 1: Dynamic Vision System (Oct 2025)
 
-**Deleted**:
-- config-manager.js (746 lines) → config.js (50 lines)
-- error-handler.js (604 lines) → try-catch + console.error
-- component-validator.js (599 lines) → removed entirely
+**Problem**: AI vision felt unrealistic - always same range/angle
 
-**Reasoning**:
-- Added 1,949 lines for zero gameplay benefit
-- Created bugs (ComponentValidator spread operator)
-- Made debugging difficult (errors hidden, configs wrapped)
-- Violated KISS principle stated in Bug.md
+**Solution**: Adaptive vision based on scan target distance
+- Looking far → narrow beam, extended range
+- Looking near → wide peripheral, reduced range
+- Smooth transitions prevent twitching
 
----
-
-### Decision 2: Extract Vision System
-
-**Before**: Buried in 678-line ai.js
-**After**: Separate vision-system.js (200 lines)
-
-**Reasoning**:
-- Can't test vision when embedded in AI
-- Vision reusable for cameras, spotlights
-- Easier to debug vision bugs separately
-- Clear separation of concerns
+**Benefits**:
+- More realistic AI behavior
+- Clear visual feedback (cone narrows when focused)
+- Reusable for cameras, spotlights
+- Independently testable (192-line module)
 
 ---
 
-### Decision 3: String-Based Component Keys
+### Decision 2: Multiple Independent Hunters (Oct 2025)
 
-**Instead of**: `entity.getComponent(Transform)` (reflection)
-**Use**: `entity.getComponent('transform')` (string literal)
+**Problem**: Single hunter too predictable
 
-**Reasoning**:
-- Minification breaks constructor.name
-- Reflection is slow and fragile
-- String keys are explicit and reliable
+**Solution**: 1-6 hunters with randomized behaviors
+- Each hunter unique patrol radius
+- Randomized speeds, turn rates
+- Dynamic behavior mode changes
+- Circle formation spawning
 
----
-
-### Decision 4: Split Large Files
-
-**game.js (734 lines) →**
-- entity.js (130 lines)
-- components.js (250 lines)
-- collision.js (150 lines)
-- game-engine.js (200 lines)
-
-**Reasoning**:
-- Hard to find code in 700+ line files
-- Can't test components without entire engine
-- Clear file boundaries = clear mental model
+**Benefits**:
+- Emergent complexity from simple randomization
+- 6 hunters feel like 6 different personalities
+- Difficulty scales naturally (1 → 6 hunters)
+- Each playthrough feels different
 
 ---
 
-### Decision 5: Folder Organization
+### Decision 3: Player Win Condition (Oct 2025)
 
-**Before**: Flat js/ folder (14 files)
-**After**: js/core/, js/systems/, js/managers/, js/utils/
+**Problem**: Game had no win condition (only time survival)
 
-**Reasoning**:
-- Find code by category
-- New developers navigate easily
-- Professional without over-engineering
+**Solution**: Reach can + press space = victory
+- Distance check: within 2m of can
+- Input check: action1 key (space) pressed
+- New PLAYER_WIN game state
+- Victory message: "DU VÄN FÖR DIG!"
+
+**Benefits**:
+- Clear objective for players
+- Race dynamic when AI spots player
+- Swedish cultural authenticity
+- Satisfying win feedback
+
+---
+
+### Decision 4: Height-Based Obstacle Colors (Oct 2025)
+
+**Problem**: All obstacles same color - hard to judge height
+
+**Solution**: Color-coded by height
+- Green (0-1m): Short, easy to hide behind
+- Yellow (1-2m): Medium height
+- Orange (2-3m): Tall cover
+- Red (3m+): Very tall obstacles
+
+**Benefits**:
+- Instant visual feedback on obstacle height
+- Near-can obstacles forced short & green (fair gameplay)
+- Colorblind-friendly progression
+- Accessibility improvement
+
+---
+
+### Decision 5: Arena 4x Scaling (Oct 2025)
+
+**Problem**: 15x15 arena felt cramped with multiple hunters
+
+**Solution**: Scale to 30x30 (4x area)
+- Double wall height (6m)
+- Double camera height/distance
+- Scaled hunter patrol radii
+
+**Benefits**:
+- Room for 6 hunters without crowding
+- Better stealth gameplay opportunities
+- Improved camera view
+- More strategic hiding options
 
 ---
 
@@ -1088,200 +866,214 @@ Systems update in this order each tick:
 
 ```
 1. InputSystem          ← Capture player input
-2. AISystem             ← AI decision-making
-3. VisionSystem         ← Check vision cones
-4. MovementSystem       ← Apply physics
-5. InteractionSystem    ← Handle interactions
-6. AudioSystem          ← Update 3D audio
-7. UISystem             ← Render UI
+2. AISystem             ← AI decision-making + dynamic vision
+3. MovementSystem       ← Apply physics + check win condition + update vision cones
+4. InteractionSystem    ← Handle interactions
+5. AudioSystem          ← Update 3D audio (DISABLED)
+6. UISystem             ← Render UI + countdown
 
 Then: renderer.render(scene, camera)
 ```
 
-**Order matters** - Input before movement, movement before rendering
+**Order matters** - Input before movement, AI vision before movement updates
 
 ---
 
-## 🚀 Migration Plan
+## 🚀 Current Status & Next Steps
 
-### Phase 1: Remove Enterprise Bloat ⚠️ CRITICAL
+### Files Needing Attention
 
-**Time**: 1-2 hours
-**Priority**: CRITICAL
+1. **config.js (510 lines - EXCEEDS LIMIT)**
+   - **Action**: Split into `config.js` + `difficulty-config.js`
+   - **Benefit**: Each file under 500 lines
 
-**Actions**:
-1. Delete config-manager.js, error-handler.js, component-validator.js
-2. Create js/core/config.js (simple object export)
-3. Replace all `ConfigManager.get()` with `CONFIG.arena.size`
-4. Replace all `ErrorHandler.handle()` with `try-catch + console.error`
-5. Remove ValidatedEntity, use regular Entity
+2. **ai-system.js (526 lines - EXCEEDS LIMIT)**
+   - **Action**: Extract vision logic to `ai-vision.js`
+   - **Benefit**: Vision system independently testable
 
-**Impact**: Remove 1,949 lines of bloat
+3. **ui-system.js (628 lines - EXCEEDS LIMIT)**
+   - **Action**: Split into `ui-system.js` + `ui-messages.js`
+   - **Benefit**: Separate core UI from messages/countdown
 
----
+### Completed (October 2025)
 
-### Phase 2: Extract Vision System ⚠️ HIGH
+**v1.1.0 - Core Features:**
+✅ Dynamic vision system implemented
+✅ Multiple hunter support (1-6 hunters)
+✅ Player win condition added
+✅ Randomized hunter behaviors
+✅ Height-based obstacle coloring
+✅ Arena scaled to 4x size (30x30)
+✅ 5-second countdown system
+✅ PLAYER_WIN game state
+✅ Vision cone dynamic geometry updates
 
-**Time**: 2-3 hours
-**Priority**: HIGH
+**v1.2.0 - Refinement & Polish:**
+✅ Vision fine-tuned to 15% angle, 2.875x range when focused
+✅ Fixed vision mode switching with real obstacle distances
+✅ Comprehensive hunter randomization (4.5-7.5m orbit, 0.8-2.2x speeds)
+✅ Variable scan intervals (600-1000ms) per hunter
+✅ Obstacle-aware scanning with real distance calculation
+✅ Dynamic behavior modes (PAUSE, REPOSITION, SLOW CREEP, FAST PATROL)
+✅ Each hunter completely independent
+✅ Removed unnecessary win popup
+✅ Documentation complete (claude.md, PROJECT_STRUCTURE.yaml, Architecture-Overview.md)
 
-**Actions**:
-1. Create js/systems/vision-system.js
-2. Copy vision methods from ai.js (lines 250-474)
-3. Create js/utils/collision-utils.js for ray-box math
-4. Update AISystem to use VisionSystem
-5. Test vision independently
+### Future Enhancements
 
-**Impact**: Vision system testable, AI file reduced 225 lines
+**Short Term**:
+- Split oversized files (config, ai-system, ui-system)
+- Add sound effects (footsteps, alerts)
+- Polish victory/defeat animations
+- Mobile touch controls optimization
 
----
-
-### Phase 3: Split game.js ⚠️ HIGH
-
-**Time**: 3-4 hours
-**Priority**: HIGH
-
-**Actions**:
-1. Create js/core/entity.js (Entity class)
-2. Create js/core/components.js (all components)
-3. Create js/core/collision.js (Collider + math)
-4. Create js/core/game-engine.js (GameEngine + GameState)
-5. Update index.html load order
-6. Test game loads correctly
-
-**Impact**: Clear separation, easier modifications
-
----
-
-### Phase 4: Reorganize Folders ⚠️ MEDIUM
-
-**Time**: 1-2 hours
-**Priority**: MEDIUM
-
-**Actions**:
-1. Create folders: core/, systems/, managers/, utils/
-2. Move files to appropriate folders
-3. Update all script src paths in index.html
-4. Test game loads
-
-**Impact**: Professional organization
-
----
-
-### Phase 5: Test & Validate ⚠️ HIGH
-
-**Time**: 2-3 hours
-**Priority**: HIGH
-
-**Actions**:
-1. Test vision system independently
-2. Test AI behavior (patrol, hunting, searching)
-3. Test player movement and collision
-4. Full integration testing
-5. Performance testing (FPS, memory)
-
-**Impact**: Ensure no regressions
-
----
-
-## ✅ Success Metrics
-
-### Code Quality
-- ✅ No files >500 lines
-- ✅ Clear folder structure (core/, systems/, managers/, utils/)
-- ✅ No enterprise patterns
-- ✅ Simple config (exported object)
-- ✅ Vision system independently testable
-
-### Functionality
-- ✅ AI vision working
-- ✅ Player movement smooth
-- ✅ Collision accurate
-- ✅ No console errors
-- ✅ 60 FPS performance
-
-### Maintainability
-- ✅ Easy to find code
-- ✅ Can modify vision without breaking AI
-- ✅ Can add components without touching core
-- ✅ Clear dependencies
-- ✅ Debug commands work
-
----
-
-## 📚 Lessons Learned
-
-### What Went Wrong
-
-1. **Over-engineering** - Added enterprise patterns without need
-2. **Large files** - 734-line game.js mixed concerns
-3. **Tight coupling** - Vision buried in AI prevented testing
-4. **Validation bugs** - ComponentValidator destroyed prototypes
-5. **Complexity creep** - 38% bloat (1,949 lines)
-
-### What We'll Do Differently
-
-1. **KISS first** - Start simple, add complexity when needed
-2. **Split files early** - Keep under 400 lines
-3. **Extract systems** - Make testable independently
-4. **Avoid singletons** - Use explicit dependencies
-5. **No premature patterns** - Don't add until needed twice
-
-### Code Review Checklist
-
-❓ Is this file >400 lines? → Split it
-❓ Am I adding a Singleton? → Do I really need it?
-❓ Can I test this independently? → If not, extract it
-❓ Am I adding validation? → Is it truly necessary?
-❓ Does this add complexity or value? → Be honest
-
----
-
-## 🔮 Future Enhancements
-
-### Short Term
-- Visual polish (better materials, particles)
-- Sound system (footsteps, ambient, alerts)
-- Hiding spots mechanics
-- Multiple AI hunters
-- Game timer and scoring
-
-### Medium Term
-- Obstacle generation (procedural)
-- Player animations
-- AI coordination
-- Swedish language UI
-- Mobile touch polish
-
-### Long Term
-- Multiplayer networking (WebRTC)
+**Medium Term**:
+- Save/load difficulty preferences
+- Achievement system
 - Replay system
+- Statistics tracking
+
+**Long Term**:
+- Multiplayer networking (WebRTC)
 - Custom arena builder
 - Tournament mode
-- Educational content
-
-**All on KISS foundation** - Add incrementally, test thoroughly
+- Additional game modes
 
 ---
 
-## 📝 Conclusion
+## 📝 Maintenance Checklist
 
-The Dunkgömme architecture has been redesigned around **KISS principles**:
+### When Adding Features:
+- [ ] Check file size doesn't exceed 500 lines
+- [ ] Never create aggregator files
+- [ ] Follow KISS principles
+- [ ] Update PROJECT_STRUCTURE.yaml
+- [ ] Update this Architecture-Overview.md
+- [ ] Test with debug commands
 
-✅ **Simple code** over enterprise patterns
-✅ **Small files** over 2000-line mosaics
-✅ **Clear organization** over flat structure
-✅ **Explicit dependencies** over singletons
-✅ **Testable systems** over tight coupling
+### When Refactoring:
+- [ ] Preserve KISS architecture
+- [ ] Keep critical root files in place
+- [ ] Don't reintroduce deleted patterns
+- [ ] Update index.html script order if needed
+- [ ] Run game to verify no breakage
+- [ ] Document changes in all 3 files
 
-**Result**: Maintainable, scalable codebase supporting Swedish cultural preservation without unnecessary complexity.
-
-**Next Steps**: Execute migration plan, test thoroughly, maintain KISS discipline.
+### Code Review Standards:
+- [ ] File size under 500 lines?
+- [ ] No aggregator patterns?
+- [ ] No Singleton/Observer unless justified?
+- [ ] Clear single responsibility?
+- [ ] Proper error handling (try-catch)?
+- [ ] Uses CONFIG instead of hardcoded values?
+- [ ] Follows naming conventions?
 
 ---
 
-**Architecture Status**: ✅ Designed, ⏳ Implementation In Progress
+## 📚 Integration Flow Diagrams
+
+### Dynamic Vision Integration
+```
+Player/Obstacle Position
+    ↓
+can-guard-strategy.js
+    → Sets scanTarget (angle to obstacle)
+    → Stores scanTargetObstacle reference
+    ↓
+dynamic-vision.js
+    → getScanTargetInfo() gets obstacle + distance
+    → computeDynamicVision() calculates range/angle
+    → Smoothing prevents twitching
+    ↓
+ai-system.js
+    → updateVision() applies to VisionCone component
+    → Checks player visibility with dynamic params
+    ↓
+movement-system.js
+    → updateVisionConeGeometry() rebuilds mesh
+    → Updates color (red/yellow/orange)
+    ↓
+Visual Feedback (Vision Cone)
+```
+
+### Multiple Hunter Flow
+```
+MenuOverlay (difficulty selected)
+    ↓
+CONFIG.difficulties[level].numHunters
+    ↓
+game-lifecycle.js
+    → startNewGame()
+    → createLocalPlayer()
+    → for (i = 0; i < numHunters; i++)
+        → Calculate circle position: angle = (2π * i / numHunters)
+        → playerManager.addAIHunter(id, position)
+    ↓
+player-manager.js
+    → Creates AI entity with components
+    → Sets difficulty-based vision/speed
+    ↓
+can-guard-strategy.js
+    → Initializes guardState with RANDOM parameters
+    → orbitRadius, speeds, scan timing all unique
+    ↓
+ai-system.js
+    → updateHunter() for each hunter independently
+    → Each uses own guardState (different behavior)
+    ↓
+Emergent Complexity (6 different "personalities")
+```
+
+### Player Win Flow
+```
+Player Movement (WASD)
+    ↓
+movement-system.js
+    → updatePlayerMovement()
+    → checkPlayerWinCondition()
+        → Distance to can <= 2m?
+        → action1 key (space) pressed?
+    ↓
+gameEngine.playerWin()
+    → Set gameStatus = 'player_win'
+    → Set gamePhase = PLAYER_WIN
+    → Stop all AI movement
+    ↓
+showStartMenu()
+    → Display "DU VÄN FÖR DIG!"
+    → Show play again / menu buttons
+    ↓
+Victory!
+```
+
+---
+
+**Architecture Status**: ✅ Implemented with Recent Major Updates (v1.2.0)
 **Philosophy**: Keep It Simple, Stupid (KISS)
-**Target Size**: ~4,000 lines (from 6,500)
+**Current Size**: ~4,500 lines focused code (3 files exceed limit)
 **Enterprise Patterns**: NONE (by design)
-**Last Updated**: September 29, 2025
+**Last Updated**: October 2, 2025 (v1.2.0 - Vision refinement & hunter independence)
+
+---
+
+## 📖 For Next AI Assistant
+
+**CRITICAL - DO NOT REMOVE OR MODIFY:**
+1. **Dynamic Vision System** - Range/angle trade-off is core to AI realism
+2. **Randomized Hunter Behaviors** - guardState initialization creates variety
+3. **Player Win Condition** - checkPlayerWinCondition() in movement-system.js
+4. **Vision Cone Geometry Updates** - updateVisionConeGeometry() must stay synced
+5. **PLAYER_WIN State** - New game state in GAME_STATES
+6. **Height-Based Colors** - Obstacle color system aids accessibility
+
+**FILES TO SPLIT (when convenient):**
+- `config.js` (510 lines) → `config.js` + `difficulty-config.js`
+- `ai-system.js` (526 lines) → `ai-system.js` + `ai-vision.js`
+- `ui-system.js` (628 lines) → `ui-system.js` + `ui-messages.js`
+
+**PRESERVE KISS ARCHITECTURE:**
+- No aggregator files
+- No enterprise patterns (Singleton/Observer/Strategy)
+- Direct imports only
+- Simple CONFIG object
+- 500-line file limit (split when exceeded)
