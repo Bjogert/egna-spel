@@ -4,6 +4,85 @@
    ========================================== */
 
 // ==========================================
+// 🎮 EASY TWEAK CONSTANTS - CHANGE THESE!
+// ==========================================
+
+// Hunter counts per difficulty level
+const HUNTERS_LEVEL_1_5 = 1;    // Levels 1-5: 1 hunter
+const HUNTERS_LEVEL_6_10 = 2;   // Levels 6-10: 2 hunters
+
+// Obstacle counts per level (more = easier)
+const OBSTACLES_LEVEL_1 = 40;
+const OBSTACLES_LEVEL_2 = 35;
+const OBSTACLES_LEVEL_3 = 25;
+const OBSTACLES_LEVEL_4 = 20;
+const OBSTACLES_LEVEL_5 = 25;
+const OBSTACLES_LEVEL_6 = 20;
+const OBSTACLES_LEVEL_7 = 18;
+const OBSTACLES_LEVEL_8 = 15;
+const OBSTACLES_LEVEL_9 = 12;
+const OBSTACLES_LEVEL_10 = 10;
+
+// How far obstacles spawn from can (bigger = harder, less cover)
+const CAN_EXCLUSION_LEVEL_1 = 6.0;
+const CAN_EXCLUSION_LEVEL_2 = 8.0;
+const CAN_EXCLUSION_LEVEL_3 = 10.0;
+const CAN_EXCLUSION_LEVEL_4 = 11.0;
+const CAN_EXCLUSION_LEVEL_5 = 12.0;
+const CAN_EXCLUSION_LEVEL_6 = 13.0;
+const CAN_EXCLUSION_LEVEL_7 = 13.0;
+const CAN_EXCLUSION_LEVEL_8 = 13.0;
+const CAN_EXCLUSION_LEVEL_9 = 13.0;
+const CAN_EXCLUSION_LEVEL_10 = 13.0;
+
+// AI patrol speeds (how fast they move)
+const PATROL_SPEED_LEVEL_1 = 0.06;
+const PATROL_SPEED_LEVEL_2 = 0.07;
+const PATROL_SPEED_LEVEL_3 = 0.08;
+const PATROL_SPEED_LEVEL_4 = 0.09;
+const PATROL_SPEED_LEVEL_5 = 0.10;
+const PATROL_SPEED_LEVEL_6 = 0.11;
+const PATROL_SPEED_LEVEL_7 = 0.18;
+const PATROL_SPEED_LEVEL_8 = 0.13;
+const PATROL_SPEED_LEVEL_9 = 0.14;
+const PATROL_SPEED_LEVEL_10 = 0.15;
+
+// AI chase speeds (how fast they chase you)
+const CHASE_SPEED_LEVEL_1 = 0.10;
+const CHASE_SPEED_LEVEL_2 = 0.11;
+const CHASE_SPEED_LEVEL_3 = 0.12;
+const CHASE_SPEED_LEVEL_4 = 0.13;
+const CHASE_SPEED_LEVEL_5 = 0.15;
+const CHASE_SPEED_LEVEL_6 = 0.17;
+const CHASE_SPEED_LEVEL_7 = 0.20;
+const CHASE_SPEED_LEVEL_8 = 0.20;
+const CHASE_SPEED_LEVEL_9 = 0.22;
+const CHASE_SPEED_LEVEL_10 = 0.25;
+
+// AI vision range (how far they can see)
+const VISION_RANGE_LEVEL_1 = 8;
+const VISION_RANGE_LEVEL_2 = 9;
+const VISION_RANGE_LEVEL_3 = 10;
+const VISION_RANGE_LEVEL_4 = 11;
+const VISION_RANGE_LEVEL_5 = 12;
+const VISION_RANGE_LEVEL_6 = 13;
+const VISION_RANGE_LEVEL_7 = 28;
+const VISION_RANGE_LEVEL_8 = 15;
+const VISION_RANGE_LEVEL_9 = 16;
+const VISION_RANGE_LEVEL_10 = 18;
+
+// AI vision angle (how wide their vision cone is)
+const VISION_ANGLE_LEVEL_1 = 60;
+const VISION_ANGLE_LEVEL_2 = 65;
+const VISION_ANGLE_LEVEL_3 = 70;
+const VISION_ANGLE_LEVEL_4 = 75;
+const VISION_ANGLE_LEVEL_5 = 80;
+const VISION_ANGLE_LEVEL_6 = 85;
+const VISION_ANGLE_LEVEL_7 = 90;
+const VISION_ANGLE_LEVEL_8 = 95;
+const VISION_ANGLE_LEVEL_9 = 100;
+const VISION_ANGLE_LEVEL_10 = 110;
+// ==========================================
 // GAME CONFIGURATION - FIDDLE WITH THESE!
 // All settings in one place, no magic numbers
 // ==========================================
@@ -21,7 +100,7 @@ const CONFIG = {
         size: 30,               // Arena size in units (30x30 square - 4x area)
         wallHeight: 6,          // How tall the walls are (2x scale)
         wallThickness: 0.4,     // How thick the walls are (2x scale)
-        floorColor: 0xcccccc,   // Floor color (light gray)
+        floorColor: 0x7cb342,   // Floor color (grass green for park theme!)
         wallColor: 0x999999,    // Wall color (gray)
         floorY: 0               // Floor Y position
     },
@@ -50,11 +129,13 @@ const CONFIG = {
             depth: 0.8
         },
         color: 0x4a90e2,        // Player color (blue)
-        spawnPosition: {        // Where player starts
+        spawnPosition: {        // Where player starts (middle of arena)
             x: 0,
             y: 0.5,
             z: 0
-        }
+        },
+        pullDistance: 2.0,      // How close to pull hunter's shirt
+        pullSlowdown: 0.5       // Speed multiplier when pulling (0.5 = 50% speed)
     },
 
     // ========== AI SETTINGS ==========
@@ -173,11 +254,11 @@ const CONFIG = {
             nameEnglish: "Children's Party",
             description: "Mer gömställen än barn på festen!",
             descriptionEnglish: "More hiding spots than kids at the party!",
-            numHunters: 1,  // Just 1 slow hunter
+            numHunters: HUNTERS_LEVEL_1_5,
             obstacles: {
-                count: 45,
+                count: OBSTACLES_LEVEL_1,
                 minDistanceBetween: 2.0,
-                canExclusionRadius: 3.0,
+                canExclusionRadius: CAN_EXCLUSION_LEVEL_1,
                 heightScaling: {
                     nearMin: 0.3, nearMax: 0.6,  // 0-3m from can - SHORT & GREEN
                     midMin: 1.2, midMax: 2.5,    // 3-7m from can
@@ -185,10 +266,10 @@ const CONFIG = {
                 }
             },
             ai: {
-                patrolSpeed: 0.06,
-                chaseSpeed: 0.10,
-                visionRange: 8,
-                visionAngle: 60
+                patrolSpeed: PATROL_SPEED_LEVEL_1,
+                chaseSpeed: CHASE_SPEED_LEVEL_1,
+                visionRange: VISION_RANGE_LEVEL_1,
+                visionAngle: VISION_ANGLE_LEVEL_1
             }
         },
         // Level 2: Fyllekäring på Midsommar
@@ -198,11 +279,11 @@ const CONFIG = {
             nameEnglish: "Drunk Uncle at Midsummer",
             description: "Han ser inte så bra efter alla snapsar...",
             descriptionEnglish: "Can't see well after all those shots...",
-            numHunters: 1,  // Still just 1
+            numHunters: HUNTERS_LEVEL_1_5,
             obstacles: {
-                count: 40,  // More obstacles
+                count: OBSTACLES_LEVEL_2,
                 minDistanceBetween: 2.2,
-                canExclusionRadius: 4.0,  // Farther from can
+                canExclusionRadius: CAN_EXCLUSION_LEVEL_2,
                 heightScaling: {
                     nearMin: 0.3, nearMax: 0.6,  // SHORT & GREEN near can
                     midMin: 1.2, midMax: 2.8,
@@ -210,10 +291,10 @@ const CONFIG = {
                 }
             },
             ai: {
-                patrolSpeed: 0.07,
-                chaseSpeed: 0.11,
-                visionRange: 9,
-                visionAngle: 65
+                patrolSpeed: PATROL_SPEED_LEVEL_2,
+                chaseSpeed: CHASE_SPEED_LEVEL_2,
+                visionRange: VISION_RANGE_LEVEL_2,
+                visionAngle: VISION_ANGLE_LEVEL_2
             }
         },
         // Level 3: Dagisfröken Övervakar
@@ -223,11 +304,11 @@ const CONFIG = {
             nameEnglish: "Daycare Teacher Watching",
             description: "Hon har ögon i nacken!",
             descriptionEnglish: "She has eyes in the back of her head!",
-            numHunters: 2,  // 2 hunters now!
+            numHunters: HUNTERS_LEVEL_1_5,
             obstacles: {
-                count: 35,  // More obstacles
+                count: OBSTACLES_LEVEL_3,
                 minDistanceBetween: 2.5,
-                canExclusionRadius: 5.0,  // Farther from can
+                canExclusionRadius: CAN_EXCLUSION_LEVEL_3,
                 heightScaling: {
                     nearMin: 0.3, nearMax: 0.5,  // SHORT & GREEN
                     midMin: 1.0, midMax: 2.5,
@@ -235,10 +316,10 @@ const CONFIG = {
                 }
             },
             ai: {
-                patrolSpeed: 0.08,
-                chaseSpeed: 0.12,
-                visionRange: 10,
-                visionAngle: 70
+                patrolSpeed: PATROL_SPEED_LEVEL_3,
+                chaseSpeed: CHASE_SPEED_LEVEL_3,
+                visionRange: VISION_RANGE_LEVEL_3,
+                visionAngle: VISION_ANGLE_LEVEL_3
             }
         },
         // Level 4: Kvarterspolisen
@@ -248,11 +329,11 @@ const CONFIG = {
             nameEnglish: "Neighborhood Cop",
             description: "Patrullerar som ett proffs",
             descriptionEnglish: "Patrols like a pro",
-            numHunters: 2,
+            numHunters: HUNTERS_LEVEL_1_5,
             obstacles: {
-                count: 30,  // More obstacles
+                count: OBSTACLES_LEVEL_4,
                 minDistanceBetween: 2.8,
-                canExclusionRadius: 6.0,  // Farther from can
+                canExclusionRadius: CAN_EXCLUSION_LEVEL_4,
                 heightScaling: {
                     nearMin: 0.3, nearMax: 0.5,  // SHORT & GREEN
                     midMin: 0.8, midMax: 2.2,
@@ -260,10 +341,10 @@ const CONFIG = {
                 }
             },
             ai: {
-                patrolSpeed: 0.09,
-                chaseSpeed: 0.13,
-                visionRange: 11,
-                visionAngle: 75
+                patrolSpeed: PATROL_SPEED_LEVEL_4,
+                chaseSpeed: CHASE_SPEED_LEVEL_4,
+                visionRange: VISION_RANGE_LEVEL_4,
+                visionAngle: VISION_ANGLE_LEVEL_4
             }
         },
         // Level 5: Fotbollstränaren
@@ -273,11 +354,11 @@ const CONFIG = {
             nameEnglish: "Soccer Coach",
             description: "Ser allt från sidan!",
             descriptionEnglish: "Sees everything from the sideline!",
-            numHunters: 3,  // 3 hunters!
+            numHunters: HUNTERS_LEVEL_1_5,
             obstacles: {
-                count: 25,  // More obstacles
+                count: OBSTACLES_LEVEL_5,
                 minDistanceBetween: 3.0,
-                canExclusionRadius: 7.0,  // Farther from can
+                canExclusionRadius: CAN_EXCLUSION_LEVEL_5,
                 heightScaling: {
                     nearMin: 0.3, nearMax: 0.4,  // SUPER SHORT & GREEN
                     midMin: 0.7, midMax: 2.0,
@@ -285,10 +366,10 @@ const CONFIG = {
                 }
             },
             ai: {
-                patrolSpeed: 0.10,
-                chaseSpeed: 0.15,
-                visionRange: 12,
-                visionAngle: 80
+                patrolSpeed: PATROL_SPEED_LEVEL_5,
+                chaseSpeed: CHASE_SPEED_LEVEL_5,
+                visionRange: VISION_RANGE_LEVEL_5,
+                visionAngle: VISION_ANGLE_LEVEL_5
             }
         },
         // Level 6: Gymnasieläraren
@@ -298,11 +379,11 @@ const CONFIG = {
             nameEnglish: "High School Teacher",
             description: "Inget mobilfuskande här!",
             descriptionEnglish: "No phone cheating here!",
-            numHunters: 3,
+            numHunters: HUNTERS_LEVEL_6_10,
             obstacles: {
-                count: 22,  // More obstacles
+                count: OBSTACLES_LEVEL_6,
                 minDistanceBetween: 3.5,
-                canExclusionRadius: 8.0,  // Farther from can
+                canExclusionRadius: CAN_EXCLUSION_LEVEL_6,
                 heightScaling: {
                     nearMin: 0.3, nearMax: 0.4,  // SUPER SHORT & GREEN
                     midMin: 0.6, midMax: 1.8,
@@ -310,10 +391,10 @@ const CONFIG = {
                 }
             },
             ai: {
-                patrolSpeed: 0.11,
-                chaseSpeed: 0.17,
-                visionRange: 13,
-                visionAngle: 85
+                patrolSpeed: PATROL_SPEED_LEVEL_6,
+                chaseSpeed: CHASE_SPEED_LEVEL_6,
+                visionRange: VISION_RANGE_LEVEL_6,
+                visionAngle: VISION_ANGLE_LEVEL_6
             }
         },
         // Level 7: Vakten på Ikea
@@ -323,11 +404,11 @@ const CONFIG = {
             nameEnglish: "IKEA Security Guard",
             description: "Övervakar alla genvägar!",
             descriptionEnglish: "Watches all the shortcuts!",
-            numHunters: 4,  // 4 hunters!
+            numHunters: HUNTERS_LEVEL_6_10,
             obstacles: {
-                count: 18,  // More obstacles but farther away
+                count: OBSTACLES_LEVEL_7,
                 minDistanceBetween: 8.0,
-                canExclusionRadius: 12.0,  // FAR from can
+                canExclusionRadius: CAN_EXCLUSION_LEVEL_7,
                 heightScaling: {
                     nearMin: 0.3, nearMax: 0.4,  // SUPER SHORT & GREEN (but far from can!)
                     midMin: 0.6, midMax: 1.5,
@@ -335,10 +416,10 @@ const CONFIG = {
                 }
             },
             ai: {
-                patrolSpeed: 0.18,
-                chaseSpeed: 0.20,
-                visionRange: 28,
-                visionAngle: 90
+                patrolSpeed: PATROL_SPEED_LEVEL_7,
+                chaseSpeed: CHASE_SPEED_LEVEL_7,
+                visionRange: VISION_RANGE_LEVEL_7,
+                visionAngle: VISION_ANGLE_LEVEL_7
             }
         },
         // Level 8: Säkerhetspolisen
@@ -348,11 +429,11 @@ const CONFIG = {
             nameEnglish: "Secret Service",
             description: "Ser dig innan du ens ser honom...",
             descriptionEnglish: "Sees you before you see him...",
-            numHunters: 4,
+            numHunters: HUNTERS_LEVEL_6_10,
             obstacles: {
-                count: 15,  // More obstacles
+                count: OBSTACLES_LEVEL_8,
                 minDistanceBetween: 5.0,
-                canExclusionRadius: 10.0,  // Very far from can
+                canExclusionRadius: CAN_EXCLUSION_LEVEL_8,
                 heightScaling: {
                     nearMin: 0.3, nearMax: 0.3,  // ULTRA SHORT & GREEN
                     midMin: 0.5, midMax: 1.2,
@@ -360,10 +441,10 @@ const CONFIG = {
                 }
             },
             ai: {
-                patrolSpeed: 0.13,
-                chaseSpeed: 0.20,
-                visionRange: 15,
-                visionAngle: 95
+                patrolSpeed: PATROL_SPEED_LEVEL_8,
+                chaseSpeed: CHASE_SPEED_LEVEL_8,
+                visionRange: VISION_RANGE_LEVEL_8,
+                visionAngle: VISION_ANGLE_LEVEL_8
             }
         },
         // Level 9: Guds Öga
@@ -373,11 +454,11 @@ const CONFIG = {
             nameEnglish: "God's Eye",
             description: "Ser allt, vet allt...",
             descriptionEnglish: "Sees all, knows all...",
-            numHunters: 5,  // 5 hunters!
+            numHunters: HUNTERS_LEVEL_6_10,
             obstacles: {
-                count: 12,  // More obstacles
+                count: OBSTACLES_LEVEL_9,
                 minDistanceBetween: 6.0,
-                canExclusionRadius: 11.0,  // Very far from can
+                canExclusionRadius: CAN_EXCLUSION_LEVEL_9,
                 heightScaling: {
                     nearMin: 0.3, nearMax: 0.3,  // ULTRA SHORT & GREEN
                     midMin: 0.5, midMax: 1.0,
@@ -385,10 +466,10 @@ const CONFIG = {
                 }
             },
             ai: {
-                patrolSpeed: 0.14,
-                chaseSpeed: 0.22,
-                visionRange: 16,
-                visionAngle: 100
+                patrolSpeed: PATROL_SPEED_LEVEL_9,
+                chaseSpeed: CHASE_SPEED_LEVEL_9,
+                visionRange: VISION_RANGE_LEVEL_9,
+                visionAngle: VISION_ANGLE_LEVEL_9
             }
         },
         // Level 10: Systemet Stänger om 5 Minuter
@@ -398,11 +479,11 @@ const CONFIG = {
             nameEnglish: "Liquor Store Closing in 5 Minutes",
             description: "Full panik! Ingen tid för gömlek!",
             descriptionEnglish: "Full panic! No time for hide and seek!",
-            numHunters: 6,  // 6 HUNTERS - INSANE!
+            numHunters: HUNTERS_LEVEL_6_10,
             obstacles: {
-                count: 10,  // Some obstacles but all far away
+                count: OBSTACLES_LEVEL_10,
                 minDistanceBetween: 8.0,
-                canExclusionRadius: 12.0,  // VERY far from can
+                canExclusionRadius: CAN_EXCLUSION_LEVEL_10,
                 heightScaling: {
                     nearMin: 0.3, nearMax: 0.3,  // ULTRA SHORT & GREEN
                     midMin: 0.5, midMax: 0.8,
@@ -410,10 +491,10 @@ const CONFIG = {
                 }
             },
             ai: {
-                patrolSpeed: 0.15,
-                chaseSpeed: 0.25,
-                visionRange: 18,
-                visionAngle: 110
+                patrolSpeed: PATROL_SPEED_LEVEL_10,
+                chaseSpeed: CHASE_SPEED_LEVEL_10,
+                visionRange: VISION_RANGE_LEVEL_10,
+                visionAngle: VISION_ANGLE_LEVEL_10
             }
         }
     ]

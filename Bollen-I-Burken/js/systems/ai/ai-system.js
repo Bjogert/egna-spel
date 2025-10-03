@@ -17,12 +17,17 @@
     // Debug flag - set to true for verbose console logging
     const AI_DEBUG = false;
 
+    // AI Recklessness settings
+    const RECKLESS_START_TIME = 45000;  // Start getting reckless after 45 seconds (milliseconds)
+    const RECKLESS_MAX_RADIUS = 12.0;   // How far AI ventures when fully reckless (from can)
+
     class AISystem extends System {
         constructor() {
             super('AISystem');
             this.hunters = new Set();
             this.aiFrozen = false;  // Debug toggle to freeze AI
             this.hearingRange = 19.0;  // How far AI can hear
+            this.gameStartTime = null;  // Track when game started for recklessness
             this.registerTweaks();
             Utils.log('AI system initialized');
         }
@@ -62,7 +67,15 @@
 
         update(gameState, deltaTime) {
             if (!gameState || gameState.gamePhase !== GAME_STATES.PLAYING) {
+                // Reset game timer when not playing
+                this.gameStartTime = null;
                 return;
+            }
+
+            // Track game start time for recklessness (set once when PLAYING phase starts)
+            if (this.gameStartTime === null) {
+                this.gameStartTime = Date.now();
+                Utils.log('AI recklessness timer started - will venture further after 45 seconds');
             }
 
             // Skip AI updates if frozen (for testing)
@@ -118,6 +131,9 @@
             // Check if AI can hear player
             this.updateHearing(hunter, gameState);
 
+            // Check for shirt pulling
+            this.checkShirtPull(hunter, gameState);
+
             this.checkPlayerCollision(hunter, gameState);
         }
 
@@ -166,9 +182,9 @@
             if (distance <= effectiveRange && playerSpeed > 0.01) {
                 // AI hears player!
                 if (aiComponent) {
-                    // Update heard position if in PATROL or INVESTIGATE states
+                    // Update heard position - allow hearing to interrupt RACE when AI loses sight of player
                     if (aiComponent.state === AI_STATES.PATROL || aiComponent.state === 'PATROL' ||
-                        aiComponent.state === AI_STATES.INVESTIGATE) {
+                        aiComponent.state === AI_STATES.INVESTIGATE || aiComponent.state === AI_STATES.RACE) {
 
                         // Update the position where we heard the player (always use latest)
                         aiComponent.lastHeardPosition = {
@@ -176,10 +192,20 @@
                             z: playerTransform.position.z
                         };
 
-                        // INSTANT REACTION: Snap heading to face sound direction
-                        const angleToSound = Math.atan2(dx, dz);
-                        aiComponent.heading = angleToSound;
-                        transform.rotation.y = angleToSound;  // Update visual rotation immediately
+                        // CORNER DETECTION: Determine what to look at (sound or nearest corner)
+                        const staticColliders = this.getStaticColliders(gameState);
+                        const aiPos = { x: aiTransform.position.x, z: aiTransform.position.z };
+                        const soundPos = { x: playerTransform.position.x, z: playerTransform.position.z };
+
+                        const lookAtResult = CornerDetection.determineLookAtTarget(aiPos, soundPos, staticColliders);
+
+                        // INSTANT REACTION: Snap heading to face look-at target (corner or sound)
+                        const dx2 = lookAtResult.lookAtPos.x - aiPos.x;
+                        const dz2 = lookAtResult.lookAtPos.z - aiPos.z;
+                        const angleToTarget = Math.atan2(dx2, dz2);
+
+                        aiComponent.heading = angleToTarget;
+                        transform.rotation.y = angleToTarget;  // Update visual rotation immediately
 
                         // If not already investigating, start investigation
                         if (aiComponent.state !== AI_STATES.INVESTIGATE) {
@@ -187,13 +213,17 @@
                             aiComponent.investigateStartTime = Date.now();
                             aiComponent.investigateLookAroundTime = 0;
                             aiComponent.investigateStuckCount = 0;
-                            console.log(`🚨 AI HEARD PLAYER at distance ${distance.toFixed(2)}m! Snapping to face sound at angle ${(angleToSound * 180 / Math.PI).toFixed(0)}°`);
+
+                            const targetType = lookAtResult.isCorner ? 'CORNER' : 'SOUND';
+                            const angleDeg = (angleToTarget * 180 / Math.PI).toFixed(0);
+                            console.log(`🚨 AI HEARD PLAYER at ${distance.toFixed(2)}m! Looking at ${targetType} (angle ${angleDeg}°)`);
                             Utils.log(`🚨 AI state changed: ${aiComponent.state}`);
                         } else {
                             // Already investigating - update target and reset timer
                             aiComponent.investigateStartTime = Date.now();
                             if (AI_DEBUG) {
-                                console.log(`🔄 AI snapped to updated sound at (${playerTransform.position.x.toFixed(1)}, ${playerTransform.position.z.toFixed(1)})`);
+                                const targetType = lookAtResult.isCorner ? 'corner' : 'sound';
+                                console.log(`🔄 AI updated target to ${targetType} at (${lookAtResult.lookAtPos.x.toFixed(1)}, ${lookAtResult.lookAtPos.z.toFixed(1)})`);
                             }
                         }
                     } else {
@@ -234,6 +264,11 @@
                 .filter(o => !o.collider.isWall)  // Ignore walls, focus on hiding spots
                 .map(o => ({ position: { x: o.transform.position.x, z: o.transform.position.z } }));
 
+            // Calculate recklessness factor (0 = cautious, 1 = fully reckless)
+            const gameTime = Date.now() - this.gameStartTime;
+            const recklessFactor = Math.min((gameTime - RECKLESS_START_TIME) / 30000, 1.0);  // Ramp up over 30 seconds after start delay
+            const recklessRadius = recklessFactor > 0 ? 4.5 + (RECKLESS_MAX_RADIUS - 4.5) * recklessFactor : null;
+
             // Use CAN-GUARDING strategy (orbit can, check obstacles systematically)
             const canPosition = this.getCanPosition(gameState);
             const guardPatrol = CanGuardStrategy.computeCanGuardPatrol(
@@ -241,7 +276,8 @@
                 transform,
                 canPosition,
                 dt,
-                obstacles  // Pass obstacles so AI knows where to look
+                obstacles,  // Pass obstacles so AI knows where to look
+                recklessRadius  // Pass reckless radius override
             );
 
             // Combine guard patrol + avoidance (balanced for smooth navigation)
@@ -586,6 +622,47 @@
             return true;
         }
 
+        checkShirtPull(hunter, gameState) {
+            const aiTransform = hunter.getComponent('Transform');
+            const aiMovement = hunter.getComponent('Movement');
+            if (!aiTransform || !aiMovement) {
+                return;
+            }
+
+            const localPlayer = gameState.getLocalPlayer();
+            if (!localPlayer) {
+                return;
+            }
+
+            const playerTransform = localPlayer.getComponent('Transform');
+            const playerInput = localPlayer.getComponent('PlayerInput');
+            if (!playerTransform || !playerInput) {
+                return;
+            }
+
+            // Calculate distance to player
+            const dx = playerTransform.position.x - aiTransform.position.x;
+            const dz = playerTransform.position.z - aiTransform.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+
+            // Check if player is pressing space and is close enough to pull shirt
+            const pullDistance = CONFIG.player.pullDistance || 2.0;
+            const isPulling = playerInput.keys.action1 && distance <= pullDistance;
+
+            // Apply slowdown if pulling
+            if (isPulling) {
+                const slowdownMultiplier = CONFIG.player.pullSlowdown || 0.5;
+                aiMovement.speed = aiMovement.baseSpeed * slowdownMultiplier;
+
+                if (AI_DEBUG) {
+                    Utils.log(`👕 Player pulling hunter's shirt! Speed: ${aiMovement.speed.toFixed(2)}`);
+                }
+            } else {
+                // Restore normal speed
+                aiMovement.speed = aiMovement.baseSpeed;
+            }
+        }
+
         checkPlayerCollision(hunter, gameState) {
             const aiTransform = hunter.getComponent('Transform');
             if (!aiTransform) {
@@ -602,33 +679,8 @@
                 return;
             }
 
-            const dx = playerTransform.position.x - aiTransform.position.x;
-            const dz = playerTransform.position.z - aiTransform.position.z;
-            const distance = Math.sqrt(dx * dx + dz * dz);
-
-            const tagDistance = 1.2;
-            if (distance <= tagDistance) {
-                this.triggerPlayerTagged(gameState);
-            }
-        }
-
-        triggerPlayerTagged(gameState) {
-            Utils.log('Player tagged. Game over.');
-
-            if (global.GameEngine && global.GameEngine.gameOver) {
-                global.GameEngine.gameOver('tagged');
-            } else {
-                alert('TAGGED! The AI Hunter caught you. Game Over.');
-
-                const localPlayer = gameState.getLocalPlayer();
-                if (localPlayer) {
-                    const playerTransform = localPlayer.getComponent('Transform');
-                    if (playerTransform) {
-                        playerTransform.position.x = 0;
-                        playerTransform.position.z = 0;
-                    }
-                }
-            }
+            // NO TAGGING - Player can't be caught!
+            // The goal is for player to reach the can, not avoid being tagged
         }
 
         getHunters() {

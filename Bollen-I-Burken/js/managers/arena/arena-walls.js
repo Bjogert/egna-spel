@@ -7,9 +7,27 @@
         const arenaHalfSize = builder.arenaSize;
         const resourceManager = builder.resourceManager;
 
-        const wallMaterial = resourceManager.create('material', 'lambert', {
-            color: builder.wallColor
-        }, 'arena-wall-material');
+        // Try to use textured walls if TextureManager is available
+        let wallMaterial;
+        if (window.TextureManager && TextureManager.loaded) {
+            const wallTexture = TextureManager.getWallTexture();
+            if (wallTexture) {
+                wallMaterial = TextureManager.createTexturedMaterial(
+                    builder.wallColor,
+                    wallTexture,
+                    { roughness: 0.85, metalness: 0.15 }
+                );
+                Utils.log('Arena walls using textured material');
+            } else {
+                wallMaterial = resourceManager.create('material', 'lambert', {
+                    color: builder.wallColor
+                }, 'arena-wall-material');
+            }
+        } else {
+            wallMaterial = resourceManager.create('material', 'lambert', {
+                color: builder.wallColor
+            }, 'arena-wall-material');
+        }
 
         const walls = [
             { name: 'north', pos: [0, builder.wallHeight / 2, arenaHalfSize], size: [arenaHalfSize * 2, builder.wallHeight, builder.wallThickness] },

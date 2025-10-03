@@ -88,7 +88,8 @@
         processPlayerInput(player, gameState) {
             const playerInput = player.getComponent('PlayerInput');
 
-            if (playerInput.keys.interact) {
+            // Allow both E (interact) and Space (action1) to kick the can
+            if (playerInput.keys.interact || playerInput.keys.action1) {
                 this.handleInteractionAttempt(player, gameState);
             }
         }

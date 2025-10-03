@@ -7,6 +7,7 @@
         constructor(speed = 0.1) {
             // Required properties matching validation schema
             this.speed = speed;
+            this.baseSpeed = speed;  // Store original speed for shirt pulling mechanic
 
             // Optional properties with defaults from schema
             this.maxSpeed = 2.0;

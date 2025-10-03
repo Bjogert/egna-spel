@@ -8,9 +8,35 @@
         const resourceManager = builder.resourceManager;
 
         const floorGeometry = resourceManager.create('geometry', 'plane', [floorSize, floorSize], 'arena-floor-geometry');
-        const floorMaterial = resourceManager.create('material', 'lambert', {
-            color: builder.floorColor
-        }, 'arena-floor-material');
+
+        // Try to use textured floor if TextureManager is available
+        let floorMaterial;
+        if (window.TextureManager && TextureManager.loaded && window.TEXTURE_SETTINGS) {
+            const floorTexture = TextureManager.getFloorTexture();
+            if (floorTexture) {
+                // Create brighter grass material using settings
+                const baseColor = new THREE.Color(builder.floorColor);
+                baseColor.multiplyScalar(TEXTURE_SETTINGS.grassBrightness);
+
+                floorMaterial = TextureManager.createTexturedMaterial(
+                    baseColor.getHex(),
+                    floorTexture,
+                    {
+                        roughness: TEXTURE_SETTINGS.floorRoughness,
+                        metalness: TEXTURE_SETTINGS.floorMetalness
+                    }
+                );
+                Utils.log('Arena floor using grass texture with brightness: ' + TEXTURE_SETTINGS.grassBrightness);
+            } else {
+                floorMaterial = resourceManager.create('material', 'lambert', {
+                    color: builder.floorColor
+                }, 'arena-floor-material');
+            }
+        } else {
+            floorMaterial = resourceManager.create('material', 'lambert', {
+                color: builder.floorColor
+            }, 'arena-floor-material');
+        }
 
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;

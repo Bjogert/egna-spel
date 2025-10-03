@@ -25,6 +25,29 @@
     let lastFpsTime = 0;
     let gameLoopStarted = false;
 
+    // ==========================================
+    // 🎥 DYNAMIC CAMERA ZOOM SETTINGS - FIDDLE WITH THESE!
+    // ==========================================
+    const CAMERA_ZOOM_AT_CENTER = 0.3;  // How zoomed in at center (0.6 = 60% of normal distance)
+    const CAMERA_ZOOM_AT_EDGE = 0.8;    // How zoomed out at edge (1.0 = normal distance)
+    const CAMERA_HORIZONTAL_FOLLOW = 0.3;  // How much camera follows player horizontally (0-1)
+    const CAMERA_ZOOM_WHEN_STILL = 0.35;  // Extra zoom in when player is standing still (0.85 = 15% closer)
+    const CAMERA_STILL_DELAY = 3000;  // Wait 3 seconds before zooming when still (milliseconds)
+    const CAMERA_STILL_SPEED_THRESHOLD = 0.25;  // Consider "still" if speed < 25% of max
+    const CAMERA_LOOKAT_SPLIT = 0.05;  // Look at point between center and player (0.5 = halfway, 0 = center only, 1 = player only)
+
+    // Camera smoothness settings (lower = smoother, but slower)
+    const CAMERA_POSITION_SMOOTH = 0.001;  // Position movement smoothness (0.01-0.1)
+    const CAMERA_LOOKAT_SMOOTH = 0.001;    // Look-at pan smoothness (0.01-0.1)
+    const CAMERA_STILLZOOM_SMOOTH = 0.001; // Still zoom transition smoothness (0.01-0.05)
+
+    // Camera state tracking
+    let playerStillStartTime = null;
+    let currentStillZoomFactor = 0;
+    let currentLookAtX = 0;
+    let currentLookAtY = -6;
+    let currentLookAtZ = 0;
+
     // Initialize the game
     async function bootstrapGame() {
         try {
@@ -39,6 +62,13 @@
 
             // Initialize Three.js
             await initializeThreeJS();
+
+            // Load textures (async, but don't block)
+            if (window.TextureManager) {
+                TextureManager.loadTextures(() => {
+                    Utils.log('Textures loaded and ready for use');
+                });
+            }
 
             // Initialize game engine and systems
             initializeGameEngine();
@@ -207,6 +237,9 @@
             // Update game engine (handles tick-based updates)
             gameEngine.update(deltaTime);
 
+            // Update dynamic camera zoom based on player distance from center
+            updateDynamicCamera();
+
             // Render the Three.js scene
             renderer.render(scene, camera);
 
@@ -223,6 +256,101 @@
             // Try to continue anyway
             requestAnimationFrame(gameLoop);
         }
+    }
+
+    function updateDynamicCamera() {
+        if (!gameEngine || !gameEngine.gameState) return;
+
+        const localPlayer = gameEngine.gameState.getLocalPlayer();
+        if (!localPlayer) return;
+
+        const playerTransform = localPlayer.getComponent('Transform');
+        if (!playerTransform) return;
+
+        // Calculate distance from center
+        const dx = playerTransform.position.x;
+        const dz = playerTransform.position.z;
+        const distanceFromCenter = Math.sqrt(dx * dx + dz * dz);
+
+        // Arena size (half the arena width/depth)
+        const arenaHalfSize = CONFIG.arena.size / 2;
+
+        // Calculate zoom factor (0 at center, 1 at edge)
+        const zoomFactor = Math.min(distanceFromCenter / arenaHalfSize, 1.0);
+
+        // Check player speed relative to max speed
+        const velocity = Math.sqrt(
+            playerTransform.velocity.x ** 2 +
+            playerTransform.velocity.z ** 2
+        );
+        const maxSpeed = CONFIG.player.maxSpeed || 0.2;
+        const speedRatio = velocity / maxSpeed;
+        const isStill = speedRatio < CAMERA_STILL_SPEED_THRESHOLD;
+
+        // Track how long player has been still
+        const currentTime = Date.now();
+        if (isStill) {
+            if (playerStillStartTime === null) {
+                playerStillStartTime = currentTime;
+            }
+        } else {
+            playerStillStartTime = null;
+        }
+
+        // Calculate still zoom factor (0 = no zoom, 1 = full zoom)
+        let targetStillZoom = 0;
+        if (playerStillStartTime !== null) {
+            const stillDuration = currentTime - playerStillStartTime;
+            if (stillDuration >= CAMERA_STILL_DELAY) {
+                targetStillZoom = 1.0;
+            }
+        }
+
+        // Super smoothly interpolate still zoom factor
+        currentStillZoomFactor += (targetStillZoom - currentStillZoomFactor) * CAMERA_STILLZOOM_SMOOTH;
+
+        // Calculate movement factor based on still zoom
+        const movementFactor = 1.0 - (currentStillZoomFactor * (1.0 - CAMERA_ZOOM_WHEN_STILL));
+
+        // Normal camera settings from config (used at EDGE)
+        const maxHeight = CONFIG.camera.height * CAMERA_ZOOM_AT_EDGE * movementFactor;
+        const maxDistance = CONFIG.camera.distance * CAMERA_ZOOM_AT_EDGE * movementFactor;
+
+        // Zoomed in settings (used at CENTER)
+        const minHeight = CONFIG.camera.height * CAMERA_ZOOM_AT_CENTER * movementFactor;
+        const minDistance = CONFIG.camera.distance * CAMERA_ZOOM_AT_CENTER * movementFactor;
+
+        // Interpolate camera position (zoom IN at center, zoom OUT at edge)
+        const newHeight = minHeight + (maxHeight - minHeight) * zoomFactor;
+        const newDistance = minDistance + (maxDistance - minDistance) * zoomFactor;
+
+        // Horizontal camera follow (dollying OPPOSITE direction of player)
+        const targetCameraX = -playerTransform.position.x * CAMERA_HORIZONTAL_FOLLOW;
+
+        // SUPER SMOOTHLY update camera position
+        camera.position.x += (targetCameraX - camera.position.x) * CAMERA_POSITION_SMOOTH;
+        camera.position.y += (newHeight - camera.position.y) * CAMERA_POSITION_SMOOTH;
+        camera.position.z += (newDistance - camera.position.z) * CAMERA_POSITION_SMOOTH;
+
+        // Calculate target look-at position: split between center and player
+        const lookAtOffset = CONFIG.camera.lookAtOffset;
+
+        // Base split: always look partway between center and player (not just when still)
+        const baseLookAtX = lookAtOffset.x + (playerTransform.position.x - lookAtOffset.x) * CAMERA_LOOKAT_SPLIT;
+        const baseLookAtY = lookAtOffset.y + (playerTransform.position.y - lookAtOffset.y) * CAMERA_LOOKAT_SPLIT;
+        const baseLookAtZ = lookAtOffset.z + (playerTransform.position.z - lookAtOffset.z) * CAMERA_LOOKAT_SPLIT;
+
+        // When still, zoom focus even more toward player
+        const targetLookAtX = baseLookAtX + (playerTransform.position.x - baseLookAtX) * currentStillZoomFactor;
+        const targetLookAtY = baseLookAtY + (playerTransform.position.y - baseLookAtY) * currentStillZoomFactor;
+        const targetLookAtZ = baseLookAtZ + (playerTransform.position.z - baseLookAtZ) * currentStillZoomFactor;
+
+        // SMOOTHLY interpolate look-at position to avoid jerky panning
+        currentLookAtX += (targetLookAtX - currentLookAtX) * CAMERA_LOOKAT_SMOOTH;
+        currentLookAtY += (targetLookAtY - currentLookAtY) * CAMERA_LOOKAT_SMOOTH;
+        currentLookAtZ += (targetLookAtZ - currentLookAtZ) * CAMERA_LOOKAT_SMOOTH;
+
+        camera.lookAt(currentLookAtX, currentLookAtY, currentLookAtZ);
     }
 
     function updateFPS(currentTime) {

@@ -147,6 +147,17 @@
         const resourceManager = builder.resourceManager;
         const group = new THREE.Group();
 
+        // Get texture for this obstacle if TextureManager is available
+        let obstacleTexture = null;
+        if (window.TextureManager && TextureManager.loaded) {
+            obstacleTexture = TextureManager.getTextureForHeight(height);
+            if (obstacleTexture) {
+                // Clone texture for this obstacle to avoid shared repeat settings
+                obstacleTexture = obstacleTexture.clone();
+                obstacleTexture.repeat.set(1, 1);
+            }
+        }
+
         // Create each box in the shape
         boxes.forEach((box, boxIndex) => {
             const geometry = resourceManager.create(
@@ -156,12 +167,23 @@
                 `obstacle-${index}-box-${boxIndex}-geometry`
             );
 
-            const material = resourceManager.create(
-                'material',
-                'standard',
-                materialProps,
-                `obstacle-${index}-box-${boxIndex}-material`
-            );
+            let material;
+            if (obstacleTexture) {
+                // Use textured material
+                material = TextureManager.createTexturedMaterial(
+                    color,
+                    obstacleTexture,
+                    materialProps
+                );
+            } else {
+                // Fallback to solid color
+                material = resourceManager.create(
+                    'material',
+                    'standard',
+                    materialProps,
+                    `obstacle-${index}-box-${boxIndex}-material`
+                );
+            }
 
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(box.x, box.y + box.height / 2, box.z);

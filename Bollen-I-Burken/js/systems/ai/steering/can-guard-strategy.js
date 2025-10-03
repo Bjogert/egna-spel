@@ -20,7 +20,7 @@
      * @param {Array} obstacles - Array of obstacle transforms [{position: {x,z}}]
      * @returns {Object} Steering { linear: {x, z}, angular: number }
      */
-    function computeCanGuardPatrol(ai, transform, canPosition, deltaTime, obstacles = []) {
+    function computeCanGuardPatrol(ai, transform, canPosition, deltaTime, obstacles = [], recklessRadiusOverride = null) {
         // Initialize patrol state with RANDOMIZED timings for each hunter
         if (!ai.guardState) {
             ai.guardState = {
@@ -44,6 +44,11 @@
         const hasObstacles = obstacles && obstacles.length > 0;
 
         const state = ai.guardState;
+
+        // Apply reckless radius override if provided (AI ventures further over time)
+        if (recklessRadiusOverride !== null) {
+            state.orbitRadius = recklessRadiusOverride;
+        }
 
         // Calculate position relative to can
         const dx = transform.position.x - canPosition.x;

@@ -130,7 +130,7 @@
             const mesh = new THREE.Mesh(geometry, material);
             mesh.castShadow = true;
 
-            const spawnPos = position || { x: -5, y: 0.5, z: 5 };
+            const spawnPos = position || { x: 0, y: 0.5, z: 0 };  // Spawn in middle with player
             mesh.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
             this.scene.add(mesh);
 
