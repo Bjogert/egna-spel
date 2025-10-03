@@ -175,6 +175,44 @@
                             }
                         }
                     }
+
+                    // Update hearing circle
+                    if (renderable.mesh.hearingCircle) {
+                        renderable.mesh.hearingCircle.position.set(
+                            transform.position.x,
+                            0.1, // Fixed height slightly above ground
+                            transform.position.z
+                        );
+
+                        // Get player speed to calculate effective hearing range
+                        const movementSystem = window.movementSystem;
+                        const audioSystem = window.audioSystem;
+                        const aiSystem = window.aiSystem;
+
+                        if (movementSystem && audioSystem && aiSystem) {
+                            const playerSpeed = movementSystem.playerCurrentSpeed;
+                            const isSneaking = movementSystem.isSneaking;
+
+                            // Calculate sound level (same logic as AI hearing)
+                            let soundLevel = playerSpeed / movementSystem.playerMaxSpeed;
+                            if (isSneaking) {
+                                soundLevel *= audioSystem.sneakVolumeMultiplier;
+                            }
+
+                            // Effective hearing range
+                            const baseRange = aiSystem.hearingRange || 8.0;
+                            const effectiveRange = baseRange * Math.max(soundLevel, 0.1); // Min 10% visible
+
+                            // Scale the circle to match effective range
+                            const scale = effectiveRange / 100.0; // 100.0 is the base mesh radius
+                            renderable.mesh.hearingCircle.scale.set(scale, 1, scale);
+
+                            // Update opacity based on sound level
+                            if (renderable.mesh.hearingCircle.material) {
+                                renderable.mesh.hearingCircle.material.opacity = 0.2 + (soundLevel * 0.3);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -224,6 +262,9 @@
 
             // Always apply friction/deceleration to current velocity
             const currentSpeed = Math.sqrt(transform.velocity.x ** 2 + transform.velocity.z ** 2);
+
+            // Store current player speed for AI hearing detection
+            this.playerCurrentSpeed = currentSpeed;
 
             if (currentSpeed > 0.001) {
                 let frictionAmount;

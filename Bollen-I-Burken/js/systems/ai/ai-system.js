@@ -9,16 +9,20 @@
     }
 
     const AI_STATES = {
-        PATROL: 'PATROL',      // Orbit can at ~3m radius
-        RACE: 'RACE'           // Sprint straight to can
+        PATROL: 'PATROL',          // Orbit can at ~3m radius
+        INVESTIGATE: 'INVESTIGATE', // Move to last heard position and look around
+        RACE: 'RACE'               // Sprint straight to can
     };
+
+    // Debug flag - set to true for verbose console logging
+    const AI_DEBUG = false;
 
     class AISystem extends System {
         constructor() {
             super('AISystem');
             this.hunters = new Set();
             this.aiFrozen = false;  // Debug toggle to freeze AI
-            this.hearingRange = 8.0;  // How far AI can hear
+            this.hearingRange = 19.0;  // How far AI can hear
             this.registerTweaks();
             Utils.log('AI system initialized');
         }
@@ -36,11 +40,11 @@
             window.TweakPanel.addSetting('AI', 'Hearing Range', {
                 type: 'range',
                 min: 2,
-                max: 20,
-                step: 0.5,
+                max: 100,
+                step: 1,
                 decimals: 1,
                 label: 'Hearing Range (meters)',
-                getValue: () => this.hearingRange || 8.0,
+                getValue: () => this.hearingRange || 19.0,
                 setValue: (v) => this.hearingRange = v
             });
         }
@@ -99,6 +103,9 @@
                 case AI_STATES.PATROL:
                     this.updatePatrolBehavior(aiComponent, transform, movement, deltaTime, gameState);
                     break;
+                case AI_STATES.INVESTIGATE:
+                    this.updateInvestigateBehavior(aiComponent, transform, movement, deltaTime, gameState);
+                    break;
                 case AI_STATES.RACE:
                     this.updateRaceBehavior(aiComponent, transform, movement, deltaTime, gameState);
                     break;
@@ -149,12 +156,51 @@
 
             // Check if player is within hearing range
             const aiComponent = hunter.getComponent('AIHunter');
+
+            // Debug: Log hearing info every second (throttled) - only if AI_DEBUG enabled
+            if (AI_DEBUG && (!this._lastHearingLog || Date.now() - this._lastHearingLog > 1000)) {
+                console.log(`🎧 Hearing Check: Distance=${distance.toFixed(2)}m, EffectiveRange=${effectiveRange.toFixed(2)}m, PlayerSpeed=${playerSpeed.toFixed(3)}, SoundLevel=${soundLevel.toFixed(3)}`);
+                this._lastHearingLog = Date.now();
+            }
+
             if (distance <= effectiveRange && playerSpeed > 0.01) {
                 // AI hears player!
-                if (aiComponent && aiComponent.state === AI_STATES.PATROL && !aiComponent.reactionState) {
-                    aiComponent.reactionState = 'SPOTTED';
-                    aiComponent.reactionStartTime = Date.now();
-                    Utils.log(`AI heard player at distance ${distance.toFixed(2)}m! (range: ${effectiveRange.toFixed(2)})`);
+                if (aiComponent) {
+                    // Update heard position if in PATROL or INVESTIGATE states
+                    if (aiComponent.state === AI_STATES.PATROL || aiComponent.state === 'PATROL' ||
+                        aiComponent.state === AI_STATES.INVESTIGATE) {
+
+                        // Update the position where we heard the player (always use latest)
+                        aiComponent.lastHeardPosition = {
+                            x: playerTransform.position.x,
+                            z: playerTransform.position.z
+                        };
+
+                        // INSTANT REACTION: Snap heading to face sound direction
+                        const angleToSound = Math.atan2(dx, dz);
+                        aiComponent.heading = angleToSound;
+                        transform.rotation.y = angleToSound;  // Update visual rotation immediately
+
+                        // If not already investigating, start investigation
+                        if (aiComponent.state !== AI_STATES.INVESTIGATE) {
+                            aiComponent.state = AI_STATES.INVESTIGATE;
+                            aiComponent.investigateStartTime = Date.now();
+                            aiComponent.investigateLookAroundTime = 0;
+                            aiComponent.investigateStuckCount = 0;
+                            console.log(`🚨 AI HEARD PLAYER at distance ${distance.toFixed(2)}m! Snapping to face sound at angle ${(angleToSound * 180 / Math.PI).toFixed(0)}°`);
+                            Utils.log(`🚨 AI state changed: ${aiComponent.state}`);
+                        } else {
+                            // Already investigating - update target and reset timer
+                            aiComponent.investigateStartTime = Date.now();
+                            if (AI_DEBUG) {
+                                console.log(`🔄 AI snapped to updated sound at (${playerTransform.position.x.toFixed(1)}, ${playerTransform.position.z.toFixed(1)})`);
+                            }
+                        }
+                    } else {
+                        if (AI_DEBUG) {
+                            console.log(`🎧 AI hears player but is in ${aiComponent.state} state (can't investigate)`);
+                        }
+                    }
                 }
             }
         }
@@ -233,6 +279,23 @@
             transform.velocity.x = aiComponent.velocity.x;
             transform.velocity.z = aiComponent.velocity.z;
             transform.rotation.y = aiComponent.heading;
+        }
+
+        updateInvestigateBehavior(aiComponent, transform, movement, deltaTime, gameState) {
+            // Delegate to InvestigateBehavior module
+            const newState = InvestigateBehavior.updateInvestigateBehavior(
+                aiComponent,
+                transform,
+                movement,
+                deltaTime,
+                gameState,
+                this.getStaticColliders.bind(this)
+            );
+
+            // Handle state transitions
+            if (newState) {
+                aiComponent.state = AI_STATES[newState];
+            }
         }
 
         getCanPosition(gameState) {

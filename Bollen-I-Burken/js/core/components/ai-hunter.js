@@ -5,52 +5,39 @@
 (function (global) {
     class AIHunter {
         constructor() {
-            // State machine
+            // State machine (PATROL, INVESTIGATE, RACE)
             this.state = 'PATROL';
-            this.huntingStartTime = 0;
-            this.searchStartTime = 0;
-            this.searchDuration = 5000;
-            this.searchTimeout = 5000;
-            this.alertLevel = 0;
 
-            // Reaction state (for spotted-player reaction)
+            // Reaction state (for spotted-player visual reaction)
             this.reactionState = null;      // 'SPOTTED', 'REACTING', null
             this.reactionStartTime = 0;
             this.reactionDuration = 800;    // 800ms reaction before racing
             this.reactionJumpTime = 200;    // Jump at 200ms into reaction
 
-            // STEERING-BASED MOVEMENT (new system)
+            // Steering-based movement
             this.heading = Math.random() * Math.PI * 2;  // Current facing direction (radians)
             this.velocity = { x: 0, z: 0 };              // Current velocity vector
             this.currentSpeed = 0;                       // Current actual speed (for acceleration)
-            this.maxSpeed = 0.12;                        // Max speed during patrol (increased from 0.08)
-            this.maxSpeedHunting = 0.20;                 // Max speed during hunting (increased from 0.12)
+            this.maxSpeed = 0.12;                        // Max speed during patrol
+            this.maxSpeedHunting = 0.20;                 // Max speed during hunting
             this.acceleration = 0.15;                    // Acceleration rate (units/sec²)
-            this.maxAccel = 0.15;                        // Linear acceleration (increased from 0.05)
-            this.maxAngularAccel = 4.5;                  // Angular acceleration - rad/sec (increased from 2.0)
+            this.maxAccel = 0.15;                        // Linear acceleration
+            this.maxAngularAccel = 4.5;                  // Angular acceleration (rad/sec)
 
-            // Wander behavior state
+            // Wander behavior state (used by can-guard patrol)
             this.wanderAngle = 0;                        // Random offset for patrol wandering
             this.nextTurnTime = 0;                       // Time until next direction change
-            this.currentTurnSpeed = 1.0;                 // Current turn multiplier (varies for interesting movement)
+            this.currentTurnSpeed = 1.0;                 // Current turn multiplier
 
-            // Waypoint system (for future methodical search)
-            this.patrolPoints = [
-                { x: 0, z: 5 },
-                { x: 5, z: 0 },
-                { x: 0, z: -5 },
-                { x: -5, z: 0 }
-            ];
-            this.currentPatrolIndex = 0;
+            // Hearing investigation
+            this.lastHeardPosition = null;       // Where we last heard the player
+            this.investigateStartTime = 0;       // When we started investigating
+            this.investigateDuration = 8000;     // How long to investigate (8 seconds)
+            this.investigateLookAroundTime = 0;  // Time spent looking around at investigation point
+            this.investigateStuckCount = 0;      // Number of times stuck during investigation (give up after 3)
 
-            // Legacy fields (to be removed after migration complete)
-            this.target = null;
-            this.lastKnownPosition = null;
+            // Wall collision cooldown (for obstacle handling)
             this.wallCollisionCooldown = 0;
-
-            // OLD DIRECTION SYSTEM - DEPRECATED (will be removed)
-            // this.patrolDirection, this.targetDirection, this.patrolTimer
-            // Replaced by steering behaviors (heading + velocity)
         }
     }
 

@@ -138,6 +138,11 @@
             visionCone.position.copy(mesh.position);
             this.scene.add(visionCone);
 
+            // Create hearing radius circle (at max range)
+            const hearingCircle = this.createHearingRadiusDebugMesh(100.0);
+            hearingCircle.position.copy(mesh.position);
+            this.scene.add(hearingCircle);
+
             const aiEntity = this.gameEngine.gameState.createEntity();
             const aiTransform = new Transform(spawnPos.x, spawnPos.y, spawnPos.z);
             aiEntity.addComponent(aiTransform);
@@ -153,6 +158,7 @@
             aiEntity.addComponent(new VisionCone(visionAngle, visionRange));
 
             mesh.visionConeMesh = visionCone;
+            mesh.hearingCircle = hearingCircle;
 
             const aiSystem = this.gameEngine.getSystem('AISystem');
             if (aiSystem) {
@@ -162,7 +168,7 @@
                 Utils.warn(`AISystem not found - AI hunter ${hunterId} will not move`);
             }
 
-            this.hunterData.set(hunterId, { entity: aiEntity, mesh, visionCone });
+            this.hunterData.set(hunterId, { entity: aiEntity, mesh, visionCone, hearingCircle });
 
             Utils.log(`Added AI hunter: ${hunterId} at position (${spawnPos.x}, ${spawnPos.z})`);
             return aiEntity;
@@ -184,6 +190,12 @@
                 this.scene.remove(hunterInfo.visionCone);
                 if (hunterInfo.visionCone.geometry) hunterInfo.visionCone.geometry.dispose();
                 if (hunterInfo.visionCone.material) hunterInfo.visionCone.material.dispose();
+            }
+
+            if (hunterInfo.hearingCircle) {
+                this.scene.remove(hunterInfo.hearingCircle);
+                if (hunterInfo.hearingCircle.geometry) hunterInfo.hearingCircle.geometry.dispose();
+                if (hunterInfo.hearingCircle.material) hunterInfo.hearingCircle.material.dispose();
             }
 
             const aiSystem = this.gameEngine.getSystem('AISystem');
@@ -247,6 +259,31 @@
             });
 
             return new THREE.LineSegments(geometry, material);
+        }
+
+        createHearingRadiusDebugMesh(radius) {
+            const segments = 32; // Smooth circle
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+
+            // Create circle vertices
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                vertices.push(x, 0.1, z); // Slightly above ground
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+            const material = new THREE.LineBasicMaterial({
+                color: 0x00ff00, // Green for hearing
+                transparent: true,
+                opacity: 0.3,
+                linewidth: 2
+            });
+
+            return new THREE.Line(geometry, material);
         }
     }
 
