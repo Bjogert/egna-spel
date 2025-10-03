@@ -216,7 +216,7 @@
                 Utils.log('showStartMenu function found, calling it...');
                 global.showStartMenu({
                     gameOver: true,
-                    message: 'DU VÄN FÖR DIG!',
+                    message: 'DUNK FÖR MIG!',
                     reason: 'won',
                     elapsedMs: elapsedTime
                 });

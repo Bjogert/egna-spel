@@ -177,7 +177,7 @@ folders:
           recent_changes:
             - "Added playerWin() method for player win condition"
             - "Player can reach can + press space to trigger victory"
-            - "Shows win menu with 'DU VÄN FÖR DIG!' message"
+            - "Shows win menu with 'DUNK FÖR MIG!' message"
 
       # ==========================================
       # COMPONENTS DIRECTORY
@@ -922,7 +922,7 @@ game_features:
       - "checkPlayerWinCondition() in movement-system.js"
       - "Within 2m of can + action1 key (space) = win"
       - "playerWin() method in game-engine.js"
-      - "Shows 'DU VÄN FÖR DIG!' message"
+      - "Shows 'DUNK FÖR MIG!' message"
       - "PLAYER_WIN state added to GAME_STATES"
       - "No popup message - menu shows instead (ui-system.js)"
 
@@ -1219,7 +1219,7 @@ version_history:
       - "Dynamic behavior modes: PAUSE (0.0 move), REPOSITION (2.0 move), SLOW CREEP (0.3), FAST PATROL (1.6)"
       - "Each hunter completely independent - different timing, radius, speed, direction"
       - "Player win condition: reach can (within 2.3m) + press Space = victory"
-      - "Removed unnecessary popup on win - menu shows directly with 'DU VÄN FÖR DIG!' message"
+      - "Removed unnecessary popup on win - menu shows directly with 'DUNK FÖR MIG!' message"
       - "Difficulty-based hunter counts: Level 1=1, Level 3-4=2, Level 5-6=3, Level 7-8=4, Level 9=5, Level 10=6"
       - "Near-can obstacles always short (0.3-0.6m) and green for fair gameplay"
       - "Higher difficulties have MORE obstacles but FARTHER from can (canExclusionRadius 3m→12m)"
