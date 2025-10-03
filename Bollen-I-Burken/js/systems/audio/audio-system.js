@@ -10,14 +10,60 @@ class AudioSystem extends System {
         this.audioContext = null;
         this.masterVolume = 0.7;
         this.soundEnabled = true;
-        this.musicEnabled = true;
 
         this.sounds = new Map();
-        this.music = new Map();
-        this.currentMusic = null;
+
+        // Footstep tracking for alternating feet
+        this.isLeftFoot = true;
+        this.playerLastFootstepTime = 0;
+        this.aiLastFootstepTime = new Map(); // Track per AI entity
+
+        // Tweak-able settings
+        this.stepInterval = 120;  // Single interval for all footsteps
+        this.stepVolume = 0.20;
+        this.sneakVolumeMultiplier = 0.3;  // 30% volume when sneaking
+        this.sneakIntervalMultiplier = 1.8;  // 1.8x slower steps when sneaking
 
         this.initializeAudio();
+        this.registerTweaks();
         Utils.log('Audio system initialized');
+    }
+
+    registerTweaks() {
+        if (!window.TweakPanel) return;
+
+        window.TweakPanel.addSetting('Audio', 'Step Interval', {
+            type: 'range',
+            min: 100,
+            max: 600,
+            step: 10,
+            decimals: 0,
+            label: 'Footstep Interval (ms)',
+            getValue: () => this.stepInterval,
+            setValue: (v) => this.stepInterval = v
+        });
+
+        window.TweakPanel.addSetting('Audio', 'Step Volume', {
+            type: 'range',
+            min: 0,
+            max: 1,
+            step: 0.05,
+            decimals: 2,
+            label: 'Footstep Volume',
+            getValue: () => this.stepVolume,
+            setValue: (v) => this.stepVolume = v
+        });
+
+        window.TweakPanel.addSetting('Audio', 'Sneak Volume', {
+            type: 'range',
+            min: 0.1,
+            max: 1.0,
+            step: 0.05,
+            decimals: 2,
+            label: 'Sneak Volume Multiplier',
+            getValue: () => this.sneakVolumeMultiplier,
+            setValue: (v) => this.sneakVolumeMultiplier = v
+        });
     }
 
     async initializeAudio() {
@@ -30,14 +76,10 @@ class AudioSystem extends System {
             this.masterGain.gain.setValueAtTime(this.masterVolume, this.audioContext.currentTime);
             this.masterGain.connect(this.audioContext.destination);
 
-            // Create separate gain nodes for different audio types
+            // Create gain node for sound effects
             this.sfxGain = this.audioContext.createGain();
             this.sfxGain.gain.setValueAtTime(0.8, this.audioContext.currentTime);
             this.sfxGain.connect(this.masterGain);
-
-            this.musicGain = this.audioContext.createGain();
-            this.musicGain.gain.setValueAtTime(0.5, this.audioContext.currentTime);
-            this.musicGain.connect(this.masterGain);
 
             // Handle audio context state
             if (this.audioContext.state === 'suspended') {
@@ -45,12 +87,51 @@ class AudioSystem extends System {
                 this.setupUserInteractionHandler();
             }
 
-            this.generateProcedualSounds();
+            // Load external sound files
+            await this.loadExternalSounds();
+
+            // Note: Old procedural sounds disabled - using external files now
+            // this.generateProcedualSounds();
             Utils.log('Web Audio API initialized');
 
         } catch (error) {
             Utils.warn('Web Audio API not available, falling back to HTML5 audio', error);
             this.initializeFallbackAudio();
+        }
+    }
+
+    async loadExternalSounds() {
+        if (!this.audioContext) return;
+
+        const soundFiles = [
+            { name: 'footstep_left', path: 'assets/sounds/kenney_impact-sounds/Audio/footstep_concrete_000.ogg' },
+            { name: 'footstep_right', path: 'assets/sounds/kenney_impact-sounds/Audio/footstep_concrete_003.ogg' }
+        ];
+
+        for (const sound of soundFiles) {
+            try {
+                const buffer = await this.loadSoundFile(sound.path);
+                this.sounds.set(sound.name, buffer);
+                Utils.log(`Loaded sound: ${sound.name}`);
+            } catch (error) {
+                Utils.warn(`Failed to load sound: ${sound.name}`, error);
+            }
+        }
+    }
+
+    async loadSoundFile(path) {
+        try {
+            Utils.log(`Loading sound file: ${path}`);
+            const response = await fetch(path);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            return audioBuffer;
+        } catch (error) {
+            Utils.error(`Failed to load sound file: ${path}`, error);
+            throw error;
         }
     }
 
@@ -77,93 +158,6 @@ class AudioSystem extends System {
         this.audioContext = null;
         this.fallbackMode = true;
         Utils.log('Using HTML5 audio fallback');
-    }
-
-    generateProcedualSounds() {
-        if (!this.audioContext) return;
-
-        // Generate footstep sound
-        this.createFootstepSound();
-
-        // Generate UI sounds
-        this.createUISound('click', 800, 0.1, 'square');
-        this.createUISound('hover', 600, 0.05, 'sine');
-        this.createUISound('error', 200, 0.3, 'sawtooth');
-
-        // Generate ambient sounds
-        this.createAmbientSound();
-    }
-
-    createFootstepSound() {
-        if (!this.audioContext) return;
-
-        const duration = 0.15;
-        const buffer = this.audioContext.createBuffer(1, duration * this.audioContext.sampleRate, this.audioContext.sampleRate);
-        const data = buffer.getChannelData(0);
-
-        // Generate noise-based footstep sound
-        for (let i = 0; i < buffer.length; i++) {
-            const noise = (Math.random() * 2 - 1) * 0.3;
-            const decay = Math.pow(1 - (i / buffer.length), 2);
-            data[i] = noise * decay;
-        }
-
-        this.sounds.set('footstep', buffer);
-    }
-
-    createUISound(name, frequency, volume, waveType = 'sine') {
-        if (!this.audioContext) return;
-
-        const duration = 0.1;
-        const buffer = this.audioContext.createBuffer(1, duration * this.audioContext.sampleRate, this.audioContext.sampleRate);
-        const data = buffer.getChannelData(0);
-
-        for (let i = 0; i < buffer.length; i++) {
-            const time = i / this.audioContext.sampleRate;
-            const decay = Math.pow(1 - (i / buffer.length), 2);
-
-            let sample = 0;
-            switch (waveType) {
-                case 'sine':
-                    sample = Math.sin(2 * Math.PI * frequency * time);
-                    break;
-                case 'square':
-                    sample = Math.sin(2 * Math.PI * frequency * time) > 0 ? 1 : -1;
-                    break;
-                case 'sawtooth':
-                    sample = 2 * (time * frequency - Math.floor(time * frequency + 0.5));
-                    break;
-            }
-
-            data[i] = sample * volume * decay;
-        }
-
-        this.sounds.set(name, buffer);
-    }
-
-    createAmbientSound() {
-        if (!this.audioContext) return;
-
-        // Create a longer ambient loop
-        const duration = 4; // 4 seconds
-        const buffer = this.audioContext.createBuffer(2, duration * this.audioContext.sampleRate, this.audioContext.sampleRate);
-
-        for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-            const data = buffer.getChannelData(channel);
-
-            for (let i = 0; i < buffer.length; i++) {
-                const time = i / this.audioContext.sampleRate;
-
-                // Create layered ambient sound
-                const low = Math.sin(2 * Math.PI * 60 * time) * 0.1;
-                const mid = Math.sin(2 * Math.PI * 120 * time) * 0.05;
-                const high = (Math.random() * 2 - 1) * 0.02;
-
-                data[i] = low + mid + high;
-            }
-        }
-
-        this.sounds.set('ambient', buffer);
     }
 
     playSound(soundName, volume = 1.0, pitch = 1.0) {
@@ -215,90 +209,15 @@ class AudioSystem extends System {
         });
     }
 
-    playFootstep() {
-        // Randomize footstep sounds slightly
-        const volume = Utils.randomFloat(0.3, 0.6);
-        const pitch = Utils.randomFloat(0.8, 1.2);
-        this.playSound('footstep', volume, pitch);
-    }
-
-    playUIClick() {
-        this.playSound('click', 0.5);
-    }
-
-    playUIHover() {
-        this.playSound('hover', 0.3);
-    }
-
-    playError() {
-        this.playSound('error', 0.8);
-    }
-
-    startAmbientMusic() {
-        if (!this.musicEnabled || !this.audioContext) return;
-
-        this.stopMusic();
-
-        // Create oscillator-based ambient music
-        this.createProceduralMusic();
-    }
-
-    createProceduralMusic() {
-        if (!this.audioContext) return;
-
-        // Create multiple oscillators for layered ambient music
-        const oscillators = [];
-        const frequencies = [55, 82.4, 110, 164.8]; // A1, E2, A2, E3
-
-        frequencies.forEach((freq, index) => {
-            const oscillator = this.audioContext.createOscillator();
-            const gainNode = this.audioContext.createGain();
-
-            oscillator.type = index % 2 === 0 ? 'sine' : 'triangle';
-            oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
-
-            // Set volume based on frequency (lower = louder)
-            const volume = 0.1 / (index + 1);
-            gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
-
-            // Add subtle vibrato
-            const lfo = this.audioContext.createOscillator();
-            const lfoGain = this.audioContext.createGain();
-
-            lfo.frequency.setValueAtTime(1 + Math.random() * 2, this.audioContext.currentTime);
-            lfoGain.gain.setValueAtTime(2, this.audioContext.currentTime);
-
-            lfo.connect(lfoGain);
-            lfoGain.connect(oscillator.frequency);
-
-            oscillator.connect(gainNode);
-            gainNode.connect(this.musicGain);
-
-            oscillator.start();
-            lfo.start();
-
-            oscillators.push({ oscillator, gainNode, lfo, lfoGain });
-        });
-
-        this.currentMusic = oscillators;
-    }
-
-    stopMusic() {
-        if (this.currentMusic) {
-            this.currentMusic.forEach(({ oscillator, gainNode, lfo, lfoGain }) => {
-                try {
-                    oscillator.stop();
-                    lfo.stop();
-                    oscillator.disconnect();
-                    gainNode.disconnect();
-                    lfo.disconnect();
-                    lfoGain.disconnect();
-                } catch (error) {
-                    // Ignore errors when stopping already stopped oscillators
-                }
-            });
-            this.currentMusic = null;
+    playFootstep(volume = 0.5, pitch = 1.0) {
+        if (!this.sounds.has('footstep_left') || !this.sounds.has('footstep_right')) {
+            Utils.warn('Footstep sounds not loaded');
+            return;
         }
+
+        const soundName = this.isLeftFoot ? 'footstep_left' : 'footstep_right';
+        this.playSound(soundName, volume, pitch);
+        this.isLeftFoot = !this.isLeftFoot; // Alternate feet
     }
 
     setMasterVolume(volume) {
@@ -316,48 +235,82 @@ class AudioSystem extends System {
         Utils.log(`Sound effects ${enabled ? 'enabled' : 'disabled'}`);
     }
 
-    setMusicEnabled(enabled) {
-        this.musicEnabled = enabled;
-
-        if (!enabled) {
-            this.stopMusic();
-        } else {
-            this.startAmbientMusic();
-        }
-
-        Utils.log(`Music ${enabled ? 'enabled' : 'disabled'}`);
-    }
-
     update(gameState) {
-        // Update audio based on game state
-        if (gameState.gamePhase === GAME_STATES.PLAYING && this.musicEnabled && !this.currentMusic) {
-            this.startAmbientMusic();
-        } else if (gameState.gamePhase !== GAME_STATES.PLAYING && this.currentMusic) {
-            this.stopMusic();
-        }
-
         // Play footsteps for moving players
         this.updateFootsteps(gameState);
     }
 
     updateFootsteps(gameState) {
+        // Player footsteps
         const localPlayer = gameState.getLocalPlayer();
-        if (!localPlayer) return;
+        if (localPlayer) {
+            const input = localPlayer.getComponent('PlayerInput');
+            const transform = localPlayer.getComponent('Transform');
 
-        const input = localPlayer.getComponent('PlayerInput');
-        const transform = localPlayer.getComponent('Transform');
+            if (input && transform && input.hasInput()) {
+                const velocity = Utils.vectorLength(transform.velocity);
+                if (velocity > 0.01) {
+                    const currentTime = Utils.now();
 
-        if (input && transform && input.hasInput()) {
-            const velocity = Utils.vectorLength(transform.velocity);
-            if (velocity > 0.01) {
-                // Play footsteps at regular intervals when moving
-                const currentTime = Utils.now();
-                const stepInterval = 300; // milliseconds between steps
+                    // Get movement system to check current speed (acceleration state)
+                    const movementSystem = window.movementSystem;
+                    let speedFactor = 1.0;
+                    let isSneaking = false;
 
-                if (!this.lastFootstepTime || currentTime - this.lastFootstepTime > stepInterval) {
-                    this.playFootstep();
-                    this.lastFootstepTime = currentTime;
+                    if (movementSystem) {
+                        // Use actual current speed which reflects acceleration
+                        const currentSpeed = movementSystem.playerCurrentSpeed;
+                        const maxSpeed = movementSystem.playerMaxSpeed;
+                        speedFactor = Math.max(0.5, Math.min(currentSpeed / maxSpeed, 2.0));
+                        isSneaking = movementSystem.isSneaking || false;
+                    } else {
+                        // Fallback to velocity-based
+                        speedFactor = Math.min(velocity / 0.15, 2.0);
+                    }
+
+                    let adjustedInterval = this.stepInterval / speedFactor;
+                    let volume = this.stepVolume;
+                    let pitch = 1.0;
+
+                    if (isSneaking) {
+                        adjustedInterval *= this.sneakIntervalMultiplier;  // Slower steps
+                        volume *= this.sneakVolumeMultiplier;  // Quieter
+                        pitch = 0.8;  // Lower pitch for sneaking
+                    }
+
+                    if (currentTime - this.playerLastFootstepTime > adjustedInterval) {
+                        this.playFootstep(volume, pitch);
+                        this.playerLastFootstepTime = currentTime;
+                    }
                 }
+            }
+        }
+
+        // AI footsteps
+        for (const entity of gameState.entities.values()) {
+            if (entity.hasComponent('AIHunter')) {
+                this.updateAIFootsteps(entity);
+            }
+        }
+    }
+
+    updateAIFootsteps(aiEntity) {
+        const transform = aiEntity.getComponent('Transform');
+        if (!transform) return;
+
+        const velocity = Utils.vectorLength(transform.velocity);
+        if (velocity > 0.05) {
+            const currentTime = Utils.now();
+
+            // Adjust step interval based on velocity
+            const speedFactor = Math.min(velocity / 0.20, 2.0);
+            const adjustedInterval = this.stepInterval / speedFactor;
+
+            const lastStepTime = this.aiLastFootstepTime.get(aiEntity.id) || 0;
+
+            if (currentTime - lastStepTime > adjustedInterval) {
+                this.playFootstep(this.stepVolume * 0.8, 0.9);  // AI slightly quieter and lower pitch
+                this.aiLastFootstepTime.set(aiEntity.id, currentTime);
             }
         }
     }
@@ -366,15 +319,13 @@ class AudioSystem extends System {
         return {
             masterVolume: this.masterVolume,
             soundEnabled: this.soundEnabled,
-            musicEnabled: this.musicEnabled,
             audioContext: !!this.audioContext,
-            fallbackMode: this.fallbackMode
+            fallbackMode: this.fallbackMode,
+            loadedSounds: Array.from(this.sounds.keys())
         };
     }
 
     destroy() {
-        this.stopMusic();
-
         if (this.audioContext) {
             this.audioContext.close();
         }
@@ -387,5 +338,5 @@ class AudioSystem extends System {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { AudioSystem };
 } else {
-    window.GameAudio = { AudioSystem };
+    window.AudioSystem = AudioSystem;
 }

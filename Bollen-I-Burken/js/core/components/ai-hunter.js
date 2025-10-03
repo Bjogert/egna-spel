@@ -13,11 +13,19 @@
             this.searchTimeout = 5000;
             this.alertLevel = 0;
 
+            // Reaction state (for spotted-player reaction)
+            this.reactionState = null;      // 'SPOTTED', 'REACTING', null
+            this.reactionStartTime = 0;
+            this.reactionDuration = 800;    // 800ms reaction before racing
+            this.reactionJumpTime = 200;    // Jump at 200ms into reaction
+
             // STEERING-BASED MOVEMENT (new system)
             this.heading = Math.random() * Math.PI * 2;  // Current facing direction (radians)
             this.velocity = { x: 0, z: 0 };              // Current velocity vector
+            this.currentSpeed = 0;                       // Current actual speed (for acceleration)
             this.maxSpeed = 0.12;                        // Max speed during patrol (increased from 0.08)
             this.maxSpeedHunting = 0.20;                 // Max speed during hunting (increased from 0.12)
+            this.acceleration = 0.15;                    // Acceleration rate (units/sec²)
             this.maxAccel = 0.15;                        // Linear acceleration (increased from 0.05)
             this.maxAngularAccel = 4.5;                  // Angular acceleration - rad/sec (increased from 2.0)
 

@@ -42,7 +42,9 @@ class InputSystem extends System {
             // System
             'Escape': 'pause',
             'KeyP': 'menu',
-            'KeyM': 'mute'
+            'KeyM': 'mute',
+            'ShiftLeft': 'sneak',
+            'ShiftRight': 'sneak'
         };
 
         // Bind event handlers to preserve 'this' context
@@ -286,6 +288,11 @@ class InputSystem extends System {
         if (this.keys.get('menu')) {
             this.keys.set('menu', false); // Prevent repeat
             this.showMenu(gameState);
+        }
+
+        // Handle sneak toggle
+        if (window.movementSystem) {
+            window.movementSystem.isSneaking = this.keys.get('sneak') || false;
         }
 
         // Allow input during COUNTDOWN and PLAYING

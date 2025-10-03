@@ -8,6 +8,25 @@
     global.getConfig = getConfig;  // Direct reference to config.js function
     global.setConfig = setConfig;  // Direct reference to config.js function
 
+    global.testAudio = function () {
+        console.log('=== AUDIO SYSTEM TEST ===');
+
+        if (!global.audioSystem) {
+            console.log('❌ AudioSystem not initialized');
+            return;
+        }
+
+        console.log('✓ AudioSystem exists');
+        console.log('Audio settings:', global.audioSystem.getAudioSettings());
+        console.log('Loaded sounds:', Array.from(global.audioSystem.sounds.keys()));
+
+        console.log('\nTesting footstep sound...');
+        global.audioSystem.playFootstep();
+
+        console.log('=== END AUDIO TEST ===');
+        console.log('If you heard a footstep, audio is working!');
+    };
+
     global.debugInteractions = function () {
         console.log('=== INTERACTION SYSTEM DEBUG ===');
 

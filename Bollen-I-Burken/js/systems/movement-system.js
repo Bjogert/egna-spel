@@ -14,6 +14,93 @@
             this.playerBounds = { width: 0.8, height: 1.0, depth: 0.8 };
             this.aiBounds = { width: 0.9, height: 1.1, depth: 0.9 };
             this._playerHasWon = false;  // Track win state
+
+            // Player acceleration tracking
+            this.playerCurrentSpeed = 0;
+            this.playerMaxSpeed = 0.13;
+            this.playerAcceleration = 0.15;
+            this.playerDeceleration = 0.35;
+            this.playerDirection = { x: 0, z: 0 };  // Last movement direction (for sliding)
+
+            // Sneaking
+            this.isSneaking = false;
+            this.sneakMaxSpeed = 0.05;  // Max speed when sneaking (absolute value)
+
+            // Momentum/drift
+            this.momentumFactor = 0.85;  // How much old velocity carries over (0-1, higher = more drift)
+            this.driftFriction = 0.2;  // How quickly drift decays (higher = less slide)
+
+            this.registerTweaks();
+        }
+
+        registerTweaks() {
+            if (!window.TweakPanel) return;
+
+            window.TweakPanel.addSetting('Player', 'Max Speed', {
+                type: 'range',
+                min: 0.05,
+                max: 0.3,
+                step: 0.01,
+                decimals: 2,
+                label: 'Max Speed',
+                getValue: () => this.playerMaxSpeed,
+                setValue: (v) => this.playerMaxSpeed = v
+            });
+
+            window.TweakPanel.addSetting('Player', 'Acceleration', {
+                type: 'range',
+                min: 0.05,
+                max: 0.5,
+                step: 0.01,
+                decimals: 2,
+                label: 'Acceleration',
+                getValue: () => this.playerAcceleration,
+                setValue: (v) => this.playerAcceleration = v
+            });
+
+            window.TweakPanel.addSetting('Player', 'Deceleration', {
+                type: 'range',
+                min: 0.1,
+                max: 1.0,
+                step: 0.05,
+                decimals: 2,
+                label: 'Deceleration',
+                getValue: () => this.playerDeceleration,
+                setValue: (v) => this.playerDeceleration = v
+            });
+
+            window.TweakPanel.addSetting('Player', 'Sneak Max Speed', {
+                type: 'range',
+                min: 0.02,
+                max: 0.15,
+                step: 0.01,
+                decimals: 2,
+                label: 'Sneak Max Speed',
+                getValue: () => this.sneakMaxSpeed,
+                setValue: (v) => this.sneakMaxSpeed = v
+            });
+
+            window.TweakPanel.addSetting('Player', 'Momentum', {
+                type: 'range',
+                min: 0.0,
+                max: 0.95,
+                step: 0.05,
+                decimals: 2,
+                label: 'Momentum (overspeed tolerance)',
+                getValue: () => this.momentumFactor,
+                setValue: (v) => this.momentumFactor = v
+            });
+
+            window.TweakPanel.addSetting('Player', 'Drift Friction', {
+                type: 'range',
+                min: 0.05,
+                max: 0.5,
+                step: 0.05,
+                decimals: 2,
+                label: 'Drift Friction (higher=less slide)',
+                getValue: () => this.driftFriction,
+                setValue: (v) => this.driftFriction = v
+            });
         }
 
         update(gameState) {
@@ -99,16 +186,75 @@
                 transform.previousPosition = { ...transform.position };
             }
 
-            transform.velocity.x = 0;
+            // Get desired direction from input
+            let desiredX = 0;
+            let desiredZ = 0;
+
+            if (input.keys.forward) desiredZ -= 1;
+            if (input.keys.backward) desiredZ += 1;
+            if (input.keys.left) desiredX -= 1;
+            if (input.keys.right) desiredX += 1;
+
+            // Check if player is trying to move
+            const isMoving = desiredX !== 0 || desiredZ !== 0;
+
+            // Normalize input direction
+            if (isMoving) {
+                const magnitude = Math.sqrt(desiredX * desiredX + desiredZ * desiredZ);
+                if (magnitude > 0) {
+                    desiredX /= magnitude;
+                    desiredZ /= magnitude;
+                }
+                this.playerDirection.x = desiredX;
+                this.playerDirection.z = desiredZ;
+            }
+
+            // DRIFT MECHANICS: Add acceleration forces to existing velocity
+            const dt = 1 / 60;
+            const effectiveMaxSpeed = this.isSneaking
+                ? this.sneakMaxSpeed
+                : this.playerMaxSpeed;
+
+            if (isMoving) {
+                // Add acceleration force in input direction (builds speed in new direction)
+                const accelForce = this.playerAcceleration * dt;
+                transform.velocity.x += desiredX * accelForce;
+                transform.velocity.z += desiredZ * accelForce;
+            }
+
+            // Always apply friction/deceleration to current velocity
+            const currentSpeed = Math.sqrt(transform.velocity.x ** 2 + transform.velocity.z ** 2);
+
+            if (currentSpeed > 0.001) {
+                let frictionAmount;
+
+                if (isMoving && currentSpeed > effectiveMaxSpeed) {
+                    // Over max speed - apply drift friction
+                    frictionAmount = (1 - this.momentumFactor) * this.driftFriction;
+                } else if (!isMoving) {
+                    // Not moving - apply deceleration
+                    frictionAmount = this.playerDeceleration * dt / currentSpeed;
+                } else {
+                    // Moving but under max speed - minimal friction
+                    frictionAmount = 0.02;
+                }
+
+                const frictionFactor = Math.max(0, 1 - frictionAmount);
+                transform.velocity.x *= frictionFactor;
+                transform.velocity.z *= frictionFactor;
+
+                // Clamp to max speed
+                const newSpeed = Math.sqrt(transform.velocity.x ** 2 + transform.velocity.z ** 2);
+                if (newSpeed > effectiveMaxSpeed * 1.5) {  // Allow some overspeed for drift
+                    transform.velocity.x *= (effectiveMaxSpeed * 1.5) / newSpeed;
+                    transform.velocity.z *= (effectiveMaxSpeed * 1.5) / newSpeed;
+                }
+            } else {
+                transform.velocity.x = 0;
+                transform.velocity.z = 0;
+            }
+
             transform.velocity.y = 0;
-            transform.velocity.z = 0;
-
-            const speed = this.moveSpeed;
-
-            if (input.keys.forward) transform.velocity.z -= speed;
-            if (input.keys.backward) transform.velocity.z += speed;
-            if (input.keys.left) transform.velocity.x -= speed;
-            if (input.keys.right) transform.velocity.x += speed;
 
             transform.position.x += transform.velocity.x;
             transform.position.z += transform.velocity.z;
@@ -132,8 +278,13 @@
             transform.position.x = Math.max(-limit, Math.min(limit, transform.position.x));
             transform.position.z = Math.max(-limit, Math.min(limit, transform.position.z));
 
-            if (transform.velocity.x !== 0 || transform.velocity.z !== 0) {
-                transform.rotation.y = Math.atan2(transform.velocity.x, transform.velocity.z);
+            // Rotate player to face INPUT direction (not velocity/drift direction!)
+            if (isMoving) {
+                // Instantly face the direction player is pressing
+                transform.rotation.y = Math.atan2(desiredX, desiredZ);
+            } else if (this.playerDirection.x !== 0 || this.playerDirection.z !== 0) {
+                // When stopped, keep facing last input direction
+                transform.rotation.y = Math.atan2(this.playerDirection.x, this.playerDirection.z);
             }
         }
 

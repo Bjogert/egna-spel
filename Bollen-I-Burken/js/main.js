@@ -151,7 +151,7 @@
         inputSystem = new InputSystem();
         movementSystem = new MovementSystem();
         uiSystem = new UISystem();
-        // audioSystem = new AudioSystem(); // Disabled for now
+        audioSystem = new AudioSystem();
         networkSystem = new NetworkSystem();
         aiSystem = new AISystem();
         interactionSystem = new InteractionSystem();
@@ -160,7 +160,7 @@
         gameEngine.addSystem(inputSystem);
         gameEngine.addSystem(movementSystem);
         gameEngine.addSystem(uiSystem);
-        // gameEngine.addSystem(audioSystem); // Disabled for now
+        gameEngine.addSystem(audioSystem);
         gameEngine.addSystem(networkSystem);
         gameEngine.addSystem(aiSystem);
         gameEngine.addSystem(interactionSystem);
@@ -186,6 +186,7 @@
         global.inputSystem = inputSystem;
         global.movementSystem = movementSystem;
         global.uiSystem = uiSystem;
+        global.audioSystem = audioSystem;
         global.networkSystem = networkSystem;
         global.aiSystem = aiSystem;
         global.interactionSystem = interactionSystem;
@@ -327,7 +328,7 @@
                 input: inputSystem,
                 movement: movementSystem,
                 ui: uiSystem,
-                // audio: audioSystem, // Disabled for now
+                audio: audioSystem,
                 network: networkSystem,
                 ai: aiSystem,
                 interaction: interactionSystem

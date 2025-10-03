@@ -17,7 +17,32 @@
         constructor() {
             super('AISystem');
             this.hunters = new Set();
+            this.aiFrozen = false;  // Debug toggle to freeze AI
+            this.hearingRange = 8.0;  // How far AI can hear
+            this.registerTweaks();
             Utils.log('AI system initialized');
+        }
+
+        registerTweaks() {
+            if (!window.TweakPanel) return;
+
+            window.TweakPanel.addSetting('AI', 'Freeze AI', {
+                type: 'checkbox',
+                label: 'Freeze AI (for testing)',
+                getValue: () => this.aiFrozen,
+                setValue: (v) => this.aiFrozen = v
+            });
+
+            window.TweakPanel.addSetting('AI', 'Hearing Range', {
+                type: 'range',
+                min: 2,
+                max: 20,
+                step: 0.5,
+                decimals: 1,
+                label: 'Hearing Range (meters)',
+                getValue: () => this.hearingRange || 8.0,
+                setValue: (v) => this.hearingRange = v
+            });
         }
 
         addEntity(entity) {
@@ -33,6 +58,11 @@
 
         update(gameState, deltaTime) {
             if (!gameState || gameState.gamePhase !== GAME_STATES.PLAYING) {
+                return;
+            }
+
+            // Skip AI updates if frozen (for testing)
+            if (this.aiFrozen) {
                 return;
             }
 
@@ -78,11 +108,65 @@
                 this.updateVision(hunter, visionCone, gameState);
             }
 
+            // Check if AI can hear player
+            this.updateHearing(hunter, gameState);
+
             this.checkPlayerCollision(hunter, gameState);
+        }
+
+        updateHearing(hunter, gameState) {
+            const aiTransform = hunter.getComponent('Transform');
+            if (!aiTransform) return;
+
+            const localPlayer = gameState.getLocalPlayer();
+            if (!localPlayer) return;
+
+            const playerTransform = localPlayer.getComponent('Transform');
+            if (!playerTransform) return;
+
+            // Calculate distance to player
+            const dx = playerTransform.position.x - aiTransform.position.x;
+            const dz = playerTransform.position.z - aiTransform.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+
+            // Get player movement info
+            const movementSystem = window.movementSystem;
+            const audioSystem = window.audioSystem;
+
+            if (!movementSystem || !audioSystem) return;
+
+            const playerSpeed = movementSystem.playerCurrentSpeed;
+            const isSneaking = movementSystem.isSneaking;
+
+            // Calculate sound level based on speed and sneaking
+            let soundLevel = playerSpeed / movementSystem.playerMaxSpeed;  // 0-1 range
+            if (isSneaking) {
+                soundLevel *= audioSystem.sneakVolumeMultiplier;  // Quieter when sneaking
+            }
+
+            // Effective hearing range based on sound level
+            const effectiveRange = this.hearingRange * soundLevel;
+
+            // Check if player is within hearing range
+            const aiComponent = hunter.getComponent('AIHunter');
+            if (distance <= effectiveRange && playerSpeed > 0.01) {
+                // AI hears player!
+                if (aiComponent && aiComponent.state === AI_STATES.PATROL && !aiComponent.reactionState) {
+                    aiComponent.reactionState = 'SPOTTED';
+                    aiComponent.reactionStartTime = Date.now();
+                    Utils.log(`AI heard player at distance ${distance.toFixed(2)}m! (range: ${effectiveRange.toFixed(2)})`);
+                }
+            }
         }
 
         updatePatrolBehavior(aiComponent, transform, movement, deltaTime, gameState) {
             const dt = deltaTime / 1000;  // Convert to seconds
+
+            // Handle reaction sequence if player was spotted
+            if (aiComponent.reactionState) {
+                this.handleReaction(aiComponent, transform, deltaTime);
+                return;  // Don't do normal patrol while reacting
+            }
 
             // Check if stuck and need emergency unstuck
             if (ObstacleAvoidance.isStuckOnWall(aiComponent, transform, deltaTime)) {
@@ -182,6 +266,39 @@
             return colliders;
         }
 
+        handleReaction(aiComponent, transform, deltaTime) {
+            const now = Date.now();
+            const reactionElapsed = now - aiComponent.reactionStartTime;
+
+            // Stop moving during reaction (freeze in surprise)
+            transform.velocity.x = 0;
+            transform.velocity.z = 0;
+            aiComponent.velocity.x = 0;
+            aiComponent.velocity.z = 0;
+
+            // Jump animation at 200ms
+            if (reactionElapsed >= aiComponent.reactionJumpTime && aiComponent.reactionState === 'SPOTTED') {
+                // Trigger jump (quick up-down motion)
+                transform.position.y += 0.3;  // Jump up
+                aiComponent.reactionState = 'REACTING';  // Mark that we've jumped
+                Utils.log('AI JUMPS in surprise!');
+            }
+
+            // Return to ground if we jumped
+            if (transform.position.y > 0.5) {
+                transform.position.y = Math.max(0.5, transform.position.y - deltaTime * 0.003);  // Fall back down
+            }
+
+            // After reaction time, start racing
+            if (reactionElapsed >= aiComponent.reactionDuration) {
+                aiComponent.state = AI_STATES.RACE;
+                aiComponent.raceLockUntil = now + 2000;  // Lock in race for 2 seconds
+                aiComponent.reactionState = null;
+                aiComponent.currentSpeed = 0;  // Start from zero speed (will accelerate)
+                Utils.log('AI reaction complete! RACE TO CAN BEGINS!');
+            }
+        }
+
         updateRaceBehavior(aiComponent, transform, movement, deltaTime, gameState) {
             const canPosition = this.getCanPosition(gameState);
 
@@ -206,9 +323,16 @@
             // ALWAYS run directly to can (ignore player position entirely)
             const direction = Math.atan2(dx, dz);
 
-            // Set velocity directly (no steering, no acceleration - just GO!)
-            transform.velocity.x = Math.sin(direction) * aiComponent.maxSpeedHunting;
-            transform.velocity.z = Math.cos(direction) * aiComponent.maxSpeedHunting;
+            // Accelerate toward max hunting speed (takes ~1 second to reach full speed)
+            const dt = deltaTime / 1000;
+            aiComponent.currentSpeed = Math.min(
+                aiComponent.maxSpeedHunting,
+                aiComponent.currentSpeed + aiComponent.acceleration * dt
+            );
+
+            // Set velocity with current speed (gradual acceleration)
+            transform.velocity.x = Math.sin(direction) * aiComponent.currentSpeed;
+            transform.velocity.z = Math.cos(direction) * aiComponent.currentSpeed;
 
             // Align heading with movement
             aiComponent.heading = direction;
@@ -338,10 +462,11 @@
                     visionCone.lastSeenTime = Date.now();
 
                     const aiComponent = hunter.getComponent('AIHunter');
-                    if (aiComponent && aiComponent.state === AI_STATES.PATROL) {
-                        aiComponent.state = AI_STATES.RACE;
-                        aiComponent.raceLockUntil = Date.now() + 2000;  // Lock in race for 2 seconds
-                        Utils.log('AI spotted player! RACE TO CAN BEGINS!');
+                    if (aiComponent && aiComponent.state === AI_STATES.PATROL && !aiComponent.reactionState) {
+                        // Start reaction sequence
+                        aiComponent.reactionState = 'SPOTTED';
+                        aiComponent.reactionStartTime = Date.now();
+                        Utils.log('AI spotted player! Reacting...');
                     }
                 } else {
                     Utils.log('Player in vision cone but line of sight blocked by obstacle');
