@@ -75,6 +75,15 @@
         }
 
         tick() {
+            // If paused, only update InputSystem to allow unpausing
+            if (this.gameState.gamePhase === GAME_STATES.PAUSED) {
+                const inputSystem = this.systemsMap.get('InputSystem');
+                if (inputSystem && inputSystem.enabled && inputSystem.update) {
+                    inputSystem.update(this.gameState, this.tickInterval);
+                }
+                return;
+            }
+
             // Check game timer (only if game is still playing)
             if (this.gameStatus === 'playing') {
                 this.checkGameTimer();

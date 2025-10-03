@@ -40,8 +40,8 @@ class InputSystem extends System {
             'KeyQ': 'special',
 
             // System
-            'Escape': 'menu',
-            'KeyP': 'pause',
+            'Escape': 'pause',
+            'KeyP': 'menu',
             'KeyM': 'mute'
         };
 
@@ -304,10 +304,17 @@ class InputSystem extends System {
     }
 
     togglePause(gameState) {
+        // Use gameEngine.pause()/resume() to properly halt system updates
+        const gameEngine = window.gameEngine || global.gameEngine;
+        if (!gameEngine) {
+            Utils.warn('InputSystem: Cannot toggle pause - gameEngine not available');
+            return;
+        }
+
         if (gameState.gamePhase === GAME_STATES.PLAYING) {
-            gameState.setGamePhase(GAME_STATES.PAUSED);
+            gameEngine.pause();
         } else if (gameState.gamePhase === GAME_STATES.PAUSED) {
-            gameState.setGamePhase(GAME_STATES.PLAYING);
+            gameEngine.resume();
         }
     }
 

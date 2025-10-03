@@ -34,6 +34,9 @@
             // Initialize Resource Manager (simple cleanup tracking)
             resourceManager = new ResourceManager();
 
+            // Expose resourceManager global immediately after creation
+            global.resourceManager = resourceManager;
+
             // Initialize Three.js
             await initializeThreeJS();
 
@@ -118,6 +121,11 @@
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         renderer.outputEncoding = THREE.sRGBEncoding;
 
+        // Expose Three.js globals immediately after creation
+        global.scene = scene;
+        global.camera = camera;
+        global.renderer = renderer;
+
         Utils.log('Three.js initialized successfully');
     }
 
@@ -129,6 +137,9 @@
 
         // Generate local player ID
         localPlayerId = Utils.generatePlayerId();
+
+        // Expose gameEngine global immediately after creation
+        global.gameEngine = gameEngine;
 
         Utils.log(`Game engine initialized - Local player: ${localPlayerId}`);
     }
@@ -342,15 +353,13 @@
         console.log('=== END CONFIG ===');
     };
 
-    // Expose globals for cross-module access (non-system globals only)
-    global.scene = scene;
-    global.camera = camera;
-    global.renderer = renderer;
-    global.gameEngine = gameEngine;
-    global.resourceManager = resourceManager;
+    // Expose remaining globals for cross-module access
+    // NOTE: scene, camera, renderer are exposed in initializeThreeJS() after creation
+    // NOTE: gameEngine is exposed in initializeGameEngine() after creation
+    // NOTE: resourceManager is exposed in bootstrapGame() after creation
+    // NOTE: Systems are exposed in initializeSystems() after creation
     global.gameLoop = gameLoop;
     global.gameLoopStarted = gameLoopStarted;
-    // NOTE: Systems are exposed in initializeSystems() after they're created
 
     // Start the game when DOM is ready
     if (document.readyState === 'loading') {
