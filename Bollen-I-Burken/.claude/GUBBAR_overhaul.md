@@ -20,6 +20,87 @@
 
 ## Update Log
 
+### 2025-10-04 - RESET TO WORKING BASELINE ✅
+**Action Taken**: Reverted all complex changes and returned to working state
+**Files Cleaned**:
+- ✅ Removed all debug logging from input-system.js
+- ✅ Reverted movement-system.js to original working version  
+- ✅ Removed simple-leg-animator.js file completely
+- ✅ Cleaned up index.html and main.js references
+
+**Current Status**: Back to basic working game
+**Next Step**: Test that basic WASD movement works normally
+**Goal**: Only add ONE simple change at a time once baseline is confirmed
+
+### 2025-10-04 - STOPPING COMPLEX INPUT DEBUGGING 🛑
+**Decision**: Halting current approach - it's making the problem worse, not better
+**User Feedback**: "Feels like you are making this worse every try.."
+
+**What Went Wrong**:
+- Added complex debug logging instead of fixing the core issue
+- Created more moving parts instead of simplifying
+- Overengineered the solution when a simple fix was needed
+- Lost sight of the actual goal (leg movement) in debugging rabbit holes
+
+**RESET AND SIMPLIFY PLAN**:
+1. **REVERT**: Remove all complex debug code and leg animation attempts
+2. **TEST BASIC**: Verify basic WASD movement works normally without our changes
+3. **SIMPLE APPROACH**: Once basic movement confirmed working, try ONE simple leg animation method
+4. **NO DEBUGGING**: Focus on working solutions, not understanding every detail
+
+**New Strategy**: 
+- Fix basic movement first, worry about legs later
+- Keep changes minimal and focused
+- Test each small change before adding more
+- If something breaks, revert immediately
+
+**Status**: 🚫 **PAUSED** - Need to get back to working baseline first
+
+### 2025-10-04 - CRITICAL LEG MOVEMENT BUG DISCOVERED 🚨
+**Issue**: Attempted to implement simple leg animation system but discovered severe input detection problems
+**Symptoms**: 
+- Player jerks/lags when holding direction keys (very buggy movement)
+- AI movement also affected but less severe
+- Leg animation system never triggers because input detection is broken
+
+**Root Cause Analysis**:
+1. ✅ **Input System Detection Working**: Key presses are detected (`Key down: ArrowUp -> forward`)
+2. ❌ **Data Flow Broken**: Input system updates `PlayerInput` component but movement system receives empty input object
+3. ❌ **Keys Object Empty**: `input.keys` always shows `{}` in movement system despite keys being pressed
+4. ❌ **Animation Never Triggers**: Simple leg animator only calls `stopMovement`, never `startWalking`
+
+**What We Tried**:
+- ✅ Created `SimpleLegAnimator` class for direct mesh animation (no physics)
+- ✅ Added extensive debug logging throughout movement and input systems
+- ✅ Integrated leg animator with movement system using WASD detection
+- ✅ Added animation update loop to main game loop
+- ❌ **FAILED**: Input data not flowing from InputSystem to MovementSystem correctly
+
+**Technical Details**:
+- Input system correctly maps keys: `'KeyW': 'forward'`, etc.
+- Input system calls `updatePlayerInput()` and updates `PlayerInput` component
+- Movement system calls `entity.getComponent('PlayerInput')` but gets empty keys object
+- Console shows: `Input keys object structure: {}` (always empty)
+- This suggests either:
+  1. PlayerInput component not being created/attached to player entity
+  2. Different PlayerInput instance being updated vs read
+  3. Timing issue where input is cleared before movement system reads it
+
+**Current State**: 
+- **BROKEN**: Player movement is jerky and unreliable
+- **BROKEN**: WASD input detection not working properly  
+- **BROKEN**: Any leg animation attempts fail due to no movement detection
+
+**Priority**: 🔥 **CRITICAL** - Must fix input detection before any leg animation work
+**Next Steps**: 
+1. Debug PlayerInput component creation and attachment to player entity
+2. Verify input system and movement system are accessing same PlayerInput instance
+3. Check game state/phase requirements that might block input updates
+4. Consider bypass: Direct input polling in movement system as emergency fix
+
+**Goal**: Get basic WASD movement working reliably, then retry simple leg animation
+**Dependencies**: All character animation work blocked until input system fixed
+
 ### 2025-10-04 - Phase 1 Static Collision Pass In Progress
 - Walls and obstacle meshes now spawn matching `CANNON.Body` statics, but player/AI still pass through them during playtests.
 - Suspect causes: static bodies may not be registering with the global `physicsSystem` or collision filters (groups/masks) prevent player contacts.

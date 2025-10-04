@@ -91,17 +91,22 @@ class InputSystem extends System {
     }
 
     handleKeyDown(event) {
+        console.log('🔧 INPUT DEBUG: Key down detected:', event.code);
         const action = this.keyMappings[event.code];
         if (action) {
-            Utils.log(`Key down: ${event.code} -> ${action}`);
+            console.log('🔧 INPUT DEBUG: Mapped to action:', action);
             this.keys.set(action, true);
             this.updatePlayerInput();
+        } else {
+            console.log('🔧 INPUT DEBUG: No mapping for key:', event.code);
         }
     }
 
     handleKeyUp(event) {
+        console.log('🔧 INPUT DEBUG: Key up detected:', event.code);
         const action = this.keyMappings[event.code];
         if (action) {
+            console.log('🔧 INPUT DEBUG: Released action:', action);
             this.keys.set(action, false);
             this.updatePlayerInput();
         }
@@ -111,7 +116,6 @@ class InputSystem extends System {
         // Update input for local player
         const gameState = this.currentGameState;
         if (!gameState) {
-            Utils.log('InputSystem: No gameState available - deferring input update');
             // Store input state for when gameState becomes available
             this.pendingInput = true;
             return;
@@ -124,13 +128,11 @@ class InputSystem extends System {
 
         const localPlayer = gameState.getLocalPlayer();
         if (!localPlayer) {
-            Utils.log('InputSystem: No local player found');
             return;
         }
 
         const input = localPlayer.getComponent('PlayerInput');
         if (!input) {
-            Utils.log('InputSystem: Local player has no PlayerInput component');
             return;
         }
 

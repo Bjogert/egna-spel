@@ -4,11 +4,17 @@
    ========================================== */
 
 (function (global) {
+    console.log('🔄 MOVEMENT SYSTEM: Loading movement-system.js file');
+    
     class MovementSystem extends System {
         constructor() {
             super('MovementSystem');
+            console.log('🔄 MOVEMENT SYSTEM: Constructor called - initializing movement system');
             this.moveSpeed = 0.15;
             this.arenaSize = CONFIG.arena.size;
+            
+            // Initialize leg animator
+            this.legAnimator = new LegAnimator();
 
             this.staticColliders = [];
             this.playerBounds = { width: 0.8, height: 1.0, depth: 0.8 };
@@ -126,6 +132,11 @@
             // Check for player win condition (reach can + press space)
             this.checkPlayerWinCondition(gameState);
 
+            // Update leg animations for all characters
+            if (this.legAnimator) {
+                this.legAnimator.update(0.016, { gameState }); // ~60fps deltaTime
+            }
+
             for (const entity of gameState.entities.values()) {
                 const transform = entity.getComponent('Transform');
                 const input = entity.getComponent('PlayerInput');
@@ -226,6 +237,7 @@
         }
 
         updatePlayerMovement(transform, input, entity) {
+            
             // Get physics body if available
             const physicsBody = entity ? entity.getComponent('PhysicsBody') : null;
 
@@ -239,6 +251,8 @@
             let desiredX = 0;
             let desiredZ = 0;
 
+
+
             if (input.keys.forward) desiredZ -= 1;
             if (input.keys.backward) desiredZ += 1;
             if (input.keys.left) desiredX -= 1;
@@ -246,12 +260,44 @@
 
             // Check if player is trying to move
             const isMoving = desiredX !== 0 || desiredZ !== 0;
+            
+            if (isMoving) {
+                console.log('🔄 MOVEMENT SYSTEM: Player is moving! Direction:', { desiredX, desiredZ });
+            } else {
+                console.log('🔄 MOVEMENT SYSTEM: Player is NOT moving. Keys detected:', input.keys);
+            }
 
-            // 🦵 RAGDOLL LOCOMOTION INTEGRATION (GUBBAR Phase 2)
+            // 🦵 SIMPLE LEG ANIMATION (DIRECT APPROACH)
+            // Skip complex ragdoll system - use direct leg animation
+            const playerId = entity.getComponent('Player')?.playerId;
+            if (playerId && global.simpleLegAnimator) {
+                console.log('🔄 MOVEMENT SYSTEM: Using simple leg animator for player:', playerId);
+                
+                if (isMoving) {
+                    // Normalize direction and trigger walking
+                    const magnitude = Math.sqrt(desiredX * desiredX + desiredZ * desiredZ);
+                    if (magnitude > 0) {
+                        const direction = { x: desiredX / magnitude, z: desiredZ / magnitude };
+                        const isRunning = input.keys.action2 || false; // Shift to run
+                        console.log('🔄 MOVEMENT SYSTEM: Calling simpleLegAnimator.startWalking!');
+                        global.simpleLegAnimator.startWalking(playerId, direction, isRunning);
+                    }
+                } else {
+                    // Stop walking when no input
+                    global.simpleLegAnimator.stopMovement(playerId);
+                }
+            }
+
+            // 🦵 OLD RAGDOLL LOCOMOTION INTEGRATION (GUBBAR Phase 2) - DISABLED FOR NOW
             const ragdollPhysics = entity ? entity.getComponent('RagdollPhysics') : null;
-            if (ragdollPhysics && global.ragdollLocomotion) {
+            console.log('🔄 MOVEMENT SYSTEM: Checking ragdoll physics component:', !!ragdollPhysics);
+            
+            if (false && ragdollPhysics && global.ragdollLocomotion) { // DISABLED
+                console.log('🔄 MOVEMENT SYSTEM: Found ragdoll physics AND locomotion system!');
                 // This is a ragdoll character - use new locomotion system!
                 const playerId = entity.getComponent('Player')?.playerId;
+                console.log('🔄 MOVEMENT SYSTEM: Player ID:', playerId);
+                
                 if (playerId) {
                     if (isMoving) {
                         // Normalize direction and trigger walking
@@ -259,6 +305,7 @@
                         if (magnitude > 0) {
                             const direction = { x: desiredX / magnitude, z: desiredZ / magnitude };
                             const isRunning = input.keys.action2 || false; // Shift to run
+                            console.log('🔄 MOVEMENT SYSTEM: Calling ragdollLocomotion.startWalking!');
                             global.ragdollLocomotion.startWalking(playerId, direction, isRunning);
                         }
                     } else {

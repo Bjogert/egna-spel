@@ -253,7 +253,7 @@
             
             // Enable motor for active control
             kneeJoint.enableMotor();
-            kneeJoint.setMotorMinForce(-CHARACTER_CONFIG.ragdoll.joints.kneeStiffness);
+            kneeJoint.setMotorSpeed(0); // Start with no rotation
             kneeJoint.setMotorMaxForce(CHARACTER_CONFIG.ragdoll.joints.kneeStiffness);
             
             // Set joint limits (prevent hyperextension)
@@ -416,6 +416,8 @@
                         0
                     );
                     characterGroup.add(leftLeg);
+                    // Store as fallback leftLeg for animator
+                    articulatedLeftLeg = leftLeg;
                 }
             } else {
                 // Fallback to static leg if no physics world
@@ -444,7 +446,8 @@
                 parts: {
                     head: head,
                     torso: torso,
-                    rightLeg: rightLeg,
+                    leftLeg: articulatedLeftLeg || null,  // Use articulatedLeftLeg as leftLeg for animator
+                    rightLeg: rightLeg,                   // Keep rightLeg as is
                     articulatedLeftLeg: articulatedLeftLeg
                 },
                 config: config,

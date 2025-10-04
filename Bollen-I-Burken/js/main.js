@@ -267,7 +267,12 @@
             // Update game engine (handles tick-based updates)
             gameEngine.update(deltaTime);
 
-            // 🦴 Update ragdoll physics visuals (GUBBAR Phase 1A)
+            // � Update simple leg animations
+            if (global.simpleLegAnimator) {
+                global.simpleLegAnimator.update(deltaTime);
+            }
+
+            // �🦴 Update ragdoll physics visuals (GUBBAR Phase 1A)
             updateRagdollCharacters();
 
             // Update dynamic camera zoom based on player distance from center

@@ -1,5 +1,5 @@
 /* ==========================================
-   PLAYER MANAGER
+   PLAYER MANAGER - v2
    Handles player and AI entity lifecycle management
    ========================================== */
 
@@ -22,6 +22,124 @@
             this.playerMeshes = new Map();
             this.playerEntities = new Map();
             this.hunterData = new Map();
+        }
+
+        buildCharacterMesh(options = {}) {
+            const {
+                color = 0x4a90e2,
+                playerId = null,
+                opacity = 0.95,
+                accentColor = null,
+                type = 'player',
+                namePrefix = 'character'
+            } = options;
+
+            let mesh;
+            if (typeof GubbeBuilder !== 'undefined' && typeof GubbeBuilder.createCharacterMesh === 'function') {
+                const suffix = (playerId !== null && playerId !== undefined) ? playerId : `visual_${Math.floor(Math.random() * 100000)}`;
+                mesh = GubbeBuilder.createCharacterMesh({
+                    baseColor: color,
+                    accentColor: accentColor,
+                    opacity: opacity,
+                    name: `${namePrefix}_${suffix}`
+                });
+            } else {
+                const geometry = new THREE.BoxGeometry(0.8, 1.0, 0.8);
+                const material = new THREE.MeshLambertMaterial({
+                    color: color,
+                    transparent: opacity < 1,
+                    opacity: opacity
+                });
+                mesh = new THREE.Mesh(geometry, material);
+                mesh.castShadow = true;
+                mesh.receiveShadow = false;
+                mesh.userData = mesh.userData || {};
+                mesh.userData.parts = mesh.userData.parts || {};
+                mesh.userData.defaultPose = mesh.userData.defaultPose || {};
+            }
+
+            mesh.userData = mesh.userData || {};
+            if (playerId !== null && playerId !== undefined) {
+                mesh.userData.playerId = playerId;
+            }
+            mesh.userData.characterType = type;
+            mesh.userData.baseColor = color;
+            mesh.userData.accentColor = accentColor;
+
+            if (typeof mesh.traverse === 'function') {
+                mesh.traverse(child => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = false;
+                    }
+                });
+            }
+
+            if (!mesh.userData.parts) {
+                mesh.userData.parts = {};
+            }
+            if (!mesh.userData.defaultPose) {
+                mesh.userData.defaultPose = {};
+            }
+
+            return mesh;
+        }
+
+        positionCharacterMesh(mesh, position) {
+            if (!mesh || !position) {
+                return;
+            }
+            if (mesh.position && typeof mesh.position.set === 'function') {
+                mesh.position.set(position.x || 0, position.y || 0, position.z || 0);
+            }
+        }
+
+        applyLocalPlayerTint(mesh) {
+            if (!mesh) {
+                return;
+            }
+            const userData = mesh.userData || {};
+            const parts = userData.parts || null;
+            const emissiveHex = 0x002200;
+
+            if (parts && parts.torso && parts.torso.material && parts.torso.material.emissive) {
+                parts.torso.material.emissive.setHex(emissiveHex);
+            } else if (mesh.material && mesh.material.emissive) {
+                mesh.material.emissive.setHex(emissiveHex);
+            }
+        }
+
+        disposeCharacterMesh(mesh) {
+            if (!mesh) {
+                return;
+            }
+
+            const disposeMaterial = (material) => {
+                if (!material) {
+                    return;
+                }
+                if (Array.isArray(material)) {
+                    material.forEach(item => disposeMaterial(item));
+                } else if (typeof material.dispose === 'function') {
+                    material.dispose();
+                }
+            };
+
+            if (typeof mesh.traverse === 'function') {
+                mesh.traverse(child => {
+                    if (child.isMesh) {
+                        if (child.geometry && typeof child.geometry.dispose === 'function') {
+                            child.geometry.dispose();
+                        }
+                        disposeMaterial(child.material);
+                    }
+                });
+            } else {
+                if (mesh.geometry && typeof mesh.geometry.dispose === 'function') {
+                    mesh.geometry.dispose();
+                }
+                disposeMaterial(mesh.material);
+            }
         }
 
         /**
@@ -128,6 +246,12 @@
             this.playerMeshes.set(playerId, playerCharacter);
             this.playerEntities.set(playerId, gameEntity);
 
+            // Register with leg animator
+            const movementSystem = this.gameEngine.getSystem('MovementSystem');
+            if (movementSystem && movementSystem.legAnimator) {
+                movementSystem.legAnimator.registerCharacter(playerId, playerCharacter);
+            }
+
             const characterType = ragdollData ? "ragdoll character with articulated legs" : "simple character with head + body";
             Utils.log(`Added local player as ${characterType}: ${playerId}`);
             return gameEntity;
@@ -222,6 +346,12 @@
             this.playerMeshes.set(playerId, playerCharacter);
             this.playerEntities.set(playerId, gameEntity);
 
+            // Register with leg animator
+            const movementSystem = this.gameEngine.getSystem('MovementSystem');
+            if (movementSystem && movementSystem.legAnimator) {
+                movementSystem.legAnimator.registerCharacter(playerId, playerCharacter);
+            }
+
             const characterType = ragdollData ? "ragdoll character with articulated legs" : "simple character with head + body";
             Utils.log(`Added remote player as ${characterType}: ${playerId}`);
             return gameEntity;
@@ -233,28 +363,14 @@
                 const renderable = entity.getComponent('Renderable');
                 if (renderable && renderable.mesh) {
                     this.scene.remove(renderable.mesh);
-                    if (renderable.mesh.geometry) renderable.mesh.geometry.dispose();
-                    if (renderable.mesh.material) {
-                        if (Array.isArray(renderable.mesh.material)) {
-                            renderable.mesh.material.forEach(material => material.dispose());
-                        } else {
-                            renderable.mesh.material.dispose();
-                        }
-                    }
+                    this.disposeCharacterMesh(renderable.mesh);
                 }
                 Utils.log(`Removed player: ${playerId}`);
             } else {
                 const mesh = this.playerMeshes.get(playerId);
                 if (mesh) {
                     this.scene.remove(mesh);
-                    if (mesh.geometry) mesh.geometry.dispose();
-                    if (mesh.material) {
-                        if (Array.isArray(mesh.material)) {
-                            mesh.material.forEach(material => material.dispose());
-                        } else {
-                            mesh.material.dispose();
-                        }
-                    }
+                    this.disposeCharacterMesh(mesh);
                 }
             }
 
@@ -344,8 +460,7 @@
 
             if (hunterInfo.mesh) {
                 this.scene.remove(hunterInfo.mesh);
-                if (hunterInfo.mesh.geometry) hunterInfo.mesh.geometry.dispose();
-                if (hunterInfo.mesh.material) hunterInfo.mesh.material.dispose();
+                this.disposeCharacterMesh(hunterInfo.mesh);
             }
 
             if (hunterInfo.visionCone) {
