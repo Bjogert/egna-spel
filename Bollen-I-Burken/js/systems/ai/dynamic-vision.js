@@ -26,97 +26,73 @@
          * @param {Object} baseVision - Base vision stats {range, angle}
          * @returns {Object} {range, angle} - Dynamic vision parameters
          */
-        static computeDynamicVision(ai, transform, scanTarget, baseVision) {
-            // Base vision stats (from config)
-            const baseRange = baseVision.range;      // e.g., 28 units
-            const baseAngle = baseVision.angle;      // e.g., 90 degrees
+        static clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
 
-            // Calculate distance to what AI is looking at
-            let targetDistance = baseRange * 0.5;  // Default: mid-range
+        static computeDynamicVision(ai, transform, scanTarget, baseVision) {
+            const baseRange = baseVision.range;
+            const baseAngle = baseVision.angle;
+
+            let targetDistance = baseRange * 0.5;
 
             if (scanTarget && scanTarget.distance !== undefined) {
                 targetDistance = scanTarget.distance;
             } else if (scanTarget && scanTarget.x !== undefined && scanTarget.z !== undefined) {
-                // Calculate distance from AI to scan target
                 const dx = scanTarget.x - transform.position.x;
                 const dz = scanTarget.z - transform.position.z;
                 targetDistance = Math.sqrt(dx * dx + dz * dz);
             }
 
-            // SMOOTHING: Gradually transition to new distance (prevents twitching!)
             if (!ai._visionState) {
                 ai._visionState = { smoothedDistance: targetDistance };
             }
 
-            const smoothingFactor = 0.1;  // Lower = smoother (0.1 = 10% new, 90% old)
+            const smoothingFactor = 0.1;
             ai._visionState.smoothedDistance =
                 ai._visionState.smoothedDistance * (1 - smoothingFactor) +
                 targetDistance * smoothingFactor;
 
-            // Use SMOOTHED distance instead of raw distance
             const normalizedDistance = Math.min(ai._visionState.smoothedDistance / baseRange, 1.0);
 
-            // TRADE-OFF FORMULA:
-            // Close (0.0): Wide angle (100% base), shorter range (80% base)
-            // Mid (0.5):   Normal angle (100% base), normal range (100% base)
-            // Far (1.0):   Narrow angle (50% base), longer range (120% base)
+            const nearThreshold = this.clamp(typeof ai.visionCloseThreshold === 'number' ? ai.visionCloseThreshold : 0.3, 0.05, 0.95);
+            const farThreshold = this.clamp(typeof ai.visionFarThreshold === 'number' ? ai.visionFarThreshold : 0.6, nearThreshold + 0.01, 0.99);
 
-            const rangeFactor = this.computeRangeFactor(normalizedDistance);
-            const angleFactor = this.computeAngleFactor(normalizedDistance);
+            const rangeFactor = this.computeRangeFactor(normalizedDistance, nearThreshold, farThreshold);
+            const angleFactor = this.computeAngleFactor(normalizedDistance, nearThreshold, farThreshold);
 
             return {
                 range: baseRange * rangeFactor,
                 angle: baseAngle * angleFactor,
                 targetDistance: targetDistance,
-                isFocusing: normalizedDistance > 0.6  // Is AI "focusing" on distant target?
+                isFocusing: normalizedDistance > farThreshold
             };
         }
 
-        /**
-         * Range factor based on distance
-         * Close: 0.8x (shorter range)
-         * Mid: 1.0x (normal)
-         * Far: 2.875x (15% further than 2.5x - can see VERY far!)
-         */
-        static computeRangeFactor(normalizedDistance) {
-            if (normalizedDistance < 0.3) {
-                // Close: Shorter range (0.8x)
-                return 0.8 + (normalizedDistance / 0.3) * 0.2;  // 0.8 → 1.0
-            } else if (normalizedDistance < 0.6) {
-                // Mid: Normal range (1.0x)
+        static computeRangeFactor(normalizedDistance, nearThreshold, farThreshold) {
+            if (normalizedDistance <= nearThreshold) {
+                const closeProgress = nearThreshold <= 0 ? 1 : normalizedDistance / nearThreshold;
+                return 0.8 + closeProgress * 0.2;
+            } else if (normalizedDistance <= farThreshold) {
                 return 1.0;
             } else {
-                // Far: 2.875x range when focused! (1.0 → 2.875) - 15% further!
-                const farProgress = (normalizedDistance - 0.6) / 0.4;
-                return 1.0 + farProgress * 1.875;  // 1.0 → 2.875
+                const farProgress = (normalizedDistance - farThreshold) / Math.max(0.0001, 1 - farThreshold);
+                return 1.0 + farProgress * 1.875;
             }
         }
 
-        /**
-         * Angle factor based on distance
-         * Close: 1.2x (wider angle - peripheral vision)
-         * Mid: 1.0x (normal)
-         * Far: 0.15x (85% narrower - tight laser focus!)
-         */
-        static computeAngleFactor(normalizedDistance) {
-            if (normalizedDistance < 0.3) {
-                // Close: Wide angle (1.0 → 1.2)
-                const closeProgress = normalizedDistance / 0.3;
-                return 1.2 - closeProgress * 0.2;  // 1.2 → 1.0
-            } else if (normalizedDistance < 0.6) {
-                // Mid: Normal angle (1.0x)
+        static computeAngleFactor(normalizedDistance, nearThreshold, farThreshold) {
+            if (normalizedDistance <= nearThreshold) {
+                const closeProgress = nearThreshold <= 0 ? 1 : normalizedDistance / nearThreshold;
+                return 1.2 - closeProgress * 0.2;
+            } else if (normalizedDistance <= farThreshold) {
                 return 1.0;
             } else {
-                // Far: 85% narrower (1.0 → 0.15)
-                const farProgress = (normalizedDistance - 0.6) / 0.4;
-                return 1.0 - farProgress * 0.85;  // 1.0 → 0.15
+                const farProgress = (normalizedDistance - farThreshold) / Math.max(0.0001, 1 - farThreshold);
+                return 1.0 - farProgress * 0.85;
             }
         }
 
-        /**
-         * Get scan target info (what AI is currently looking at)
-         * This comes from the can-guard strategy
-         */
         static getScanTargetInfo(ai, transform) {
             if (!ai.guardState || ai.guardState.scanTarget === undefined) {
                 // No guard state (e.g., AI is racing) - use AI's current heading

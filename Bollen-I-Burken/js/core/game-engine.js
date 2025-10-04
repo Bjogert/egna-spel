@@ -23,12 +23,12 @@
 
             // Game timer and state
             this.gameStartTime = 0;
-            this.gameDuration = 60000; // 60 seconds to survive
-            this.gameStatus = 'idle'; // 'idle', 'playing', 'won', 'tagged'
+            this.gameDuration = 0; // No automatic win timer (was 60 seconds)
+            this.gameStatus = 'idle'; // 'idle', 'playing', 'won', 'tagged', 'player_win'
 
             Utils.log('Game engine initialized');
 
-            // Make game engine accessible globally for AI system
+            // Make game engine accessible globally for AI system and UI
             if (typeof global !== 'undefined') {
                 global.GameEngine = this;
             }
@@ -50,16 +50,16 @@
                 const index = this.systems.indexOf(system);
                 if (index !== -1) {
                     this.systems.splice(index, 1);
-                    this.systemsMap.delete(name);
-                    Utils.log(`Removed system: ${name}`);
                 }
+                this.systemsMap.delete(name);
+                Utils.log(`Removed system: ${name}`);
             }
         }
 
         update(deltaTime) {
             this.accumulator += deltaTime;
 
-            // Fixed timestep updates (important for networking)
+            // Fixed timestep updates (important for networking / physics stability)
             while (this.accumulator >= this.tickInterval) {
                 this.tick();
                 this.accumulator -= this.tickInterval;
@@ -78,21 +78,21 @@
             // If paused, only update InputSystem to allow unpausing
             if (this.gameState.gamePhase === GAME_STATES.PAUSED) {
                 const inputSystem = this.systemsMap.get('InputSystem');
-                if (inputSystem && inputSystem.enabled && inputSystem.update) {
+                if (inputSystem && inputSystem.enabled && typeof inputSystem.update === 'function') {
                     inputSystem.update(this.gameState, this.tickInterval);
                 }
                 return;
             }
 
-            // Check game timer (only if game is still playing)
+            // Check game timer (only if game is still playing and timer enabled)
             if (this.gameStatus === 'playing') {
                 this.checkGameTimer();
             }
 
-            // Update all systems with fixed timestep (during countdown and playing for player movement)
+            // Update all systems during countdown and playing phases
             if (this.gameStatus === 'countdown' || this.gameStatus === 'playing') {
                 for (const system of this.systems) {
-                    if (system.enabled && system.update) {
+                    if (system.enabled && typeof system.update === 'function') {
                         try {
                             system.update(this.gameState, this.tickInterval);
                         } catch (error) {
@@ -104,9 +104,8 @@
         }
 
         render(interpolationFactor) {
-            // Render all systems with interpolation
             for (const system of this.systems) {
-                if (system.enabled && system.render) {
+                if (system.enabled && typeof system.render === 'function') {
                     try {
                         system.render(this.gameState, interpolationFactor);
                     } catch (error) {
@@ -131,7 +130,7 @@
             this.gameState.setGamePhase(GAME_STATES.PLAYING);
             this.gameStartTime = Date.now();
             this.gameStatus = 'playing';
-            Utils.log('Game Started - Survive for 60 seconds!');
+            Utils.log('Game Started - Stay hidden!');
         }
 
         pause() {
@@ -145,12 +144,13 @@
         }
 
         checkGameTimer() {
-            if (this.gameStartTime === 0) return; // Game not started
+            if (this.gameStartTime === 0 || this.gameDuration <= 0) {
+                return; // Timer disabled or game not started
+            }
 
             const currentTime = Date.now();
             const elapsedTime = currentTime - this.gameStartTime;
 
-            // Check if player has survived long enough to win
             if (elapsedTime >= this.gameDuration) {
                 this.gameOver('won');
             }
@@ -164,14 +164,14 @@
             this.gameStartTime = 0;
 
             if (reason === 'won') {
-                Utils.log('You won! You survived for 60 seconds.');
+                Utils.log('You won! Great hiding!');
             } else if (reason === 'tagged') {
-                Utils.log('Game over! You were tagged by the AI hunter.');
+                Utils.log('Game over! The hunter caught you.');
             }
 
             // Stop all AI movement
             const aiSystem = this.getSystem('AISystem');
-            if (aiSystem) {
+            if (aiSystem && typeof aiSystem.getHunters === 'function') {
                 for (const hunter of aiSystem.getHunters()) {
                     const transform = hunter.getComponent('Transform');
                     if (transform) {
@@ -198,9 +198,8 @@
 
             Utils.log('Player reached the can and won!');
 
-            // Stop all AI movement
             const aiSystem = this.getSystem('AISystem');
-            if (aiSystem) {
+            if (aiSystem && typeof aiSystem.getHunters === 'function') {
                 for (const hunter of aiSystem.getHunters()) {
                     const transform = hunter.getComponent('Transform');
                     if (transform) {
@@ -210,31 +209,28 @@
                 }
             }
 
-            // Show win menu
-            Utils.log('Attempting to show win menu...');
             if (typeof global !== 'undefined' && typeof global.showStartMenu === 'function') {
-                Utils.log('showStartMenu function found, calling it...');
                 global.showStartMenu({
                     gameOver: true,
-                    message: 'DUNK FÃ–R MIG!',
+                    message: 'DUNK FÖR MIG!',
                     reason: 'won',
                     elapsedMs: elapsedTime
                 });
             } else {
                 Utils.warn('showStartMenu function not found!');
-                Utils.warn('global:', global);
-                Utils.warn('global.showStartMenu:', global ? global.showStartMenu : 'global is undefined');
             }
         }
 
         getRemainingTime() {
-            if (this.gameStartTime === 0 || this.gameStatus !== 'playing') return 0;
+            if (this.gameStartTime === 0 || this.gameStatus !== 'playing' || this.gameDuration <= 0) {
+                return 0;
+            }
 
             const currentTime = Date.now();
             const elapsedTime = currentTime - this.gameStartTime;
             const remainingTime = Math.max(0, this.gameDuration - elapsedTime);
 
-            return Math.ceil(remainingTime / 1000); // Return seconds
+            return Math.ceil(remainingTime / 1000);
         }
 
         stop() {
@@ -244,7 +240,6 @@
         }
 
         reset() {
-            // Clear all entities
             this.gameState.entities.clear();
             this.gameState.players.clear();
             this.gameState.nextEntityId = 1;

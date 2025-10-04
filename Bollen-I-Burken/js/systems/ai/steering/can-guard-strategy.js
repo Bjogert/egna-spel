@@ -23,20 +23,29 @@
     function computeCanGuardPatrol(ai, transform, canPosition, deltaTime, obstacles = [], recklessRadiusOverride = null) {
         // Initialize patrol state with RANDOMIZED timings for each hunter
         if (!ai.guardState) {
+            const baseTurnSpeed = ai.guardTurnSpeedBase || 1.6;
+            const turnRandomFactor = 0.8 + Math.random() * 0.4;
+            const scanIntervalBase = ai.guardScanIntervalBase || 800;
+            const scanIntervalRandomFactor = 0.7 + Math.random() * 0.6;
+
             ai.guardState = {
-                orbitRadius: 4.5 + Math.random() * 3.0,  // RANDOM 4.5-7.5m - each hunter patrols at different distance!
-                orbitAngle: Math.random() * Math.PI * 2,  // RANDOM starting angle
-                orbitDirection: Math.random() < 0.5 ? 1 : -1,  // RANDOM direction
-                scanTarget: Math.random() * Math.PI * 2,  // RANDOM initial scan target
-                scanDuration: Math.random() * 500,        // RANDOM offset (0-500ms)
-                nextScanChange: 500 + Math.random() * 1500,  // RANDOM 0.5-2s
-                mode: 'ORBIT',              // ORBIT | REPOSITION | PAUSE | INVESTIGATE
-                moveSpeedMultiplier: 0.8 + Math.random() * 0.4,  // RANDOM 0.8-1.2x speed
-                turnSpeedMultiplier: 1.2 + Math.random() * 1.0,  // RANDOM 1.2-2.2x turn speed
-                nextBehaviorChange: 1000 + Math.random() * 3000,  // RANDOM 1-4s
-                behaviorTimer: Math.random() * 1000,  // RANDOM offset
-                currentObstacleIndex: Math.floor(Math.random() * Math.max(1, obstacles.length)),  // RANDOM starting obstacle
-                checkedObstacles: []        // Track which obstacles checked this patrol cycle
+                orbitRadius: 4.5 + Math.random() * 3.0,
+                orbitAngle: Math.random() * Math.PI * 2,
+                orbitDirection: Math.random() < 0.5 ? 1 : -1,
+                scanTarget: Math.random() * Math.PI * 2,
+                scanDuration: Math.random() * 500,
+                nextScanChange: scanIntervalBase,
+                mode: 'ORBIT',
+                moveSpeedMultiplier: 0.8 + Math.random() * 0.4,
+                turnSpeedMultiplier: turnRandomFactor,
+                turnSpeedRandomFactor: turnRandomFactor,
+                baseTurnSpeed: baseTurnSpeed,
+                scanIntervalBase: scanIntervalBase,
+                scanIntervalRandomFactor: scanIntervalRandomFactor,
+                nextBehaviorChange: 1000 + Math.random() * 3000,
+                behaviorTimer: Math.random() * 1000,
+                currentObstacleIndex: Math.floor(Math.random() * Math.max(1, obstacles.length)),
+                checkedObstacles: []
             };
         }
 
@@ -44,6 +53,7 @@
         const hasObstacles = obstacles && obstacles.length > 0;
 
         const state = ai.guardState;
+        const turnSpeedBase = ai.guardTurnSpeedBase || 1.0;
 
         // Apply reckless radius override if provided (AI ventures further over time)
         if (recklessRadiusOverride !== null) {
@@ -178,37 +188,35 @@
             state.scanDuration += deltaTime * 1000;
 
             // Change scan direction periodically - RANDOMIZED per hunter
-            const baseScanInterval = 600 + Math.random() * 400;  // RANDOM 600-1000ms per hunter
-            const scanInterval = baseScanInterval / state.turnSpeedMultiplier;
+            const baseScanInterval = state.scanIntervalBase || (ai.guardScanIntervalBase || 800);
+            const scanRandomFactor = state.scanIntervalRandomFactor || 1;
+            const actualTurnSpeed = Math.max(0.1, (state.turnSpeedMultiplier || 1) * turnSpeedBase);
+            const scanInterval = (baseScanInterval * scanRandomFactor) / actualTurnSpeed;
 
             if (state.scanDuration > scanInterval) {
                 if (hasObstacles) {
-                    // Sometimes skip obstacles to create variety
-                    const skipCount = Math.random() < 0.3 ? 1 + Math.floor(Math.random() * 2) : 1;  // Skip 1-2 obstacles randomly
+                    const skipCount = Math.random() < 0.3 ? 1 + Math.floor(Math.random() * 2) : 1;
                     state.currentObstacleIndex = (state.currentObstacleIndex + skipCount) % obstacles.length;
                     const targetObstacle = obstacles[state.currentObstacleIndex];
 
-                    // Calculate angle to obstacle from AI position
                     const toObstacleX = targetObstacle.position.x - transform.position.x;
                     const toObstacleZ = targetObstacle.position.z - transform.position.z;
                     state.scanTarget = Math.atan2(toObstacleX, toObstacleZ);
-
-                    // Store obstacle reference for dynamic vision distance calculation
                     state.scanTargetObstacle = targetObstacle;
 
                     console.log(`[GUARD] Checking obstacle ${state.currentObstacleIndex + 1}/${obstacles.length}`);
                 } else {
-                    // No obstacles - scan random directions
-                    state.scanTarget = Math.random() * Math.PI * 2;  // Completely random direction
-                    state.scanTargetObstacle = null;  // No obstacle to focus on
+                    state.scanTarget = Math.random() * Math.PI * 2;
+                    state.scanTargetObstacle = null;
                 }
 
                 state.scanDuration = 0;
+                state.scanIntervalRandomFactor = 0.7 + Math.random() * 0.6;
             }
 
-            // Turn toward scan target (turn speed varies)
             const desiredHeading = state.scanTarget;
-            steering.angular = computeAngularSteering(ai.heading, desiredHeading, ai.maxAngularAccel * state.turnSpeedMultiplier);
+            const angularSpeed = ai.maxAngularAccel * actualTurnSpeed;
+            steering.angular = computeAngularSteering(ai.heading, desiredHeading, angularSpeed);
         }
 
         return steering;

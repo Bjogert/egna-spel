@@ -295,3 +295,30 @@ If still broken after browser refresh, add logging to these files:
 - Updated movement-system.js player and AI physics branches to multiply body velocity by physicsVelocityScale (per-second conversion).
 - Expect [MOVE DEBUG] logs to report ~0.1 values while physics bodies now receive ~6.0 (per second) speeds, so Cannon should advance them properly and PhysicsSync will restore 0.1 per tick velocities.
 - Please hard refresh and retest movement; if characters still stick, capture fresh console output (including [MOVE DEBUG] and any physics warnings) so we can confirm the new velocities and contact counts.
+### 2025-10-04 - Countdown Removal (Codex)
+- Replaced GameLifecycle.startGame() to skip the 5s countdown and call gameEngine.start() immediately while hiding any stale countdown UI.
+- Existing AI recklessness ramp (45s delay + 30s expansion to 12m radius) remains active because AISystem still records PLAYING phase start from gameEngine.start().
+- Next test pass: confirm menu transitions feel smooth without the countdown overlay, verify AI expands patrol radius after ~45s, and ensure no stray logs mention countdown.
+### 2025-10-04 - Countdown Restored & Timer Disabled (Codex)
+- Restored GameLifecycle.startGame()/startCountdown so 5-second pre-round countdown works as before.
+- Replaced GameEngine with fresh implementation: auto-win timer disabled (gameDuration=0) and start() log updated.
+- UI timer now shows '8' when no round timer is active to avoid red 0 display.
+- Next: Verify 5s countdown overlay appears, ensure HUD timer shows infinity, confirm hunters escalate after 45s without round auto-ending.
+### 2025-10-04 - Spawn Positions Updated (Codex)
+- Tweaked CONFIG spawn positions so player starts at (-4, 0.5, -4) and AI default spawn (for single hunter) is (4, 0.5, 4); should place everyone closer to the can without overlapping its collider.
+- For multiple hunters, PlayerManager still arranges them in a circle via difficulty settings, so no further change required.
+- Next verification: load into the arena, confirm both player and all hunters spawn closer to the center, and ensure no one collides with the can at start.
+### 2025-10-04 - Movement Tuning Applied (Codex)
+- Set MovementSystem defaults to playerMaxSpeed=0.16 and sneakMaxSpeed=0.03 to match requested tweak values; other requested parameters already matched current settings.
+- Audio step interval/volume multipliers already align with request, and AISystem still defaults aiFrozen=false.
+- Next test: verify walking vs sneaking feels correct and HUD/footsteps behave as expected, ensuring AI remains active.
+### 2025-10-04 - AI Tweak Panel Expanded (Codex)
+- Added full AI tuning controls to the T panel: patrol/chase speeds, acceleration, turn accel, investigation/reaction timing, reckless timing/radius, and base vision stats.
+- Implemented setter helpers that live-update existing hunters and capture defaults from spawned difficulty presets; included refresh hook so the panel reflects overrides.
+- Reworked reckless ramp logic to use configurable durations/radii (defaults preserved) and cleaned stray artefacts from ai-system.js.
+- Please open the T panel in-game, tweak a few values (e.g., slow patrol speed, extend reckless radius) and ensure hunters respond immediately.
+### 2025-10-04 - AI Vision & Sweep Controls Added (Codex)
+- Added tweak sliders for dynamic-vision thresholds (Vision Wide Threshold, Vision Focus Threshold) so the hunter dips into wide-angle view sooner instead of only at max range.
+- Introduced Scan Turn Speed and Scan Interval (ms) controls plus supporting guard-turn setters; patrol sweep now respects a configurable base speed and updates existing hunters live.
+- Dynamic vision formulas and can-guard patrol logic now read the new values; default tuning set to 0.45/0.70 thresholds and faster 2.0x scan speed with 700?ms interval.
+- Next step: open the T panel, experiment with the thresholds and sweep speed, and confirm the hunter visibly oscillates wider while scanning obstacles more frequently.

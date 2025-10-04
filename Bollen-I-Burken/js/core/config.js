@@ -129,10 +129,10 @@ const CONFIG = {
             depth: 0.8
         },
         color: 0x4a90e2,        // Player color (blue)
-        spawnPosition: {        // Where player starts (away from can to avoid collision)
-            x: -10,     // 10 units left from center
+        spawnPosition: {        // Player starts closer to can but outside immediate radius
+            x: -4,
             y: 0.5,
-            z: -10      // 10 units forward from center
+            z: -4
         },
         pullDistance: 2.0,      // How close to pull hunter's shirt
         pullSlowdown: 0.5       // Speed multiplier when pulling (0.5 = 50% speed)
@@ -153,10 +153,10 @@ const CONFIG = {
                 depth: 0.9
             },
             color: 0xff4444,     // AI color (red)
-            spawnPosition: {     // Where AI hunter starts (only used if numHunters = 1)
-                x: -10,          // 2x scale
+            spawnPosition: {     // Default AI spawn position (used when single hunter)
+                x: 4,
                 y: 0.5,
-                z: 10            // 2x scale
+                z: 4
             },
             // Patrol behavior timing
             patrolChangeTimeMin: 1500,  // Min ms before changing direction

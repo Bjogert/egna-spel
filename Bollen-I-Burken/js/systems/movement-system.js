@@ -17,14 +17,14 @@
 
             // Player acceleration tracking
             this.playerCurrentSpeed = 0;
-            this.playerMaxSpeed = 0.13;
+            this.playerMaxSpeed = 0.16;
             this.playerAcceleration = 0.15;
             this.playerDeceleration = 0.35;
             this.playerDirection = { x: 0, z: 0 };  // Last movement direction (for sliding)
 
             // Sneaking
             this.isSneaking = false;
-            this.sneakMaxSpeed = 0.05;  // Max speed when sneaking (absolute value)
+            this.sneakMaxSpeed = 0.03;  // Max speed when sneaking (absolute value)
 
             // Momentum/drift
             this.momentumFactor = 0.85;  // How much old velocity carries over (0-1, higher = more drift)

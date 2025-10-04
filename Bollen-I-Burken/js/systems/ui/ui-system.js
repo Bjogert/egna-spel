@@ -193,24 +193,31 @@ class UISystem extends System {
 
         const remainingTime = window.GameEngine.getRemainingTime();
         const gameStatus = window.GameEngine.gameStatus;
+        const timerDisabled = window.GameEngine.gameDuration <= 0;
 
         if (timerValueElement) {
-            timerValueElement.textContent = Math.max(0, remainingTime);
+            if (timerDisabled) {
+                timerValueElement.textContent = '8';
+                timerValueElement.style.color = '#44ff44';
+                timerValueElement.style.fontWeight = 'normal';
+            } else {
+                timerValueElement.textContent = Math.max(0, remainingTime);
 
-            if (gameStatus === 'playing') {
-                if (remainingTime <= 10) {
-                    timerValueElement.style.color = '#ff4444';
-                    timerValueElement.style.fontWeight = 'bold';
-                } else if (remainingTime <= 30) {
-                    timerValueElement.style.color = '#ffaa00';
-                    timerValueElement.style.fontWeight = 'bold';
+                if (gameStatus === 'playing') {
+                    if (remainingTime <= 10) {
+                        timerValueElement.style.color = '#ff4444';
+                        timerValueElement.style.fontWeight = 'bold';
+                    } else if (remainingTime <= 30) {
+                        timerValueElement.style.color = '#ffaa00';
+                        timerValueElement.style.fontWeight = 'bold';
+                    } else {
+                        timerValueElement.style.color = '#44ff44';
+                        timerValueElement.style.fontWeight = 'normal';
+                    }
                 } else {
                     timerValueElement.style.color = '#44ff44';
                     timerValueElement.style.fontWeight = 'normal';
                 }
-            } else {
-                timerValueElement.style.color = '#44ff44';
-                timerValueElement.style.fontWeight = 'normal';
             }
         }
 

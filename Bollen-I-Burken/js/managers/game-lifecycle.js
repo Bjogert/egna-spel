@@ -237,6 +237,7 @@
                 }
             }, 1000);
         }
+
     }
 
     // Export singleton instance

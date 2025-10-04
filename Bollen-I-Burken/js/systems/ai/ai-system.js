@@ -1,4 +1,4 @@
-﻿/* ==========================================
+/* ==========================================
    AI SYSTEM
    Manages hunter behaviour and vision checks
    ========================================== */
@@ -17,9 +17,11 @@
     // Debug flag - set to true for verbose console logging
     const AI_DEBUG = false;
 
-    // AI Recklessness settings
-    const RECKLESS_START_TIME = 45000;  // Start getting reckless after 45 seconds (milliseconds)
-    const RECKLESS_MAX_RADIUS = 12.0;   // How far AI ventures when fully reckless (from can)
+    // AI Recklessness settings (defaults, tweakable via T panel)
+    const DEFAULT_RECKLESS_START_TIME = 45000;  // Start getting reckless after 45 seconds (milliseconds)
+    const DEFAULT_RECKLESS_RAMP_DURATION = 30000;  // Ramp up over 30 seconds once active
+    const DEFAULT_RECKLESS_MAX_RADIUS = 12.0;   // How far AI ventures when fully reckless (from can)
+    const BASE_PATROL_RADIUS = 4.5;
 
     class AISystem extends System {
         constructor() {
@@ -28,6 +30,67 @@
             this.aiFrozen = false;  // Debug toggle to freeze AI
             this.hearingRange = 19.0;  // How far AI can hear
             this.gameStartTime = null;  // Track when game started for recklessness
+
+            const difficulty = (typeof CONFIG !== 'undefined' && CONFIG.difficulties && CONFIG.difficulties[CONFIG.currentDifficulty])
+                ? CONFIG.difficulties[CONFIG.currentDifficulty]
+                : null;
+            const difficultyAI = (difficulty && difficulty.ai) ? difficulty.ai : {};
+
+            this.patrolMaxSpeed = (typeof difficultyAI.patrolSpeed === 'number') ? difficultyAI.patrolSpeed : 0.12;
+            this.chaseMaxSpeed = (typeof difficultyAI.chaseSpeed === 'number') ? difficultyAI.chaseSpeed : 0.20;
+            this.accelerationRate = 0.15;
+            this.maxAngularAcceleration = 4.5;
+            this.investigateDuration = 8000;
+            this.reactionDuration = 800;
+            this.reactionJumpTime = 200;
+            this.recklessStartTime = DEFAULT_RECKLESS_START_TIME;
+            this.recklessRampDuration = DEFAULT_RECKLESS_RAMP_DURATION;
+            this.recklessMaxRadius = DEFAULT_RECKLESS_MAX_RADIUS;
+            this.visionBaseAngle = (typeof difficultyAI.visionAngle === 'number') ? difficultyAI.visionAngle : 85;
+            this.visionBaseRange = (typeof difficultyAI.visionRange === 'number') ? difficultyAI.visionRange : 13;
+            this.visionCloseThreshold = 0.45;
+            this.visionFarThreshold = 0.7;
+            this.guardTurnSpeed = 2.0;
+            this.guardScanInterval = 700;
+
+            this._tweakOverrides = {
+                patrolMaxSpeed: false,
+                chaseMaxSpeed: false,
+                accelerationRate: false,
+                maxAngularAcceleration: false,
+                investigateDuration: false,
+                reactionDuration: false,
+                reactionJumpTime: false,
+                visionBaseAngle: false,
+                visionBaseRange: false,
+                recklessStartTime: false,
+                recklessRampDuration: false,
+                recklessMaxRadius: false,
+                visionCloseThreshold: false,
+                visionFarThreshold: false,
+                guardTurnSpeed: false,
+                guardScanInterval: false
+            };
+
+            // Apply default tuning so tweak panel reflects desired baseline values
+            this.setHearingRange(19.0);
+            this.setPatrolMaxSpeed(0.12);
+            this.setChaseMaxSpeed(0.20);
+            this.setAccelerationRate(0.15);
+            this.setMaxAngularAcceleration(4.5);
+            this.setInvestigateDuration(8000);
+            this.setReactionDuration(800);
+            this.setReactionJumpTime(200);
+            this.setRecklessStartTime(30000);
+            this.setRecklessRampDuration(60000);
+            this.setRecklessMaxRadius(17);
+            this.setVisionBaseAngle(62);
+            this.setVisionBaseRange(29);
+            this.setVisionCloseThreshold(0.45);
+            this.setVisionFarThreshold(0.7);
+            this.setGuardTurnSpeed(2.0);
+            this.setGuardScanInterval(700);
+
             this.registerTweaks();
             Utils.log('AI system initialized');
         }
@@ -39,7 +102,7 @@
                 type: 'checkbox',
                 label: 'Freeze AI (for testing)',
                 getValue: () => this.aiFrozen,
-                setValue: (v) => this.aiFrozen = v
+                setValue: (v) => this.setFreezeAI(v)
             });
 
             window.TweakPanel.addSetting('AI', 'Hearing Range', {
@@ -49,16 +112,486 @@
                 step: 1,
                 decimals: 1,
                 label: 'Hearing Range (meters)',
-                getValue: () => this.hearingRange || 19.0,
-                setValue: (v) => this.hearingRange = v
+                getValue: () => this.hearingRange,
+                setValue: (v) => this.setHearingRange(v)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Patrol Max Speed', {
+                type: 'range',
+                min: 0.05,
+                max: 0.40,
+                step: 0.01,
+                decimals: 2,
+                label: 'Patrol Max Speed',
+                getValue: () => this.patrolMaxSpeed,
+                setValue: (v) => this.setPatrolMaxSpeed(v)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Chase Max Speed', {
+                type: 'range',
+                min: 0.05,
+                max: 0.60,
+                step: 0.01,
+                decimals: 2,
+                label: 'Chase Max Speed',
+                getValue: () => this.chaseMaxSpeed,
+                setValue: (v) => this.setChaseMaxSpeed(v)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Acceleration', {
+                type: 'range',
+                min: 0.05,
+                max: 0.50,
+                step: 0.01,
+                decimals: 2,
+                label: 'Acceleration (m/s^2)',
+                getValue: () => this.accelerationRate,
+                setValue: (v) => this.setAccelerationRate(v)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Max Angular Accel', {
+                type: 'range',
+                min: 0.5,
+                max: 12.0,
+                step: 0.1,
+                decimals: 2,
+                label: 'Max Angular Accel (rad/s)',
+                getValue: () => this.maxAngularAcceleration,
+                setValue: (v) => this.setMaxAngularAcceleration(v)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Scan Turn Speed', {
+                type: 'range',
+                min: 0.5,
+                max: 4.0,
+                step: 0.1,
+                decimals: 2,
+                label: 'Scan Turn Speed (x)',
+                getValue: () => this.guardTurnSpeed,
+                setValue: (v) => this.setGuardTurnSpeed(v)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Investigate Duration (s)', {
+                type: 'range',
+                min: 2,
+                max: 20,
+                step: 1,
+                decimals: 0,
+                label: 'Investigate Duration (s)',
+                getValue: () => this.investigateDuration / 1000,
+                setValue: (v) => this.setInvestigateDuration(v * 1000)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Reaction Duration (s)', {
+                type: 'range',
+                min: 0.2,
+                max: 3.0,
+                step: 0.05,
+                decimals: 2,
+                label: 'Reaction Duration (s)',
+                getValue: () => this.reactionDuration / 1000,
+                setValue: (v) => this.setReactionDuration(v * 1000)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Reaction Jump Delay (s)', {
+                type: 'range',
+                min: 0,
+                max: 1.0,
+                step: 0.05,
+                decimals: 2,
+                label: 'Reaction Jump Delay (s)',
+                getValue: () => this.reactionJumpTime / 1000,
+                setValue: (v) => this.setReactionJumpTime(v * 1000)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Reckless Start (s)', {
+                type: 'range',
+                min: 5,
+                max: 90,
+                step: 1,
+                decimals: 0,
+                label: 'Reckless Start (s)',
+                getValue: () => this.recklessStartTime / 1000,
+                setValue: (v) => this.setRecklessStartTime(v * 1000)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Reckless Ramp (s)', {
+                type: 'range',
+                min: 5,
+                max: 60,
+                step: 1,
+                decimals: 0,
+                label: 'Reckless Ramp (s)',
+                getValue: () => this.recklessRampDuration / 1000,
+                setValue: (v) => this.setRecklessRampDuration(v * 1000)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Scan Interval (ms)', {
+                type: 'range',
+                min: 200,
+                max: 2000,
+                step: 50,
+                decimals: 0,
+                label: 'Scan Interval (ms)',
+                getValue: () => this.guardScanInterval,
+                setValue: (v) => this.setGuardScanInterval(v)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Reckless Max Radius', {
+                type: 'range',
+                min: 5,
+                max: 20,
+                step: 0.5,
+                decimals: 1,
+                label: 'Reckless Max Radius (m)',
+                getValue: () => this.recklessMaxRadius,
+                setValue: (v) => this.setRecklessMaxRadius(v)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Vision Base Angle', {
+                type: 'range',
+                min: 30,
+                max: 160,
+                step: 1,
+                decimals: 0,
+                label: 'Vision Base Angle (deg)',
+                getValue: () => this.visionBaseAngle,
+                setValue: (v) => this.setVisionBaseAngle(v)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Vision Base Range', {
+                type: 'range',
+                min: 5,
+                max: 60,
+                step: 1,
+                decimals: 0,
+                label: 'Vision Base Range (m)',
+                getValue: () => this.visionBaseRange,
+                setValue: (v) => this.setVisionBaseRange(v)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Vision Wide Threshold', {
+                type: 'range',
+                min: 0.05,
+                max: 0.9,
+                step: 0.01,
+                decimals: 2,
+                label: 'Vision Wide Threshold',
+                getValue: () => this.visionCloseThreshold,
+                setValue: (v) => this.setVisionCloseThreshold(v)
+            });
+
+            window.TweakPanel.addSetting('AI', 'Vision Focus Threshold', {
+                type: 'range',
+                min: 0.1,
+                max: 0.98,
+                step: 0.01,
+                decimals: 2,
+                label: 'Vision Focus Threshold',
+                getValue: () => this.visionFarThreshold,
+                setValue: (v) => this.setVisionFarThreshold(v)
             });
         }
 
-        addEntity(entity) {
-            if (entity.hasComponent('AIHunter')) {
-                this.hunters.add(entity);
-                Utils.log(`AI hunter entity added: ${entity.id}`);
+        setFreezeAI(value) {
+            this.aiFrozen = !!value;
+        }
+
+        setHearingRange(value) {
+            this.hearingRange = Math.max(0, value);
+        }
+
+        setPatrolMaxSpeed(value) {
+            this._tweakOverrides.patrolMaxSpeed = true;
+            this.patrolMaxSpeed = value;
+            this.applyToHunters((aiComponent, movement) => {
+                aiComponent.maxSpeed = value;
+                if (movement) {
+                    movement.speed = value;
+                    movement.baseSpeed = value;
+                }
+            });
+        }
+
+        setChaseMaxSpeed(value) {
+            this._tweakOverrides.chaseMaxSpeed = true;
+            this.chaseMaxSpeed = value;
+            this.applyToHunters((aiComponent) => {
+                aiComponent.maxSpeedHunting = value;
+                if (typeof aiComponent.currentSpeed === 'number' && aiComponent.currentSpeed > value) {
+                    aiComponent.currentSpeed = value;
+                }
+            });
+        }
+
+        setAccelerationRate(value) {
+            this._tweakOverrides.accelerationRate = true;
+            this.accelerationRate = value;
+            this.applyToHunters((aiComponent) => {
+                aiComponent.acceleration = value;
+                aiComponent.maxAccel = value;
+            });
+        }
+
+        setMaxAngularAcceleration(value) {
+            this._tweakOverrides.maxAngularAcceleration = true;
+            this.maxAngularAcceleration = value;
+            this.applyToHunters((aiComponent) => {
+                aiComponent.maxAngularAccel = value;
+            });
+        }
+
+        setInvestigateDuration(value) {
+            this._tweakOverrides.investigateDuration = true;
+            this.investigateDuration = Math.max(0, value);
+            this.applyToHunters((aiComponent) => {
+                aiComponent.investigateDuration = this.investigateDuration;
+            });
+        }
+
+        setReactionDuration(value) {
+            this._tweakOverrides.reactionDuration = true;
+            this.reactionDuration = Math.max(0, value);
+            if (this.reactionJumpTime > this.reactionDuration) {
+                this.reactionJumpTime = this.reactionDuration;
             }
+            this.applyToHunters((aiComponent) => {
+                aiComponent.reactionDuration = this.reactionDuration;
+                aiComponent.reactionJumpTime = Math.min(aiComponent.reactionJumpTime || this.reactionJumpTime, this.reactionDuration);
+            });
+        }
+
+        setReactionJumpTime(value) {
+            this._tweakOverrides.reactionJumpTime = true;
+            const clamped = Math.max(0, Math.min(value, this.reactionDuration));
+            this.reactionJumpTime = clamped;
+            this.applyToHunters((aiComponent) => {
+                aiComponent.reactionJumpTime = Math.min(clamped, aiComponent.reactionDuration || this.reactionDuration);
+            });
+        }
+
+        setRecklessStartTime(value) {
+            this._tweakOverrides.recklessStartTime = true;
+            this.recklessStartTime = Math.max(0, value);
+        }
+
+        setRecklessRampDuration(value) {
+            this._tweakOverrides.recklessRampDuration = true;
+            this.recklessRampDuration = Math.max(1000, value);
+        }
+
+        setRecklessMaxRadius(value) {
+            this._tweakOverrides.recklessMaxRadius = true;
+            this.recklessMaxRadius = Math.max(BASE_PATROL_RADIUS, value);
+        }
+
+        setVisionBaseAngle(value) {
+            this._tweakOverrides.visionBaseAngle = true;
+            this.visionBaseAngle = value;
+            this.applyToHunters((aiComponent, movement, visionCone) => {
+                this.applyVisionBaseSettings(visionCone);
+            });
+        }
+
+        setVisionBaseRange(value) {
+            this._tweakOverrides.visionBaseRange = true;
+            this.visionBaseRange = value;
+            this.applyToHunters((aiComponent, movement, visionCone) => {
+                this.applyVisionBaseSettings(visionCone);
+            });
+        }
+
+        setVisionCloseThreshold(value) {
+            this._tweakOverrides.visionCloseThreshold = true;
+            const clamped = Math.max(0.05, Math.min(value, 0.9));
+            this.visionCloseThreshold = clamped;
+            if (this.visionFarThreshold <= this.visionCloseThreshold + 0.05) {
+                this.visionFarThreshold = Math.min(0.98, this.visionCloseThreshold + 0.05);
+            }
+            this.applyToHunters((aiComponent) => {
+                aiComponent.visionCloseThreshold = this.visionCloseThreshold;
+                aiComponent.visionFarThreshold = this.visionFarThreshold;
+            });
+            this.refreshTweakPanel();
+        }
+
+        setVisionFarThreshold(value) {
+            this._tweakOverrides.visionFarThreshold = true;
+            const minFar = this.visionCloseThreshold + 0.05;
+            const clamped = Math.max(minFar, Math.min(value, 0.98));
+            this.visionFarThreshold = clamped;
+            this.applyToHunters((aiComponent) => {
+                aiComponent.visionCloseThreshold = this.visionCloseThreshold;
+                aiComponent.visionFarThreshold = this.visionFarThreshold;
+            });
+            this.refreshTweakPanel();
+        }
+
+        setGuardTurnSpeed(value) {
+            this._tweakOverrides.guardTurnSpeed = true;
+            const clamped = Math.max(0.1, value);
+            this.guardTurnSpeed = clamped;
+            this.applyToHunters((aiComponent) => {
+                aiComponent.guardTurnSpeedBase = this.guardTurnSpeed;
+                if (aiComponent.guardState) {
+                    const randomFactor = aiComponent.guardState.turnSpeedRandomFactor || aiComponent.guardState.turnSpeedMultiplier || 1;
+                    aiComponent.guardState.turnSpeedRandomFactor = randomFactor;
+                    aiComponent.guardState.baseTurnSpeed = this.guardTurnSpeed;
+                    aiComponent.guardState.turnSpeedMultiplier = randomFactor;
+                }
+            });
+            this.refreshTweakPanel();
+        }
+
+        setGuardScanInterval(value) {
+            this._tweakOverrides.guardScanInterval = true;
+            const clamped = Math.max(100, value);
+            this.guardScanInterval = clamped;
+            this.applyToHunters((aiComponent) => {
+                aiComponent.guardScanIntervalBase = this.guardScanInterval;
+                if (aiComponent.guardState) {
+                    aiComponent.guardState.scanIntervalBase = this.guardScanInterval;
+                }
+            });
+            this.refreshTweakPanel();
+        }
+
+        refreshTweakPanel() {
+            if (window.TweakPanel && window.TweakPanel.isVisible && typeof window.TweakPanel.refresh === 'function') {
+                window.TweakPanel.refresh();
+            }
+        }
+
+        applyVisionBaseSettings(visionCone) {
+            if (!visionCone) return;
+            visionCone.baseAngle = this.visionBaseAngle;
+            visionCone.baseRange = this.visionBaseRange;
+            visionCone.angle = this.visionBaseAngle;
+            visionCone.range = this.visionBaseRange;
+        }
+
+        applyCurrentTweaksToHunter(aiComponent, movement, visionCone) {
+            if (!aiComponent) return;
+
+            aiComponent.maxSpeed = this.patrolMaxSpeed;
+            aiComponent.maxSpeedHunting = this.chaseMaxSpeed;
+            aiComponent.acceleration = this.accelerationRate;
+            aiComponent.maxAccel = this.accelerationRate;
+            aiComponent.maxAngularAccel = this.maxAngularAcceleration;
+            aiComponent.investigateDuration = this.investigateDuration;
+            aiComponent.reactionDuration = this.reactionDuration;
+            aiComponent.reactionJumpTime = Math.min(this.reactionJumpTime, this.reactionDuration);
+            aiComponent.visionCloseThreshold = this.visionCloseThreshold;
+            aiComponent.visionFarThreshold = this.visionFarThreshold;
+            aiComponent.guardTurnSpeedBase = this.guardTurnSpeed;
+            aiComponent.guardScanIntervalBase = this.guardScanInterval;
+            if (typeof aiComponent.currentSpeed === 'number' && aiComponent.currentSpeed > aiComponent.maxSpeed) {
+                aiComponent.currentSpeed = aiComponent.maxSpeed;
+            }
+
+            if (movement) {
+                movement.speed = this.patrolMaxSpeed;
+                movement.baseSpeed = this.patrolMaxSpeed;
+            }
+
+            if (aiComponent.guardState) {
+                const state = aiComponent.guardState;
+                state.turnSpeedRandomFactor = state.turnSpeedRandomFactor || state.turnSpeedMultiplier || 1;
+                state.baseTurnSpeed = this.guardTurnSpeed;
+                state.turnSpeedMultiplier = state.turnSpeedRandomFactor;
+                state.scanIntervalBase = this.guardScanInterval;
+            }
+
+            this.applyVisionBaseSettings(visionCone);
+        }
+
+        captureHunterDefaults(aiComponent, visionCone) {
+            if (aiComponent) {
+                if (!this._tweakOverrides.patrolMaxSpeed && typeof aiComponent.maxSpeed === 'number') {
+                    this.patrolMaxSpeed = aiComponent.maxSpeed;
+                }
+                if (!this._tweakOverrides.chaseMaxSpeed && typeof aiComponent.maxSpeedHunting === 'number') {
+                    this.chaseMaxSpeed = aiComponent.maxSpeedHunting;
+                }
+                if (!this._tweakOverrides.accelerationRate && typeof aiComponent.acceleration === 'number') {
+                    this.accelerationRate = aiComponent.acceleration;
+                }
+                if (!this._tweakOverrides.maxAngularAcceleration && typeof aiComponent.maxAngularAccel === 'number') {
+                    this.maxAngularAcceleration = aiComponent.maxAngularAccel;
+                }
+                if (!this._tweakOverrides.investigateDuration && typeof aiComponent.investigateDuration === 'number') {
+                    this.investigateDuration = aiComponent.investigateDuration;
+                }
+                if (!this._tweakOverrides.reactionDuration && typeof aiComponent.reactionDuration === 'number') {
+                    this.reactionDuration = aiComponent.reactionDuration;
+                }
+                if (!this._tweakOverrides.reactionJumpTime && typeof aiComponent.reactionJumpTime === 'number') {
+                    this.reactionJumpTime = aiComponent.reactionJumpTime;
+                }
+                if (!this._tweakOverrides.visionCloseThreshold && typeof aiComponent.visionCloseThreshold === 'number') {
+                    this.visionCloseThreshold = aiComponent.visionCloseThreshold;
+                }
+                if (!this._tweakOverrides.visionFarThreshold && typeof aiComponent.visionFarThreshold === 'number') {
+                    this.visionFarThreshold = aiComponent.visionFarThreshold;
+                }
+                if (!this._tweakOverrides.guardTurnSpeed && typeof aiComponent.guardTurnSpeedBase === 'number') {
+                    this.guardTurnSpeed = aiComponent.guardTurnSpeedBase;
+                }
+                if (!this._tweakOverrides.guardScanInterval && typeof aiComponent.guardScanIntervalBase === 'number') {
+                    this.guardScanInterval = aiComponent.guardScanIntervalBase;
+                }
+            }
+
+            if (visionCone) {
+                const baseAngle = visionCone.baseAngle || visionCone.angle;
+                if (!this._tweakOverrides.visionBaseAngle && typeof baseAngle === 'number') {
+                    this.visionBaseAngle = baseAngle;
+                }
+
+                const baseRange = visionCone.baseRange || visionCone.range;
+                if (!this._tweakOverrides.visionBaseRange && typeof baseRange === 'number') {
+                    this.visionBaseRange = baseRange;
+                }
+            }
+
+            if (!this._tweakOverrides.guardTurnSpeed) {
+                this.guardTurnSpeed = this.guardTurnSpeed || 1.0;
+            }
+        }
+
+        applyToHunters(callback) {
+            for (const hunter of this.hunters) {
+                if (!hunter || typeof hunter.getComponent !== 'function') {
+                    continue;
+                }
+                const aiComponent = hunter.getComponent('AIHunter');
+                if (!aiComponent) {
+                    continue;
+                }
+                const movement = hunter.getComponent('Movement');
+                const visionCone = hunter.getComponent('VisionCone');
+                callback(aiComponent, movement, visionCone, hunter);
+            }
+        }
+
+
+
+        addEntity(entity) {
+            if (!entity || !entity.hasComponent('AIHunter')) {
+                return;
+            }
+
+            this.hunters.add(entity);
+
+            const aiComponent = entity.getComponent('AIHunter');
+            const movement = entity.getComponent('Movement');
+            const visionCone = entity.getComponent('VisionCone');
+
+            this.captureHunterDefaults(aiComponent, visionCone);
+            this.applyCurrentTweaksToHunter(aiComponent, movement, visionCone);
+            this.refreshTweakPanel();
+
+            Utils.log(`AI hunter entity added: ${entity.id}`);
         }
 
         removeEntity(entity) {
@@ -175,7 +708,7 @@
 
             // Debug: Log hearing info every second (throttled) - only if AI_DEBUG enabled
             if (AI_DEBUG && (!this._lastHearingLog || Date.now() - this._lastHearingLog > 1000)) {
-                console.log(`🎧 Hearing Check: Distance=${distance.toFixed(2)}m, EffectiveRange=${effectiveRange.toFixed(2)}m, PlayerSpeed=${playerSpeed.toFixed(3)}, SoundLevel=${soundLevel.toFixed(3)}`);
+                console.log(`?? Hearing Check: Distance=${distance.toFixed(2)}m, EffectiveRange=${effectiveRange.toFixed(2)}m, PlayerSpeed=${playerSpeed.toFixed(3)}, SoundLevel=${soundLevel.toFixed(3)}`);
                 this._lastHearingLog = Date.now();
             }
 
@@ -216,19 +749,19 @@
 
                             const targetType = lookAtResult.isCorner ? 'CORNER' : 'SOUND';
                             const angleDeg = (angleToTarget * 180 / Math.PI).toFixed(0);
-                            console.log(`🚨 AI HEARD PLAYER at ${distance.toFixed(2)}m! Looking at ${targetType} (angle ${angleDeg}°)`);
-                            Utils.log(`🚨 AI state changed: ${aiComponent.state}`);
+                            console.log(`?? AI HEARD PLAYER at ${distance.toFixed(2)}m! Looking at ${targetType} (angle ${angleDeg}�)`);
+                            Utils.log(`?? AI state changed: ${aiComponent.state}`);
                         } else {
                             // Already investigating - update target and reset timer
                             aiComponent.investigateStartTime = Date.now();
                             if (AI_DEBUG) {
                                 const targetType = lookAtResult.isCorner ? 'corner' : 'sound';
-                                console.log(`🔄 AI updated target to ${targetType} at (${lookAtResult.lookAtPos.x.toFixed(1)}, ${lookAtResult.lookAtPos.z.toFixed(1)})`);
+                                console.log(`?? AI updated target to ${targetType} at (${lookAtResult.lookAtPos.x.toFixed(1)}, ${lookAtResult.lookAtPos.z.toFixed(1)})`);
                             }
                         }
                     } else {
                         if (AI_DEBUG) {
-                            console.log(`🎧 AI hears player but is in ${aiComponent.state} state (can't investigate)`);
+                            console.log(`?? AI hears player but is in ${aiComponent.state} state (can't investigate)`);
                         }
                     }
                 }
@@ -266,8 +799,14 @@
 
             // Calculate recklessness factor (0 = cautious, 1 = fully reckless)
             const gameTime = Date.now() - this.gameStartTime;
-            const recklessFactor = Math.min((gameTime - RECKLESS_START_TIME) / 30000, 1.0);  // Ramp up over 30 seconds after start delay
-            const recklessRadius = recklessFactor > 0 ? 4.5 + (RECKLESS_MAX_RADIUS - 4.5) * recklessFactor : null;
+            let recklessFactor = 0;
+            if (gameTime > this.recklessStartTime) {
+                const rampDuration = Math.max(1, this.recklessRampDuration);
+                recklessFactor = Math.min((gameTime - this.recklessStartTime) / rampDuration, 1.0);
+            }
+            const recklessRadius = recklessFactor > 0
+                ? BASE_PATROL_RADIUS + (this.recklessMaxRadius - BASE_PATROL_RADIUS) * recklessFactor
+                : null;
 
             // Use CAN-GUARDING strategy (orbit can, check obstacles systematically)
             const canPosition = this.getCanPosition(gameState);
@@ -655,7 +1194,7 @@
                 aiMovement.speed = aiMovement.baseSpeed * slowdownMultiplier;
 
                 if (AI_DEBUG) {
-                    Utils.log(`👕 Player pulling hunter's shirt! Speed: ${aiMovement.speed.toFixed(2)}`);
+                    Utils.log(`?? Player pulling hunter's shirt! Speed: ${aiMovement.speed.toFixed(2)}`);
                 }
             } else {
                 // Restore normal speed
