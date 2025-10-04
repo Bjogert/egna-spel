@@ -25,24 +25,25 @@
         }
 
         addLocalPlayer(playerId) {
-            const geometry = new THREE.BoxGeometry(0.8, 1.0, 0.8);
-            const material = new THREE.MeshLambertMaterial({
-                color: this.playerColors[0],
-                transparent: true,
-                opacity: 0.9
+            // Create character using CharacterBuilder (GUBBAR Phase 1)
+            const playerCharacter = CharacterBuilder.createPlayer({
+                scale: 1.0,
+                castShadow: true
             });
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.castShadow = true;
-            mesh.position.set(0, 0.5, 0);
-            this.scene.add(mesh);
+            
+            // Position character at spawn point
+            playerCharacter.position.set(0, 0.5, 0);
+            this.scene.add(playerCharacter);
 
+            // Create ECS entity and add components
             const gameEntity = this.gameEngine.gameState.addPlayer(playerId, true);
-            gameEntity.addComponent(new Renderable(mesh));
+            gameEntity.addComponent(new Renderable(playerCharacter));
 
-            this.playerMeshes.set(playerId, mesh);
+            // Store references
+            this.playerMeshes.set(playerId, playerCharacter);
             this.playerEntities.set(playerId, gameEntity);
 
-            Utils.log(`Added local player: ${playerId}`);
+            Utils.log(`Added local player with head + body: ${playerId}`);
             return gameEntity;
         }
 
@@ -50,24 +51,28 @@
             const color = this.playerColors[this.colorIndex % this.playerColors.length];
             this.colorIndex++;
 
-            const geometry = new THREE.BoxGeometry(0.8, 1.0, 0.8);
-            const material = new THREE.MeshLambertMaterial({
-                color: color,
-                transparent: true,
-                opacity: 0.9
+            // Create character using CharacterBuilder (GUBBAR Phase 1)
+            const playerCharacter = CharacterBuilder.createPlayer({
+                scale: 1.0,
+                castShadow: true
             });
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.castShadow = true;
-            mesh.position.set(0, 0.5, 0);
-            this.scene.add(mesh);
+            
+            // Update color to match assigned player color
+            CharacterBuilder.updateCharacterColor(playerCharacter, color);
+            
+            // Position character at spawn point
+            playerCharacter.position.set(0, 0.5, 0);
+            this.scene.add(playerCharacter);
 
+            // Create ECS entity and add components
             const gameEntity = this.gameEngine.gameState.addPlayer(playerId, false);
-            gameEntity.addComponent(new Renderable(mesh));
+            gameEntity.addComponent(new Renderable(playerCharacter));
 
-            this.playerMeshes.set(playerId, mesh);
+            // Store references
+            this.playerMeshes.set(playerId, playerCharacter);
             this.playerEntities.set(playerId, gameEntity);
 
-            Utils.log(`Added remote player: ${playerId}`);
+            Utils.log(`Added remote player with head + body: ${playerId}`);
             return gameEntity;
         }
 
@@ -121,33 +126,31 @@
             Utils.log(`  Patrol Speed: ${patrolSpeed}, Chase Speed: ${chaseSpeed}`);
             Utils.log(`  Vision: ${visionAngle}° angle, ${visionRange}m range`);
 
-            const geometry = new THREE.BoxGeometry(0.9, 1.1, 0.9);
-            const material = new THREE.MeshLambertMaterial({
-                color: 0xff4444,
-                transparent: true,
-                opacity: 0.9
+            // Create AI hunter character using CharacterBuilder (GUBBAR Phase 1)
+            const aiCharacter = CharacterBuilder.createAIHunter({
+                scale: 1.1,  // Slightly bigger than player
+                castShadow: true
             });
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.castShadow = true;
 
-            const spawnPos = position || CONFIG.ai.hunter.spawnPosition;  // Default AI spawn from config (avoid can!)
-            mesh.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
-            this.scene.add(mesh);
+            // Position AI at spawn location
+            const spawnPos = position || CONFIG.ai.hunter.spawnPosition;
+            aiCharacter.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
+            this.scene.add(aiCharacter);
 
             const visionCone = this.createVisionConeDebugMesh(visionAngle, visionRange);
-            visionCone.position.copy(mesh.position);
+            visionCone.position.copy(aiCharacter.position);
             this.scene.add(visionCone);
 
             // Create hearing radius circle (at max range)
             const hearingCircle = this.createHearingRadiusDebugMesh(100.0);
-            hearingCircle.position.copy(mesh.position);
+            hearingCircle.position.copy(aiCharacter.position);
             this.scene.add(hearingCircle);
 
             const aiEntity = this.gameEngine.gameState.createEntity();
             const aiTransform = new Transform(spawnPos.x, spawnPos.y, spawnPos.z);
             aiEntity.addComponent(aiTransform);
             aiEntity.addComponent(new Movement(patrolSpeed));
-            aiEntity.addComponent(new Renderable(mesh));
+            aiEntity.addComponent(new Renderable(aiCharacter));
 
             // Add physics body to AI (GUBBAR Phase 1)
             if (CONFIG.physics.enabled && typeof BodyFactory !== 'undefined' && global.physicsSystem) {
@@ -165,8 +168,8 @@
 
             aiEntity.addComponent(new VisionCone(visionAngle, visionRange));
 
-            mesh.visionConeMesh = visionCone;
-            mesh.hearingCircle = hearingCircle;
+            aiCharacter.visionConeMesh = visionCone;
+            aiCharacter.hearingCircle = hearingCircle;
 
             const aiSystem = this.gameEngine.getSystem('AISystem');
             if (aiSystem) {
@@ -176,7 +179,7 @@
                 Utils.warn(`AISystem not found - AI hunter ${hunterId} will not move`);
             }
 
-            this.hunterData.set(hunterId, { entity: aiEntity, mesh, visionCone, hearingCircle });
+            this.hunterData.set(hunterId, { entity: aiEntity, mesh: aiCharacter, visionCone, hearingCircle });
 
             Utils.log(`Added AI hunter: ${hunterId} at position (${spawnPos.x}, ${spawnPos.z})`);
             return aiEntity;
