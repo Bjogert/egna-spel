@@ -247,6 +247,29 @@
             // Check if player is trying to move
             const isMoving = desiredX !== 0 || desiredZ !== 0;
 
+            // 🦵 RAGDOLL LOCOMOTION INTEGRATION (GUBBAR Phase 2)
+            const ragdollPhysics = entity ? entity.getComponent('RagdollPhysics') : null;
+            if (ragdollPhysics && global.ragdollLocomotion) {
+                // This is a ragdoll character - use new locomotion system!
+                const playerId = entity.getComponent('Player')?.playerId;
+                if (playerId) {
+                    if (isMoving) {
+                        // Normalize direction and trigger walking
+                        const magnitude = Math.sqrt(desiredX * desiredX + desiredZ * desiredZ);
+                        if (magnitude > 0) {
+                            const direction = { x: desiredX / magnitude, z: desiredZ / magnitude };
+                            const isRunning = input.keys.action2 || false; // Shift to run
+                            global.ragdollLocomotion.startWalking(playerId, direction, isRunning);
+                        }
+                    } else {
+                        // Stop walking when no input
+                        global.ragdollLocomotion.stopMovement(playerId);
+                    }
+                    // Ragdoll locomotion handles all movement - skip old system
+                    return;
+                }
+            }
+
             // Normalize input direction
             if (isMoving) {
                 const magnitude = Math.sqrt(desiredX * desiredX + desiredZ * desiredZ);

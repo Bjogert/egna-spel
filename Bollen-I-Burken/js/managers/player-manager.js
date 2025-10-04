@@ -1,6 +1,6 @@
 /* ==========================================
    PLAYER MANAGER
-   Handles player and AI entity lifecycle
+   Handles player and AI entity lifecycle management
    ========================================== */
 
 (function (global) {
@@ -24,12 +24,70 @@
             this.hunterData = new Map();
         }
 
+        /**
+         * 🔧 Helper to get physics world from physics system
+         * @returns {CANNON.World|null} Physics world or null if not available
+         */
+        getPhysicsWorld() {
+            // Try multiple access patterns
+            if (global.physicsSystem && global.physicsSystem.physicsWorld && global.physicsSystem.physicsWorld.world) {
+                return global.physicsSystem.physicsWorld.world;
+            }
+            
+            if (this.gameEngine && this.gameEngine.getSystem) {
+                const physicsSystem = this.gameEngine.getSystem('PhysicsSystem') || this.gameEngine.getSystem('physics');
+                if (physicsSystem && physicsSystem.physicsWorld && physicsSystem.physicsWorld.world) {
+                    return physicsSystem.physicsWorld.world;
+                }
+            }
+            
+            Utils.warn('⚠️ Physics world not available for ragdoll characters');
+            return null;
+        }
+
         addLocalPlayer(playerId) {
-            // Create character using CharacterBuilder (GUBBAR Phase 1)
-            const playerCharacter = CharacterBuilder.createPlayer({
-                scale: 1.0,
-                castShadow: true
-            });
+            // 🦴 Try to create ragdoll character first (GUBBAR Phase 1A)
+            let playerCharacter = null;
+            let ragdollData = null;
+
+            // Get physics world from physics system
+            const physicsWorld = this.getPhysicsWorld();
+            
+            // Check if ragdoll system is available and enabled
+            const ragdollAvailable = physicsWorld && 
+                                   typeof CHARACTER_CONFIG !== 'undefined' && 
+                                   CHARACTER_CONFIG && 
+                                   CHARACTER_CONFIG.ragdoll && 
+                                   CHARACTER_CONFIG.ragdoll.enabled;
+            
+            if (ragdollAvailable) {
+                try {
+                    const ragdollResult = CharacterBuilder.createRagdollPlayer({
+                        scale: 1.0,
+                        castShadow: true
+                    }, physicsWorld);
+                    
+                    playerCharacter = ragdollResult.visualGroup;
+                    ragdollData = ragdollResult.physicsData;
+                    Utils.log(`✅ Created ragdoll player with articulated legs: ${playerId}`);
+                } catch (error) {
+                    Utils.warn(`⚠️ Ragdoll player creation failed, falling back to simple character:`, error);
+                    playerCharacter = CharacterBuilder.createPlayer({
+                        scale: 1.0,
+                        castShadow: true
+                    });
+                }
+            } else {
+                // Fallback to simple character
+                playerCharacter = CharacterBuilder.createPlayer({
+                    scale: 1.0,
+                    castShadow: true
+                });
+                const reason = !physicsWorld ? "no physics world" :
+                             typeof CHARACTER_CONFIG === 'undefined' ? "CHARACTER_CONFIG not loaded" :
+                             !CHARACTER_CONFIG.ragdoll.enabled ? "ragdoll disabled" : "unknown";
+                Utils.log(`📦 Created simple player character (${reason}): ${playerId}`);
+            }
             
             // Position character at spawn point
             playerCharacter.position.set(0, 0.5, 0);
@@ -39,11 +97,39 @@
             const gameEntity = this.gameEngine.gameState.addPlayer(playerId, true);
             gameEntity.addComponent(new Renderable(playerCharacter));
 
+            // Add ragdoll physics data if available
+            if (ragdollData) {
+                gameEntity.addComponent('RagdollPhysics', ragdollData);
+                
+                // 🦵 Initialize with locomotion system (GUBBAR Phase 2)
+                if (global.ragdollLocomotion) {
+                    global.ragdollLocomotion.initializeCharacter(playerId, ragdollData);
+                    Utils.log(`🦵 Initialized ragdoll locomotion for LOCAL player: ${playerId}`);
+                }
+            } else {
+                // � FORCE DUMMY RAGDOLL: Always add ragdoll component to trigger locomotion
+                Utils.log(`🔧 Adding dummy ragdoll physics to enable leg movement for ${playerId}`);
+                const dummyRagdollData = {
+                    isTemporary: true,
+                    physicsBodies: null,
+                    joints: null,
+                    visualMeshes: null
+                };
+                gameEntity.addComponent('RagdollPhysics', dummyRagdollData);
+                
+                // Initialize locomotion system even with dummy data
+                if (global.ragdollLocomotion) {
+                    global.ragdollLocomotion.initializeCharacter(playerId, dummyRagdollData);
+                    Utils.log(`🦵 Initialized DUMMY ragdoll locomotion for LOCAL player: ${playerId}`);
+                }
+            }
+
             // Store references
             this.playerMeshes.set(playerId, playerCharacter);
             this.playerEntities.set(playerId, gameEntity);
 
-            Utils.log(`Added local player with head + body: ${playerId}`);
+            const characterType = ragdollData ? "ragdoll character with articulated legs" : "simple character with head + body";
+            Utils.log(`Added local player as ${characterType}: ${playerId}`);
             return gameEntity;
         }
 
@@ -51,11 +137,48 @@
             const color = this.playerColors[this.colorIndex % this.playerColors.length];
             this.colorIndex++;
 
-            // Create character using CharacterBuilder (GUBBAR Phase 1)
-            const playerCharacter = CharacterBuilder.createPlayer({
-                scale: 1.0,
-                castShadow: true
-            });
+            // 🦴 Try to create ragdoll character first (GUBBAR Phase 1A)
+            let playerCharacter = null;
+            let ragdollData = null;
+
+            // Get physics world from physics system
+            const physicsWorld = this.getPhysicsWorld();
+            
+            // Check if ragdoll system is available and enabled
+            const ragdollAvailable = physicsWorld && 
+                                   typeof CHARACTER_CONFIG !== 'undefined' && 
+                                   CHARACTER_CONFIG && 
+                                   CHARACTER_CONFIG.ragdoll && 
+                                   CHARACTER_CONFIG.ragdoll.enabled;
+            
+            if (ragdollAvailable) {
+                try {
+                    const ragdollResult = CharacterBuilder.createRagdollPlayer({
+                        scale: 1.0,
+                        castShadow: true
+                    }, physicsWorld);
+                    
+                    playerCharacter = ragdollResult.visualGroup;
+                    ragdollData = ragdollResult.physicsData;
+                    Utils.log(`✅ Created ragdoll remote player with articulated legs: ${playerId}`);
+                } catch (error) {
+                    Utils.warn(`⚠️ Ragdoll remote player creation failed, falling back to simple character:`, error);
+                    playerCharacter = CharacterBuilder.createPlayer({
+                        scale: 1.0,
+                        castShadow: true
+                    });
+                }
+            } else {
+                // Fallback to simple character
+                playerCharacter = CharacterBuilder.createPlayer({
+                    scale: 1.0,
+                    castShadow: true
+                });
+                const reason = !physicsWorld ? "no physics world" :
+                             typeof CHARACTER_CONFIG === 'undefined' ? "CHARACTER_CONFIG not loaded" :
+                             !CHARACTER_CONFIG.ragdoll.enabled ? "ragdoll disabled" : "unknown";
+                Utils.log(`📦 Created simple remote player character (${reason}): ${playerId}`);
+            }
             
             // Update color to match assigned player color
             CharacterBuilder.updateCharacterColor(playerCharacter, color);
@@ -68,11 +191,39 @@
             const gameEntity = this.gameEngine.gameState.addPlayer(playerId, false);
             gameEntity.addComponent(new Renderable(playerCharacter));
 
+            // Add ragdoll physics data if available
+            if (ragdollData) {
+                gameEntity.addComponent('RagdollPhysics', ragdollData);
+                
+                // 🦵 Initialize with locomotion system (GUBBAR Phase 2)
+                if (global.ragdollLocomotion) {
+                    global.ragdollLocomotion.initializeCharacter(playerId, ragdollData);
+                    Utils.log(`🦵 Initialized ragdoll locomotion for REMOTE player: ${playerId}`);
+                }
+            } else {
+                // � FORCE DUMMY RAGDOLL: Always add ragdoll component to trigger locomotion
+                Utils.log(`🔧 Adding dummy ragdoll physics to enable leg movement for ${playerId}`);
+                const dummyRagdollData = {
+                    isTemporary: true,
+                    physicsBodies: null,
+                    joints: null,
+                    visualMeshes: null
+                };
+                gameEntity.addComponent('RagdollPhysics', dummyRagdollData);
+                
+                // Initialize locomotion system even with dummy data
+                if (global.ragdollLocomotion) {
+                    global.ragdollLocomotion.initializeCharacter(playerId, dummyRagdollData);
+                    Utils.log(`🦵 Initialized DUMMY ragdoll locomotion for REMOTE player: ${playerId}`);
+                }
+            }
+
             // Store references
             this.playerMeshes.set(playerId, playerCharacter);
             this.playerEntities.set(playerId, gameEntity);
 
-            Utils.log(`Added remote player with head + body: ${playerId}`);
+            const characterType = ragdollData ? "ragdoll character with articulated legs" : "simple character with head + body";
+            Utils.log(`Added remote player as ${characterType}: ${playerId}`);
             return gameEntity;
         }
 

@@ -27,12 +27,12 @@
             verticalOffset: 0.45, // Lower (was 0.6) for shorter character
         },
         
-        // LEG SETTINGS - Stubby cute legs!
+        // LEG SETTINGS - Much longer, visible legs!
         legs: {
-            radius: 0.12,         // THICKER legs (was 0.08) - chubby child legs!
-            height: 0.4,          // SHORTER legs (was 0.7) - stubby child legs
-            separation: 0.12,     // Closer together (was 0.15) - cute stance
-            verticalOffset: 0.2,  // Lower (was 0.25) for shorter character
+            radius: 0.15,         // Even THICKER legs for visibility
+            height: 0.8,          // MUCH LONGER legs (was 0.4) - clearly visible!
+            separation: 0.15,     // Slightly wider stance for stability
+            verticalOffset: -0.1, // LOWER positioning (was 0.2) - legs below torso!
             segments: 8,          // Cylinder detail (higher = smoother, lower = performance)
         },
         
@@ -48,13 +48,13 @@
             }
         },
         
-        // PHYSICS/COLLISION DIMENSIONS - Updated for child-like proportions
+        // PHYSICS/COLLISION DIMENSIONS - Updated for longer legs
         // These should match the visual size for proper collision detection
         physics: {
             width: 0.7,           // Narrower collision box (match new torso.width)
-            height: 1.0,          // Shorter total height (was 1.3) - child height!
+            height: 1.6,          // TALLER total height (was 1.0) - account for longer legs!
             depth: 0.5,           // Match new rounder torso.depth
-            centerY: 0.5,         // Lower center point (was 0.65) for shorter character
+            centerY: 0.8,         // Higher center point (was 0.5) for taller character
         },
         
         // RENDERING SETTINGS
@@ -63,8 +63,225 @@
             receiveShadow: true,  // Whether character parts receive shadows
             opacity: 0.9,         // Character transparency (1.0 = opaque, 0.0 = invisible)
             materialType: 'lambert', // Material type (lambert = good performance)
+        },
+        
+        // 🦴 RAGDOLL PHYSICS SETTINGS (Phase 1A: Proof of Concept)
+        ragdoll: {
+            enabled: true,        // Enable ragdoll physics for legs
+            upperLeg: {
+                length: 0.4,      // LONGER upper leg (was 0.25) - more visible!
+                radius: 0.12,     // Slightly thicker for visibility
+                mass: 3.0,        // Physics mass
+            },
+            lowerLeg: {
+                length: 0.4,      // LONGER lower leg (was 0.25) - more visible! 
+                radius: 0.1,      // Slightly thicker (was 0.08)
+                mass: 2.0,        // Physics mass (lighter than thigh)
+            },
+            joints: {
+                kneeMaxAngle: 160 * Math.PI / 180,  // Max knee bend (160 degrees)
+                kneeMinAngle: 0,                    // Min knee bend (straight)
+                kneeStiffness: 100,                 // Joint motor force
+                kneeDamping: 10,                    // Joint damping (smoothness)
+            }
         }
     };
+
+    /**
+     * 🦴 RagdollCharacterBuilder - Phase 1A: Articulated Physics Characters
+     * Creates characters with individual physics bodies and joint constraints
+     */
+    class RagdollCharacterBuilder {
+        
+        /**
+         * Creates an articulated left leg with knee joint (Phase 1A proof of concept)
+         * @param {Object} config - Character configuration
+         * @param {CANNON.World} physicsWorld - Cannon.js physics world
+         * @returns {Object} { visualGroup, physicsBodies, joints }
+         */
+        static createArticulatedLeftLeg(config, physicsWorld) {
+            const scale = config.scale || 1.0;
+            
+            // Create visual meshes
+            const upperLegMesh = this.createUpperLegMesh(config, scale);
+            const lowerLegMesh = this.createLowerLegMesh(config, scale);
+            
+            // Create physics bodies
+            const upperLegBody = this.createUpperLegPhysicsBody(scale);
+            const lowerLegBody = this.createLowerLegPhysicsBody(scale);
+            
+            // Position physics bodies
+            const legSeparation = CHARACTER_CONFIG.legs.separation * scale;
+            const baseY = CHARACTER_CONFIG.legs.verticalOffset * scale;
+            
+            // Upper leg position (attached to hip)
+            upperLegBody.position.set(-legSeparation, baseY + CHARACTER_CONFIG.ragdoll.upperLeg.length * 0.5, 0);
+            
+            // Lower leg position (hanging from upper leg)
+            lowerLegBody.position.set(-legSeparation, baseY - CHARACTER_CONFIG.ragdoll.lowerLeg.length * 0.5, 0);
+            
+            // Add bodies to physics world
+            physicsWorld.addBody(upperLegBody);
+            physicsWorld.addBody(lowerLegBody);
+            
+            // Create knee joint constraint
+            const kneeJoint = this.createKneeJoint(upperLegBody, lowerLegBody);
+            physicsWorld.addConstraint(kneeJoint);
+            
+            // Create visual group
+            const legGroup = new THREE.Group();
+            legGroup.add(upperLegMesh);
+            legGroup.add(lowerLegMesh);
+            legGroup.name = 'articulated_left_leg';
+            
+            // Store references for physics sync
+            upperLegMesh.userData.physicsBody = upperLegBody;
+            lowerLegMesh.userData.physicsBody = lowerLegBody;
+            
+            return {
+                visualGroup: legGroup,
+                physicsBodies: {
+                    upperLeg: upperLegBody,
+                    lowerLeg: lowerLegBody
+                },
+                joints: {
+                    knee: kneeJoint
+                },
+                visualMeshes: {
+                    upperLeg: upperLegMesh,
+                    lowerLeg: lowerLegMesh
+                }
+            };
+        }
+        
+        /**
+         * Creates upper leg visual mesh
+         */
+        static createUpperLegMesh(config, scale) {
+            const radius = CHARACTER_CONFIG.ragdoll.upperLeg.radius * scale;
+            const length = CHARACTER_CONFIG.ragdoll.upperLeg.length * scale;
+            
+            const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
+            const material = new THREE.MeshLambertMaterial({
+                color: CharacterBuilder.getBodyColor(config.type),
+                transparent: true,
+                opacity: CHARACTER_CONFIG.rendering.opacity
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.name = 'upper_leg_left';
+            mesh.castShadow = CHARACTER_CONFIG.rendering.castShadow;
+            mesh.receiveShadow = CHARACTER_CONFIG.rendering.receiveShadow;
+            
+            return mesh;
+        }
+        
+        /**
+         * Creates lower leg visual mesh  
+         */
+        static createLowerLegMesh(config, scale) {
+            const radius = CHARACTER_CONFIG.ragdoll.lowerLeg.radius * scale;
+            const length = CHARACTER_CONFIG.ragdoll.lowerLeg.length * scale;
+            
+            const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
+            const material = new THREE.MeshLambertMaterial({
+                color: CharacterBuilder.getBodyColor(config.type),
+                transparent: true,
+                opacity: CHARACTER_CONFIG.rendering.opacity
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.name = 'lower_leg_left';
+            mesh.castShadow = CHARACTER_CONFIG.rendering.castShadow;
+            mesh.receiveShadow = CHARACTER_CONFIG.rendering.receiveShadow;
+            
+            return mesh;
+        }
+        
+        /**
+         * Creates upper leg physics body
+         */
+        static createUpperLegPhysicsBody(scale) {
+            const radius = CHARACTER_CONFIG.ragdoll.upperLeg.radius * scale;
+            const length = CHARACTER_CONFIG.ragdoll.upperLeg.length * scale;
+            const mass = CHARACTER_CONFIG.ragdoll.upperLeg.mass;
+            
+            const shape = new CANNON.Cylinder(radius, radius, length, 8);
+            const body = new CANNON.Body({ mass: mass });
+            body.addShape(shape);
+            
+            // Add collision group for character parts
+            body.collisionFilterGroup = 2;  // Character parts group
+            body.collisionFilterMask = 1 | 4;  // Collide with environment and other characters
+            
+            return body;
+        }
+        
+        /**
+         * Creates lower leg physics body
+         */
+        static createLowerLegPhysicsBody(scale) {
+            const radius = CHARACTER_CONFIG.ragdoll.lowerLeg.radius * scale;
+            const length = CHARACTER_CONFIG.ragdoll.lowerLeg.length * scale;
+            const mass = CHARACTER_CONFIG.ragdoll.lowerLeg.mass;
+            
+            const shape = new CANNON.Cylinder(radius, radius, length, 8);
+            const body = new CANNON.Body({ mass: mass });
+            body.addShape(shape);
+            
+            // Add collision group for character parts
+            body.collisionFilterGroup = 2;  // Character parts group  
+            body.collisionFilterMask = 1 | 4;  // Collide with environment and other characters
+            
+            return body;
+        }
+        
+        /**
+         * Creates knee joint constraint between upper and lower leg
+         */
+        static createKneeJoint(upperLegBody, lowerLegBody) {
+            const upperLegLength = CHARACTER_CONFIG.ragdoll.upperLeg.length;
+            const lowerLegLength = CHARACTER_CONFIG.ragdoll.lowerLeg.length;
+            
+            // Create hinge constraint for knee (single-axis rotation)
+            const kneeJoint = new CANNON.HingeConstraint(upperLegBody, lowerLegBody, {
+                pivotA: new CANNON.Vec3(0, -upperLegLength * 0.5, 0),  // Bottom of upper leg
+                pivotB: new CANNON.Vec3(0, lowerLegLength * 0.5, 0),   // Top of lower leg
+                axisA: new CANNON.Vec3(1, 0, 0),                       // Rotation axis (sideways)
+                axisB: new CANNON.Vec3(1, 0, 0),                       // Same axis
+            });
+            
+            // Enable motor for active control
+            kneeJoint.enableMotor();
+            kneeJoint.setMotorMinForce(-CHARACTER_CONFIG.ragdoll.joints.kneeStiffness);
+            kneeJoint.setMotorMaxForce(CHARACTER_CONFIG.ragdoll.joints.kneeStiffness);
+            
+            // Set joint limits (prevent hyperextension)
+            kneeJoint.collideConnected = false;  // Don't collide connected bodies
+            
+            console.log(`[RagdollCharacterBuilder] Created knee joint with stiffness: ${CHARACTER_CONFIG.ragdoll.joints.kneeStiffness}`);
+            
+            return kneeJoint;
+        }
+        
+        /**
+         * Updates visual meshes to match physics body positions
+         * Call this every frame to sync visual with physics
+         */
+        static syncVisualWithPhysics(articulatedLeg) {
+            // Sync upper leg
+            const upperMesh = articulatedLeg.visualMeshes.upperLeg;
+            const upperBody = articulatedLeg.physicsBodies.upperLeg;
+            upperMesh.position.copy(upperBody.position);
+            upperMesh.quaternion.copy(upperBody.quaternion);
+            
+            // Sync lower leg
+            const lowerMesh = articulatedLeg.visualMeshes.lowerLeg;
+            const lowerBody = articulatedLeg.physicsBodies.lowerLeg;
+            lowerMesh.position.copy(lowerBody.position);
+            lowerMesh.quaternion.copy(lowerBody.quaternion);
+        }
+    }
 
     /**
      * CharacterBuilder - Creates modular characters with head + torso + legs
@@ -138,6 +355,110 @@
 
             console.log(`[CharacterBuilder] Created ${config.type} character with head + torso + legs (scale: ${config.scale})`);
             return characterGroup;
+        }
+
+        /**
+         * 🦴 Creates a character with ragdoll physics (Phase 1A: Left leg articulated)
+         * @param {Object} options - Character configuration
+         * @param {CANNON.World} physicsWorld - Cannon.js physics world for constraints
+         * @returns {Object} { visualGroup, physicsData }
+         */
+        static createRagdollCharacter(options = {}, physicsWorld) {
+            const config = {
+                color: options.color || 0x00ff00,
+                type: options.type || 'player',
+                scale: options.scale || 1.0,
+                castShadow: options.castShadow !== false
+            };
+
+            // Create standard character parts (head, torso, right leg)
+            const characterGroup = new THREE.Group();
+            characterGroup.name = `ragdoll_character_${config.type}`;
+
+            // Create standard parts
+            const head = this.createHead(config);
+            const torso = this.createTorso(config);
+            const rightLeg = this.createLeg(config, 'right'); // Keep right leg static for comparison
+
+            // Position standard parts
+            torso.position.set(0, CHARACTER_CONFIG.torso.verticalOffset * config.scale, 0);
+            head.position.set(0, CHARACTER_CONFIG.head.verticalOffset * config.scale, 0);
+            rightLeg.position.set(
+                CHARACTER_CONFIG.legs.separation * config.scale, 
+                CHARACTER_CONFIG.legs.verticalOffset * config.scale, 
+                0
+            );
+
+            // Create articulated left leg with knee joint
+            let articulatedLeftLeg = null;
+            let physicsData = null;
+            
+            if (CHARACTER_CONFIG.ragdoll.enabled && physicsWorld) {
+                try {
+                    console.log(`[CharacterBuilder] Attempting to create articulated leg with physics world:`, physicsWorld ? 'Available' : 'Missing');
+                    articulatedLeftLeg = RagdollCharacterBuilder.createArticulatedLeftLeg(config, physicsWorld);
+                    physicsData = {
+                        articulatedLegs: {
+                            left: articulatedLeftLeg
+                        }
+                    };
+                    console.log(`[CharacterBuilder] ✅ Created articulated left leg with knee joint for ${config.type}`);
+                } catch (error) {
+                    console.error(`[CharacterBuilder] ❌ Failed to create articulated leg:`, error);
+                    console.error(`[CharacterBuilder] Error stack:`, error.stack);
+                    console.error(`[CharacterBuilder] Physics world available:`, physicsWorld ? 'Yes' : 'No');
+                    console.error(`[CharacterBuilder] Config:`, config);
+                    // Fallback to static leg
+                    const leftLeg = this.createLeg(config, 'left');
+                    leftLeg.position.set(
+                        -CHARACTER_CONFIG.legs.separation * config.scale, 
+                        CHARACTER_CONFIG.legs.verticalOffset * config.scale, 
+                        0
+                    );
+                    characterGroup.add(leftLeg);
+                }
+            } else {
+                // Fallback to static leg if no physics world
+                const leftLeg = this.createLeg(config, 'left');
+                leftLeg.position.set(
+                    -CHARACTER_CONFIG.legs.separation * config.scale, 
+                    CHARACTER_CONFIG.legs.verticalOffset * config.scale, 
+                    0
+                );
+                characterGroup.add(leftLeg);
+            }
+
+            // Add standard parts to group
+            characterGroup.add(torso);
+            characterGroup.add(head);
+            characterGroup.add(rightLeg);
+
+            // Add articulated leg if created
+            if (articulatedLeftLeg) {
+                characterGroup.add(articulatedLeftLeg.visualGroup);
+            }
+
+            // Store references for later access
+            characterGroup.userData = {
+                type: config.type,
+                parts: {
+                    head: head,
+                    torso: torso,
+                    rightLeg: rightLeg,
+                    articulatedLeftLeg: articulatedLeftLeg
+                },
+                config: config,
+                isRagdoll: true,
+                physicsData: physicsData
+            };
+
+            const legType = articulatedLeftLeg ? "articulated left leg + static right leg" : "static legs";
+            console.log(`[CharacterBuilder] Created ${config.type} ragdoll character with ${legType} (scale: ${config.scale})`);
+            
+            return {
+                visualGroup: characterGroup,
+                physicsData: physicsData
+            };
         }
 
         /**
@@ -333,14 +654,78 @@
             
             return character;
         }
+
+        /**
+         * 🦴 Creates ragdoll AI hunter character with articulated physics
+         * @param {Object} options - AI configuration
+         * @param {CANNON.World} physicsWorld - Physics world for constraints
+         * @returns {Object} { visualGroup, physicsData }
+         */
+        static createRagdollAIHunter(options = {}, physicsWorld) {
+            const aiConfig = {
+                color: 0xff4444,      // Red base color
+                type: 'ai_hunter',
+                scale: options.scale || 1.1,  // Slightly bigger than player
+                castShadow: options.castShadow !== false
+            };
+
+            const result = this.createRagdollCharacter(aiConfig, physicsWorld);
+            result.visualGroup.name = 'ragdoll_ai_hunter_character';
+            
+            return result;
+        }
+
+        /**
+         * 🦴 Creates ragdoll player character with articulated physics
+         * @param {Object} options - Player configuration
+         * @param {CANNON.World} physicsWorld - Physics world for constraints
+         * @returns {Object} { visualGroup, physicsData }
+         */
+        static createRagdollPlayer(options = {}, physicsWorld) {
+            const playerConfig = {
+                color: 0x00ff00,      // Green base color
+                type: 'player',
+                scale: options.scale || 1.0,
+                castShadow: options.castShadow !== false
+            };
+
+            const result = this.createRagdollCharacter(playerConfig, physicsWorld);
+            result.visualGroup.name = 'ragdoll_player_character';
+            
+            return result;
+        }
+
+        /**
+         * 🔄 Updates ragdoll character visuals to match physics bodies (call every frame)
+         * @param {THREE.Group} characterGroup - Character group with ragdoll data
+         */
+        static updateRagdollPhysics(characterGroup) {
+            if (!characterGroup.userData || !characterGroup.userData.isRagdoll || !characterGroup.userData.physicsData) {
+                return; // Not a ragdoll character
+            }
+
+            const physicsData = characterGroup.userData.physicsData;
+            
+            // Update articulated legs
+            if (physicsData.articulatedLegs) {
+                if (physicsData.articulatedLegs.left) {
+                    RagdollCharacterBuilder.syncVisualWithPhysics(physicsData.articulatedLegs.left);
+                }
+                if (physicsData.articulatedLegs.right) {
+                    RagdollCharacterBuilder.syncVisualWithPhysics(physicsData.articulatedLegs.right);
+                }
+            }
+        }
     }
 
     // Export to global scope
     global.CharacterBuilder = CharacterBuilder;
+    global.CHARACTER_CONFIG = CHARACTER_CONFIG;  // 🎛️ Export config for access
 
     // Also export for module systems
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = CharacterBuilder;
+        module.exports.CHARACTER_CONFIG = CHARACTER_CONFIG;
     }
 
     console.log('[CharacterBuilder] CharacterBuilder module loaded - ready to build GUBBAR!');

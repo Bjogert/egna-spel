@@ -182,7 +182,7 @@
             }
 
             if (typeof global !== 'undefined' && typeof global.showStartMenu === 'function') {
-                const message = reason === 'won' ? 'You Won! Play Again?' : 'Game Over';
+                const message = reason === 'won' ? 'Du vann! Köra igen?' : 'Du blev dunkad, tönt.';
                 global.showStartMenu({ gameOver: reason !== 'won', message });
             }
         }

@@ -19,6 +19,7 @@
     let aiSystem;
     let interactionSystem;
     let physicsSystem;  // GUBBAR Phase 1
+    let ragdollLocomotion;  // GUBBAR Phase 2: Natural movement
 
     // Performance tracking
     let lastTime = 0;
@@ -197,6 +198,15 @@
             Utils.log('PhysicsSystem disabled or not loaded');
         }
 
+        // Initialize ragdoll locomotion system (GUBBAR Phase 2)
+        if (typeof RagdollLocomotion !== 'undefined') {
+            ragdollLocomotion = new RagdollLocomotion();
+            global.ragdollLocomotion = ragdollLocomotion;  // Expose globally
+            Utils.log('RagdollLocomotion system initialized 🚶‍♂️');
+        } else {
+            Utils.log('RagdollLocomotion system not loaded');
+        }
+
         // Add systems to game engine in correct order:
         // 1. Input - collect user input
         // 2. AI - calculate steering and velocities
@@ -256,6 +266,9 @@
 
             // Update game engine (handles tick-based updates)
             gameEngine.update(deltaTime);
+
+            // 🦴 Update ragdoll physics visuals (GUBBAR Phase 1A)
+            updateRagdollCharacters();
 
             // Update dynamic camera zoom based on player distance from center
             updateDynamicCamera();
@@ -396,6 +409,50 @@
             networkStats.connected ? 'connected' : 'disconnected',
             networkStats.latency
         );
+    }
+
+    /**
+     * 🦴 Updates ragdoll character visuals to match physics (GUBBAR Phase 1A)
+     * and handles ragdoll locomotion (GUBBAR Phase 2)
+     * Syncs visual meshes with physics bodies for all ragdoll characters
+     */
+    function updateRagdollCharacters() {
+        // Skip if ragdoll system not available
+        if (!gameEngine || !gameEngine.gameState || typeof CharacterBuilder === 'undefined') {
+            return;
+        }
+
+        try {
+            // 🚶‍♂️ Update ragdoll locomotion system (Phase 2)
+            if (ragdollLocomotion) {
+                ragdollLocomotion.update(0.016); // Assume ~60fps for now
+            }
+
+            // 🔄 Update ragdoll visual sync (Phase 1A)
+            // Try to get players using different API methods
+            let players = null;
+            
+            if (typeof gameEngine.gameState.getPlayers === 'function') {
+                players = gameEngine.gameState.getPlayers();
+            } else if (typeof gameEngine.gameState.getAllPlayers === 'function') {
+                players = gameEngine.gameState.getAllPlayers();
+            } else if (gameEngine.gameState.players) {
+                players = gameEngine.gameState.players;
+            }
+
+            if (players && typeof players.forEach === 'function') {
+                players.forEach(player => {
+                    const renderable = player.getComponent('Renderable');
+                    if (renderable && renderable.object && CharacterBuilder.updateRagdollPhysics) {
+                        CharacterBuilder.updateRagdollPhysics(renderable.object);
+                    }
+                });
+            }
+
+        } catch (error) {
+            // Silently handle ragdoll update errors to avoid spam
+            // console.debug('Ragdoll update error:', error);
+        }
     }
 
     // Update canvas size to be responsive
