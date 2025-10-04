@@ -62,6 +62,22 @@
                 ? Math.max(deltaTime / 1000, 0)
                 : CONFIG.physics.timeStep;
             this.physicsWorld.step(deltaSeconds);
+            const world = this.physicsWorld.world;
+            const contacts = world ? world.contacts : [];
+            if (contacts && contacts.length > 0 && this.frameCount % 30 === 0) {
+                const summary = contacts.slice(0, 3).map(contact => {
+                    const a = contact.bi ? contact.bi.id : 'n/a';
+                    const b = contact.bj ? contact.bj.id : 'n/a';
+                    return `${a}-${b}`;
+                }).join(', ');
+                Utils.log(`Physics contacts (${contacts.length}): ${summary}`);
+            } else if (this.frameCount % 60 === 0) {
+                Utils.log('Physics contacts: 0');
+            }
+            const contactCount = this.physicsWorld.world ? this.physicsWorld.world.contacts.length : 0;
+            if (contactCount > 0 && this.frameCount % 30 === 0) {
+                Utils.log(`Physics contacts this frame: ${contactCount}`);
+            }
             // Sync Transform components from physics bodies
             this.physicsSync.update(gameState);
 
@@ -80,6 +96,7 @@
          * @param {CANNON.Body} body
          */
         addBody(body) {
+            Utils.log(`PhysicsSystem.addBody called for body id=${body ? body.id : "n/a"}`);
             if (this.physicsWorld) {
                 this.physicsWorld.addBody(body);
             }

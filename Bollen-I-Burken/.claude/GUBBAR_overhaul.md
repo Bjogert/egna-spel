@@ -20,6 +20,23 @@
 
 ## Update Log
 
+### 2025-10-04 - Phase 1 Static Collision Pass In Progress
+- Walls and obstacle meshes now spawn matching `CANNON.Body` statics, but player/AI still pass through them during playtests.
+- Suspect causes: static bodies may not be registering with the global `physicsSystem` or collision filters (groups/masks) prevent player contacts.
+- Next steps:
+  - Inspect the physics world during runtime (`physicsSystem.getWorld().world.bodies`) to confirm static bodies are present.
+  - Log the collision filter values for player vs wall/obstacle to ensure masks overlap.
+  - Verify Cannon bodies mirror the obstacle positions and Y offsets (center vs base).
+- Once resolved, re-run a round to confirm characters collide properly and update this log with the fix status.
+
+### 2025-10-04 - Phase 1 Collision Migration Planned
+- Next focus: move arena walls, floor, and obstacles onto Cannon static bodies so the physics world handles every collision.
+- Reuse existing obstacle dimensions and spawn logic from arena builders; just add `BodyFactory.createStaticBox` calls and register with `physicsSystem`.
+- After static bodies are in, delete or hard-disable the old AABB fallback paths in `movement-system.js` to complete Phase 1’s "replace collision system" objective.
+- Validation checklist:
+  - Player/AI collide with walls/obstacles solely via Cannon bodies.
+  - Legacy collider code removed/guarded without regressions.
+  - Physics performance still holds 60 FPS with current obstacle counts.
 ### 2025-10-04 – AI Hunter Physics Sync Stabilized
 - Observed hunter twitching, stalling, or exploding at spawn due to mixed time units between the ECS tick loop and Cannon step.
 - Root cause: MovementSystem wrote per-tick velocities straight into Cannon bodies while PhysicsSync read per-second velocities back, and PhysicsSystem stepped the world with millisecond deltas. The unit mismatch starved the hunter of forward speed and occasionally caused solver explosions.

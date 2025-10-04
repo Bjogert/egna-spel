@@ -129,10 +129,10 @@ const CONFIG = {
             depth: 0.8
         },
         color: 0x4a90e2,        // Player color (blue)
-        spawnPosition: {        // Where player starts (middle of arena)
-            x: 0,
+        spawnPosition: {        // Where player starts (away from can to avoid collision)
+            x: -10,     // 10 units left from center
             y: 0.5,
-            z: 0
+            z: -10      // 10 units forward from center
         },
         pullDistance: 2.0,      // How close to pull hunter's shirt
         pullSlowdown: 0.5       // Speed multiplier when pulling (0.5 = 50% speed)
@@ -529,7 +529,8 @@ CONFIG.physics = {
         linearDamping: 0.01,    // Minimal air resistance (was 0.9, too high!)
         angularDamping: 0.99,   // Rotation damping (prevent spinning)
         fixedRotation: true,    // Lock rotation (stay upright)
-        sleepSpeedLimit: 0.01   // Speed below which body sleeps (was 0.1, too high!)
+        sleepSpeedLimit: 0.0,   // DISABLE sleeping (0 = never sleep)
+        allowSleep: false       // Explicitly disable sleep
     },
 
     ai: {
@@ -539,7 +540,8 @@ CONFIG.physics = {
         linearDamping: 0.01,    // Minimal air resistance (was 0.9, too high!)
         angularDamping: 0.99,
         fixedRotation: true,
-        sleepSpeedLimit: 0.01   // Speed below which body sleeps (was 0.1, too high!)
+        sleepSpeedLimit: 0.0,   // DISABLE sleeping (0 = never sleep)
+        allowSleep: false       // Explicitly disable sleep
     },
 
     obstacle: {

@@ -44,6 +44,11 @@
                 sleepSpeedLimit: options.sleepSpeedLimit || CONFIG.physics.player.sleepSpeedLimit
             });
 
+            // Disable sleeping for player/AI to prevent getting stuck
+            body.allowSleep = options.allowSleep !== undefined ? options.allowSleep : CONFIG.physics.player.allowSleep;
+
+            Utils.log(`Created ${bodyType} body: group=${collisionConfig.group}, mask=${collisionConfig.mask}, mass=${mass}, allowSleep=${body.allowSleep}`);
+
             return body;
         },
 
@@ -194,3 +199,5 @@
 
     Utils.log('BodyFactory loaded - Physics body creation helpers ready');
 })(typeof window !== 'undefined' ? window : globalThis);
+
+

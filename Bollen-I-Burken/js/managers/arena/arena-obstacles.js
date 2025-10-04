@@ -193,6 +193,25 @@
 
             group.add(mesh);
             resourceManager.track(mesh, 'mesh', `obstacle-${index}-box-${boxIndex}-mesh`);
+
+            if (CONFIG.physics.enabled && typeof BodyFactory !== 'undefined' && global.physicsSystem) {
+                const worldX = position.x + box.x;
+                const worldY = position.y + box.y + box.height / 2;
+                const worldZ = position.z + box.z;
+                const obstacleBody = BodyFactory.createStaticBox({
+                    width: box.width,
+                    height: box.height,
+                    depth: box.depth,
+                    position: { x: worldX, y: worldY, z: worldZ },
+                    bodyType: 'obstacle'
+                });
+                builder.registerPhysicsBody(obstacleBody);
+                group.userData = group.userData || {};
+                if (!group.userData.physicsBodies) {
+                    group.userData.physicsBodies = [];
+                }
+                group.userData.physicsBodies.push(obstacleBody);
+            }
         });
 
         // Position the group

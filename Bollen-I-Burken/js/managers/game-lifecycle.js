@@ -170,8 +170,8 @@
             Utils.log(`Spawning ${numHunters} hunters for difficulty: ${difficulty.name}`);
 
             for (let i = 0; i < numHunters; i++) {
-                // Spawn all hunters in the center with the player
-                this.playerManager.addAIHunter(`ai-hunter-${i + 1}`, { x: 0, y: 0.5, z: 0 });
+                // Spawn hunters at config position (NOT in the can!)
+                this.playerManager.addAIHunter(`ai-hunter-${i + 1}`, CONFIG.ai.hunter.spawnPosition);
             }
 
             Utils.log(`Local player and ${numHunters} AI hunter(s) created for ${difficulty.name}`);

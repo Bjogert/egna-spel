@@ -16,6 +16,7 @@
             this.wallColor = CONFIG.arena.wallColor;
 
             this.arenaObjects = [];
+            this.physicsBodies = [];
 
             Utils.log('ArenaBuilder initialized with simple config');
         }
@@ -49,6 +50,30 @@
             return ArenaObstacles.createRandomObstacles(this);
         }
 
+        registerPhysicsBody(body) {
+            Utils.log(`Registering arena physics body id: ${body ? body.id : "n/a"}`);
+            if (body) {
+                Utils.log(`  group=${body.collisionFilterGroup}, mask=${body.collisionFilterMask}, type=${body.type}, mass=${body.mass}`);
+            }
+            if (!body || !CONFIG.physics || !CONFIG.physics.enabled) {
+                return;
+            Utils.log('Skipping physics body registration - physics disabled or body missing.');
+            }
+
+            try {
+                if (global.physicsSystem && typeof global.physicsSystem.addBody === 'function') {
+                    global.physicsSystem.addBody(body);
+                }
+            } catch (error) {
+                console.warn('Failed to add physics body to world', error);
+            }
+
+            Utils.log(`Registered arena physics body id=${body.id}`);
+            if (!this.physicsBodies) {
+                this.physicsBodies = [];
+            }
+            this.physicsBodies.push(body);
+        }
         clearArena() {
             ArenaCleanup.clearArena(this);
         }

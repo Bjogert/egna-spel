@@ -1,0 +1,1287 @@
+{
+  "summary": {
+    "total_files": 64,
+    "analysis_date": "2025-10-04",
+    "player_movement_files": [
+      "js/systems/movement-system.js",
+      "js/systems/input/input-system.js",
+      "js/systems/physics/physics-system.js",
+      "js/systems/physics/physics-sync.js",
+      "js/core/components/transform.js",
+      "js/core/components/movement.js",
+      "js/core/components/physics-body.js",
+      "js/core/components/player-input.js"
+    ],
+    "physics_files": [
+      "js/systems/physics/physics-system.js",
+      "js/systems/physics/physics-sync.js",
+      "js/systems/physics/physics-world.js",
+      "js/systems/physics/collision-groups.js",
+      "js/managers/physics/body-factory.js",
+      "js/core/components/physics-body.js"
+    ],
+    "spawn_files": [
+      "js/core/game-state.js",
+      "js/managers/game-lifecycle.js",
+      "js/managers/player-manager.js",
+      "js/managers/player-factory.js",
+      "js/managers/arena/arena-builder.js"
+    ],
+    "potential_conflicts": [
+      "CRITICAL: Multiple spawn position assignments for player (game-state.js and player-manager.js)",
+      "CRITICAL: Dual movement systems - physics-based AND legacy collision",
+      "WARNING: PhysicsBody component created in TWO places (game-state.js:62 and player-factory.js:28)",
+      "WARNING: AI physics bodies created in player-manager.js:154 (separate from player spawn)",
+      "INFO: Transform.velocity used by MovementSystem, then synced from PhysicsBody - potential conflict"
+    ],
+    "duplicate_systems": [],
+    "architecture": "ECS (Entity-Component-System) with Physics Integration",
+    "notes": [
+      "Physics system (GUBBAR Phase 1) is integrated but has dual-path movement (physics + legacy)",
+      "Player spawning happens in MULTIPLE stages: GameState.addPlayer() creates entity, PlayerManager.addLocalPlayer() adds mesh",
+      "Movement flow: Input -> MovementSystem -> PhysicsBody velocity -> PhysicsWorld step -> PhysicsSync -> Transform position",
+      "No duplicate MovementSystem - single system handles both player and AI",
+      "Clean separation between visual (Three.js) and physics (CANNON.js)"
+    ]
+  },
+  "files": {
+    "js/main.js": {
+      "purpose": "Game bootstrap - initializes Three.js, game engine, systems, and runs main game loop",
+      "type": "bootstrap",
+      "classes": [],
+      "functions": [
+        "bootstrapGame",
+        "initializeThreeJS",
+        "initializeGameEngine",
+        "initializeSystems",
+        "gameLoop",
+        "updateDynamicCamera",
+        "updateFPS",
+        "updateGameUI",
+        "updateCanvasSize",
+        "handleResize",
+        "handleVisibilityChange"
+      ],
+      "dependencies": [
+        "core/game-engine.js",
+        "core/game-state.js",
+        "core/config.js",
+        "systems/*.js",
+        "managers/resource/*.js"
+      ],
+      "exports": [
+        "window.scene",
+        "window.camera",
+        "window.renderer",
+        "window.gameEngine",
+        "window.resourceManager",
+        "window.inputSystem",
+        "window.movementSystem",
+        "window.physicsSystem",
+        "window.uiSystem",
+        "window.audioSystem",
+        "window.networkSystem",
+        "window.aiSystem",
+        "window.interactionSystem"
+      ],
+      "calls_to": [
+        "GameEngine.constructor",
+        "GameState.constructor",
+        "InputSystem.constructor",
+        "MovementSystem.constructor",
+        "PhysicsSystem.constructor",
+        "UISystem.constructor",
+        "AudioSystem.constructor",
+        "NetworkSystem.constructor",
+        "AISystem.constructor",
+        "InteractionSystem.constructor"
+      ],
+      "called_by": [
+        "Browser DOMContentLoaded event"
+      ],
+      "player_movement_related": false,
+      "physics_related": true,
+      "spawn_related": false,
+      "notes": "Entry point - sets up system order: Input -> AI -> Movement -> Physics -> UI/Audio/Network/Interaction"
+    },
+    "js/core/game-engine.js": {
+      "purpose": "Core game engine managing systems, game loop timing, and lifecycle",
+      "type": "core",
+      "classes": [
+        "GameEngine"
+      ],
+      "functions": [
+        "constructor",
+        "addSystem",
+        "getSystem",
+        "removeSystem",
+        "update",
+        "tick",
+        "render",
+        "updateFps",
+        "start",
+        "pause",
+        "resume",
+        "checkGameTimer",
+        "gameOver",
+        "playerWin",
+        "getRemainingTime",
+        "stop",
+        "reset",
+        "getStats"
+      ],
+      "dependencies": [
+        "core/game-state.js",
+        "core/config.js"
+      ],
+      "exports": [
+        "window.GameEngine",
+        "window.GameEngineClass"
+      ],
+      "calls_to": [
+        "GameState.constructor",
+        "System.update",
+        "System.render"
+      ],
+      "called_by": [
+        "main.js"
+      ],
+      "player_movement_related": false,
+      "physics_related": false,
+      "spawn_related": false,
+      "notes": "Manages fixed timestep (60 FPS) and coordinates all systems"
+    },
+    "js/core/game-state.js": {
+      "purpose": "Central ECS state manager - creates/manages entities and players",
+      "type": "core",
+      "classes": [
+        "GameState"
+      ],
+      "functions": [
+        "constructor",
+        "createEntity",
+        "getEntity",
+        "removeEntity",
+        "addPlayer",
+        "removePlayer",
+        "getPlayerEntity",
+        "getLocalPlayer",
+        "getAllPlayers",
+        "setGamePhase",
+        "getGameTime"
+      ],
+      "dependencies": [
+        "core/entity.js",
+        "core/components/transform.js",
+        "core/components/player.js",
+        "core/components/movement.js",
+        "core/components/player-input.js",
+        "core/components/physics-body.js",
+        "managers/physics/body-factory.js",
+        "core/config.js"
+      ],
+      "exports": [
+        "window.GameState"
+      ],
+      "calls_to": [
+        "Entity.constructor",
+        "Transform.constructor",
+        "Player.constructor",
+        "Movement.constructor",
+        "PlayerInput.constructor",
+        "PhysicsBody.constructor",
+        "BodyFactory.createPlayerBody",
+        "physicsSystem.addBody"
+      ],
+      "called_by": [
+        "game-engine.js",
+        "managers/player-manager.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": true,
+      "spawn_related": true,
+      "notes": "CRITICAL SPAWN POINT 1: addPlayer() creates player entity at CONFIG.player.spawnPosition (-10, 0.5, -10), adds PhysicsBody at line 62"
+    },
+    "js/core/config.js": {
+      "purpose": "Centralized game configuration with difficulty levels and physics settings",
+      "type": "config",
+      "classes": [
+        "ConfigManager"
+      ],
+      "functions": [
+        "getConfig",
+        "setConfig"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.CONFIG",
+        "window.ConfigManager",
+        "window.getConfig",
+        "window.setConfig"
+      ],
+      "calls_to": [],
+      "called_by": [
+        "All systems and managers"
+      ],
+      "player_movement_related": true,
+      "physics_related": true,
+      "spawn_related": true,
+      "notes": "Defines player.spawnPosition: (-10, 0.5, -10), physics settings, difficulty levels. GUBBAR Phase 1 physics enabled"
+    },
+    "js/core/entity.js": {
+      "purpose": "ECS entity container with component management and naming collision resolution",
+      "type": "core",
+      "classes": [
+        "Entity"
+      ],
+      "functions": [
+        "constructor",
+        "addComponent",
+        "getComponent",
+        "hasComponent",
+        "removeComponent",
+        "_findComponentNameByType",
+        "debugComponents",
+        "destroy"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.Entity"
+      ],
+      "calls_to": [],
+      "called_by": [
+        "game-state.js",
+        "player-factory.js",
+        "player-manager.js",
+        "game-lifecycle.js"
+      ],
+      "player_movement_related": false,
+      "physics_related": false,
+      "spawn_related": false,
+      "notes": "Smart component name resolution handles constructor.name collision for plain objects"
+    },
+    "js/core/system.js": {
+      "purpose": "Base class for all ECS systems",
+      "type": "core",
+      "classes": [
+        "System"
+      ],
+      "functions": [
+        "constructor",
+        "update",
+        "render"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.System"
+      ],
+      "calls_to": [],
+      "called_by": [
+        "All system classes"
+      ],
+      "player_movement_related": false,
+      "physics_related": false,
+      "spawn_related": false,
+      "notes": "Abstract base class with update() and render() methods"
+    },
+    "js/core/components/transform.js": {
+      "purpose": "Position, rotation, velocity for entities",
+      "type": "component",
+      "classes": [
+        "Transform"
+      ],
+      "functions": [
+        "constructor",
+        "updatePrevious"
+      ],
+      "dependencies": [
+        "utils.js"
+      ],
+      "exports": [
+        "window.Transform"
+      ],
+      "calls_to": [
+        "Utils.vector3"
+      ],
+      "called_by": [
+        "game-state.js",
+        "player-manager.js",
+        "movement-system.js",
+        "physics-sync.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": true,
+      "spawn_related": true,
+      "notes": "Core position data - synced FROM physics in physics-sync.js, updated BY movement-system.js"
+    },
+    "js/core/components/movement.js": {
+      "purpose": "Movement parameters (speed, acceleration, friction)",
+      "type": "component",
+      "classes": [
+        "Movement"
+      ],
+      "functions": [
+        "constructor"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.Movement"
+      ],
+      "calls_to": [],
+      "called_by": [
+        "game-state.js",
+        "player-manager.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": false,
+      "spawn_related": false,
+      "notes": "Stores base speed (0.1), maxSpeed, acceleration, friction values"
+    },
+    "js/core/components/physics-body.js": {
+      "purpose": "Links ECS entity to CANNON.Body for physics simulation",
+      "type": "component",
+      "classes": [
+        "PhysicsBody"
+      ],
+      "functions": [
+        "constructor",
+        "applyForce",
+        "applyImpulse",
+        "setVelocity",
+        "getVelocity",
+        "wakeUp",
+        "sleep",
+        "getPosition"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.PhysicsBody"
+      ],
+      "calls_to": [
+        "CANNON.Body methods"
+      ],
+      "called_by": [
+        "game-state.js",
+        "player-factory.js",
+        "player-manager.js",
+        "movement-system.js",
+        "physics-sync.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": true,
+      "spawn_related": false,
+      "notes": "Wrapper for CANNON.Body with collision groups/masks. Has wakeUp() called in movement-system.js"
+    },
+    "js/core/components/player.js": {
+      "purpose": "Player identification and stats",
+      "type": "component",
+      "classes": [
+        "Player"
+      ],
+      "functions": [
+        "constructor"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.Player"
+      ],
+      "calls_to": [],
+      "called_by": [
+        "game-state.js",
+        "player-factory.js"
+      ],
+      "player_movement_related": false,
+      "physics_related": false,
+      "spawn_related": false,
+      "notes": "Stores playerId, isLocal, score, lives, health, tags, rescues, kicks"
+    },
+    "js/core/components/player-input.js": {
+      "purpose": "Stores keyboard/gamepad input state for player",
+      "type": "component",
+      "classes": [
+        "PlayerInput"
+      ],
+      "functions": [
+        "constructor",
+        "hasInput",
+        "hasActionInput"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.PlayerInput"
+      ],
+      "calls_to": [],
+      "called_by": [
+        "game-state.js",
+        "input-system.js",
+        "movement-system.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": false,
+      "spawn_related": false,
+      "notes": "Updated by InputSystem, read by MovementSystem for player control"
+    },
+    "js/core/components/ai-hunter.js": {
+      "purpose": "AI state machine and steering parameters",
+      "type": "component",
+      "classes": [
+        "AIHunter"
+      ],
+      "functions": [
+        "constructor"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.AIHunter"
+      ],
+      "calls_to": [],
+      "called_by": [
+        "player-manager.js",
+        "ai-system.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": false,
+      "spawn_related": false,
+      "notes": "States: PATROL, INVESTIGATE, RACE. Steering-based velocity, heading, maxSpeed, acceleration"
+    },
+    "js/systems/movement-system.js": {
+      "purpose": "Applies player input and AI velocities to Transform and PhysicsBody",
+      "type": "system",
+      "classes": [
+        "MovementSystem"
+      ],
+      "functions": [
+        "constructor",
+        "registerTweaks",
+        "update",
+        "updatePlayerMovement",
+        "updateAIMovement",
+        "collectStaticColliders",
+        "checkObstacleCollision",
+        "checkPlayerWinCondition",
+        "updateVisionConeGeometry"
+      ],
+      "dependencies": [
+        "core/system.js",
+        "core/config.js",
+        "core/components/transform.js",
+        "core/components/player-input.js",
+        "core/components/physics-body.js"
+      ],
+      "exports": [
+        "window.MovementSystem"
+      ],
+      "calls_to": [
+        "Transform methods",
+        "PhysicsBody.wakeUp",
+        "PhysicsBody.body.velocity.set"
+      ],
+      "called_by": [
+        "game-engine.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": true,
+      "spawn_related": false,
+      "notes": "CRITICAL: Sets physicsBody.body.velocity (line 317-318) based on Transform.velocity. Has dual-path: physics (line 311-320) OR legacy collision (line 321-344)"
+    },
+    "js/systems/input/input-system.js": {
+      "purpose": "Captures keyboard, touch, gamepad input and updates PlayerInput component",
+      "type": "system",
+      "classes": [
+        "InputSystem"
+      ],
+      "functions": [
+        "constructor",
+        "setupKeyboardControls",
+        "setupTouchControls",
+        "setupGamepadControls",
+        "handleKeyDown",
+        "handleKeyUp",
+        "updatePlayerInput",
+        "createTouchControls",
+        "createDPad",
+        "createActionButtons",
+        "updateGamepad",
+        "update",
+        "togglePause",
+        "showMenu",
+        "isMobileDevice",
+        "getInputState",
+        "isKeyPressed",
+        "simulateInput",
+        "destroy"
+      ],
+      "dependencies": [
+        "core/system.js",
+        "core/components/player-input.js"
+      ],
+      "exports": [
+        "window.InputSystem"
+      ],
+      "calls_to": [
+        "PlayerInput component updates"
+      ],
+      "called_by": [
+        "game-engine.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": false,
+      "spawn_related": false,
+      "notes": "First in system update order. Sets sneak state on movementSystem (line 295)"
+    },
+    "js/systems/physics/physics-system.js": {
+      "purpose": "Main physics orchestrator - manages PhysicsWorld and PhysicsSync",
+      "type": "system",
+      "classes": [
+        "PhysicsSystem"
+      ],
+      "functions": [
+        "constructor",
+        "initialize",
+        "update",
+        "addBody",
+        "removeBody",
+        "addConstraint",
+        "clear",
+        "logStats",
+        "getWorld",
+        "getPhysicsTime"
+      ],
+      "dependencies": [
+        "core/system.js",
+        "systems/physics/physics-world.js",
+        "systems/physics/physics-sync.js",
+        "core/config.js"
+      ],
+      "exports": [
+        "window.PhysicsSystem"
+      ],
+      "calls_to": [
+        "PhysicsWorld.step",
+        "PhysicsSync.update"
+      ],
+      "called_by": [
+        "main.js",
+        "game-engine.js",
+        "game-state.js",
+        "player-factory.js",
+        "player-manager.js",
+        "arena-builder.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": true,
+      "spawn_related": false,
+      "notes": "Runs AFTER MovementSystem in update order. Steps physics then syncs positions back"
+    },
+    "js/systems/physics/physics-world.js": {
+      "purpose": "Singleton wrapper for CANNON.World with lifecycle management",
+      "type": "physics",
+      "classes": [
+        "PhysicsWorld"
+      ],
+      "functions": [
+        "constructor",
+        "initialize",
+        "step",
+        "addBody",
+        "removeBody",
+        "addConstraint",
+        "removeConstraint",
+        "clear",
+        "getStats",
+        "getInstance"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.PhysicsWorld"
+      ],
+      "calls_to": [
+        "CANNON.World methods"
+      ],
+      "called_by": [
+        "physics-system.js"
+      ],
+      "player_movement_related": false,
+      "physics_related": true,
+      "spawn_related": false,
+      "notes": "Creates CANNON.World, configures gravity (0), solver, broadphase. Singleton pattern"
+    },
+    "js/systems/physics/physics-sync.js": {
+      "purpose": "Syncs Transform position/velocity FROM physics bodies (physics is source of truth)",
+      "type": "physics",
+      "classes": [
+        "PhysicsSync"
+      ],
+      "functions": [
+        "constructor",
+        "update",
+        "syncEntityTransform",
+        "quaternionToEuler",
+        "getSyncCount"
+      ],
+      "dependencies": [
+        "core/components/transform.js",
+        "core/components/physics-body.js"
+      ],
+      "exports": [
+        "window.PhysicsSync"
+      ],
+      "calls_to": [
+        "Transform.position.set",
+        "Transform.velocity.set"
+      ],
+      "called_by": [
+        "physics-system.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": true,
+      "spawn_related": false,
+      "notes": "CRITICAL: Copies physicsBody.body.position -> transform.position (line 50-52), velocity (line 56-58). Runs AFTER PhysicsWorld.step()"
+    },
+    "js/systems/physics/collision-groups.js": {
+      "purpose": "Defines collision filtering groups and masks for physics layers",
+      "type": "physics",
+      "classes": [],
+      "functions": [
+        "getConfig"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.CollisionGroups"
+      ],
+      "calls_to": [],
+      "called_by": [
+        "body-factory.js"
+      ],
+      "player_movement_related": false,
+      "physics_related": true,
+      "spawn_related": false,
+      "notes": "Defines groups: player(1), ai(2), obstacle(4), wall(8) with collision masks"
+    },
+    "js/managers/physics/body-factory.js": {
+      "purpose": "Factory functions for creating CANNON.Body instances with collision groups",
+      "type": "factory",
+      "classes": [],
+      "functions": [
+        "createBoxBody",
+        "createSphereBody",
+        "createCylinderBody",
+        "createStaticBox",
+        "createPlayerBody",
+        "createAIBody"
+      ],
+      "dependencies": [
+        "systems/physics/collision-groups.js",
+        "core/config.js"
+      ],
+      "exports": [
+        "window.BodyFactory"
+      ],
+      "calls_to": [
+        "CANNON.Body",
+        "CANNON.Box",
+        "CANNON.Sphere",
+        "CANNON.Cylinder",
+        "CollisionGroups.getConfig"
+      ],
+      "called_by": [
+        "game-state.js",
+        "player-factory.js",
+        "player-manager.js",
+        "arena-walls.js",
+        "arena-obstacles.js"
+      ],
+      "player_movement_related": false,
+      "physics_related": true,
+      "spawn_related": true,
+      "notes": "createPlayerBody() uses CONFIG.physics.player settings, creates box with collision group=1, mask=12"
+    },
+    "js/managers/player-factory.js": {
+      "purpose": "Creates player entities with mesh and physics body (LEGACY - not used in current flow)",
+      "type": "factory",
+      "classes": [
+        "PlayerFactory"
+      ],
+      "functions": [
+        "createPlayer"
+      ],
+      "dependencies": [
+        "core/entity.js",
+        "core/components/transform.js",
+        "core/components/renderable.js",
+        "core/components/player.js",
+        "core/components/player-input.js",
+        "core/components/physics-body.js",
+        "managers/physics/body-factory.js"
+      ],
+      "exports": [
+        "window.PlayerFactory"
+      ],
+      "calls_to": [
+        "THREE.Mesh",
+        "Entity.constructor",
+        "Transform.constructor",
+        "BodyFactory.createPlayerBody",
+        "physicsSystem.addBody"
+      ],
+      "called_by": [],
+      "player_movement_related": false,
+      "physics_related": true,
+      "spawn_related": true,
+      "notes": "WARNING: Creates PhysicsBody at line 28 (DUPLICATE of game-state.js:62). NOT currently used - PlayerManager used instead"
+    },
+    "js/managers/player-manager.js": {
+      "purpose": "Manages player and AI hunter lifecycle - creates meshes, entities, physics bodies",
+      "type": "manager",
+      "classes": [
+        "PlayerManager"
+      ],
+      "functions": [
+        "constructor",
+        "addLocalPlayer",
+        "addRemotePlayer",
+        "removePlayer",
+        "addAIHunter",
+        "removeAIHunter",
+        "clearAll",
+        "createVisionConeDebugMesh",
+        "createHearingRadiusDebugMesh"
+      ],
+      "dependencies": [
+        "core/components/transform.js",
+        "core/components/renderable.js",
+        "core/components/movement.js",
+        "core/components/ai-hunter.js",
+        "core/components/vision-cone.js",
+        "core/components/physics-body.js",
+        "managers/physics/body-factory.js"
+      ],
+      "exports": [
+        "window.PlayerManager"
+      ],
+      "calls_to": [
+        "THREE.Mesh",
+        "gameEngine.gameState.addPlayer",
+        "BodyFactory.createAIBody",
+        "physicsSystem.addBody"
+      ],
+      "called_by": [
+        "game-lifecycle.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": true,
+      "spawn_related": true,
+      "notes": "SPAWN POINT 2: addLocalPlayer() calls gameState.addPlayer() which spawns at CONFIG position. addAIHunter() creates AI at specified position with physics body (line 154)"
+    },
+    "js/managers/game-lifecycle.js": {
+      "purpose": "Orchestrates game round lifecycle - arena creation, player spawn, countdown, cleanup",
+      "type": "manager",
+      "classes": [
+        "GameLifecycle"
+      ],
+      "functions": [
+        "constructor",
+        "setDependencies",
+        "startNewGame",
+        "cleanupGameWorld",
+        "createArena",
+        "createCentralCanEntity",
+        "createObstacleEntities",
+        "createLocalPlayer",
+        "startGame",
+        "startCountdown"
+      ],
+      "dependencies": [
+        "managers/arena/arena-builder.js",
+        "managers/player-manager.js",
+        "core/components/transform.js",
+        "core/components/renderable.js",
+        "core/components/interactable.js",
+        "core/components/hideable.js",
+        "core/components/collider.js",
+        "core/components/parent.js"
+      ],
+      "exports": [
+        "window.GameLifecycle"
+      ],
+      "calls_to": [
+        "ArenaBuilder.createBasicArena",
+        "PlayerManager.addLocalPlayer",
+        "PlayerManager.addAIHunter",
+        "gameEngine.reset",
+        "gameEngine.start"
+      ],
+      "called_by": [
+        "ui/menu-overlay.js"
+      ],
+      "player_movement_related": false,
+      "physics_related": false,
+      "spawn_related": true,
+      "notes": "SPAWN ORCHESTRATOR: createLocalPlayer() spawns hunters at CENTER (0, 0.5, 0) on line 174! Player spawned via PlayerManager"
+    },
+    "js/managers/arena/arena-builder.js": {
+      "purpose": "Coordinates arena creation using helper modules (floor, walls, obstacles, lighting, can)",
+      "type": "manager",
+      "classes": [
+        "ArenaBuilder"
+      ],
+      "functions": [
+        "constructor",
+        "createBasicArena",
+        "createSquareArenaFloor",
+        "createSquareArenaWalls",
+        "createBasicLighting",
+        "createCentralCan",
+        "createRandomObstacles",
+        "registerPhysicsBody",
+        "clearArena",
+        "randomBetween",
+        "generateRandomPosition",
+        "getDistanceFromCenter",
+        "isValidObstaclePosition",
+        "getArenaInfo"
+      ],
+      "dependencies": [
+        "managers/arena/arena-floor.js",
+        "managers/arena/arena-walls.js",
+        "managers/arena/arena-lighting.js",
+        "managers/arena/arena-can.js",
+        "managers/arena/arena-obstacles.js",
+        "managers/arena/arena-cleanup.js",
+        "managers/arena/arena-helpers.js",
+        "core/config.js"
+      ],
+      "exports": [
+        "window.ArenaBuilder"
+      ],
+      "calls_to": [
+        "ArenaFloor.createSquareArenaFloor",
+        "ArenaWalls.createSquareArenaWalls",
+        "ArenaLighting.createBasicLighting",
+        "ArenaCan.createCentralCan",
+        "ArenaObstacles.createRandomObstacles",
+        "physicsSystem.addBody"
+      ],
+      "called_by": [
+        "game-lifecycle.js"
+      ],
+      "player_movement_related": false,
+      "physics_related": true,
+      "spawn_related": false,
+      "notes": "Delegates to helper modules. Registers arena physics bodies with PhysicsSystem (line 64)"
+    },
+    "js/systems/ai/ai-system.js": {
+      "purpose": "AI behavior orchestrator - patrol, investigate, race states, vision, hearing",
+      "type": "system",
+      "classes": [
+        "AISystem"
+      ],
+      "functions": [
+        "constructor",
+        "registerTweaks",
+        "addEntity",
+        "removeEntity",
+        "update",
+        "updateHunter",
+        "updateHearing",
+        "updatePatrolBehavior",
+        "updateInvestigateBehavior",
+        "getCanPosition",
+        "getStaticColliders",
+        "handleReaction",
+        "updateRaceBehavior",
+        "triggerAIWins",
+        "updateVision",
+        "checkLineOfSight",
+        "checkShirtPull",
+        "checkPlayerCollision",
+        "getHunters",
+        "testLineOfSight",
+        "destroy",
+        "getVisionConeFromAI"
+      ],
+      "dependencies": [
+        "core/system.js",
+        "core/components/ai-hunter.js",
+        "core/components/transform.js",
+        "core/components/movement.js",
+        "core/components/vision-cone.js",
+        "systems/ai/behaviors/investigate-behavior.js",
+        "systems/ai/dynamic-vision.js",
+        "systems/ai/steering/can-guard-strategy.js",
+        "systems/ai/steering/obstacle-avoidance.js",
+        "systems/ai/steering/steering-behaviors.js",
+        "systems/ai/utils/corner-detection.js"
+      ],
+      "exports": [
+        "window.AISystem",
+        "window.AI_STATES"
+      ],
+      "calls_to": [
+        "AIHunter component updates",
+        "Transform.velocity updates",
+        "InvestigateBehavior.updateInvestigateBehavior",
+        "DynamicVision.computeDynamicVision",
+        "CanGuardStrategy.computeCanGuardPatrol",
+        "ObstacleAvoidance.computeObstacleAvoidance",
+        "SteeringBehaviors.combineSteeringBehaviors"
+      ],
+      "called_by": [
+        "game-engine.js"
+      ],
+      "player_movement_related": true,
+      "physics_related": false,
+      "spawn_related": false,
+      "notes": "Updates AI velocity BEFORE MovementSystem. Hearing range 19m, states: PATROL/INVESTIGATE/RACE"
+    },
+    "js/utils.js": {
+      "purpose": "Utility functions for logging, timing, vectors, IDs, throttling",
+      "type": "util",
+      "classes": [],
+      "functions": [
+        "log",
+        "warn",
+        "error",
+        "now",
+        "vector3",
+        "generatePlayerId",
+        "generateEntityId",
+        "clamp",
+        "lerp",
+        "throttle",
+        "debounce"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.Utils"
+      ],
+      "calls_to": [],
+      "called_by": [
+        "All files"
+      ],
+      "player_movement_related": false,
+      "physics_related": false,
+      "spawn_related": false,
+      "notes": "Common utilities used throughout codebase"
+    },
+    "js/debug-commands.js": {
+      "purpose": "Console debugging commands for testing and inspection",
+      "type": "util",
+      "classes": [],
+      "functions": [
+        "teleportPlayer",
+        "setPlayerPosition",
+        "testVision",
+        "freezeAI",
+        "unfreezeAI"
+      ],
+      "dependencies": [],
+      "exports": [
+        "window.teleportPlayer",
+        "window.setPlayerPosition",
+        "window.testVision",
+        "window.freezeAI",
+        "window.unfreezeAI"
+      ],
+      "calls_to": [
+        "gameEngine.gameState methods",
+        "Transform.position updates",
+        "aiSystem.testLineOfSight"
+      ],
+      "called_by": [],
+      "player_movement_related": true,
+      "physics_related": false,
+      "spawn_related": false,
+      "notes": "Development tools for position manipulation and AI testing"
+    }
+  },
+  "movement_flow": {
+    "description": "Complete chain from input to physics to rendering with dual-path support",
+    "steps": [
+      {
+        "step": 1,
+        "system": "InputSystem",
+        "file": "js/systems/input/input-system.js",
+        "action": "Captures keyboard/gamepad input, updates PlayerInput.keys (forward/backward/left/right/action1)",
+        "data_modified": "PlayerInput component"
+      },
+      {
+        "step": 2,
+        "system": "AISystem",
+        "file": "js/systems/ai/ai-system.js",
+        "action": "Calculates AI steering (patrol/investigate/race), updates AIHunter.velocity and Transform.velocity",
+        "data_modified": "AIHunter.velocity, Transform.velocity for AI entities"
+      },
+      {
+        "step": 3,
+        "system": "MovementSystem",
+        "file": "js/systems/movement-system.js",
+        "action": "PLAYER: Reads PlayerInput, calculates acceleration/friction, updates Transform.velocity. AI: Reads Transform.velocity",
+        "data_modified": "Transform.velocity for player"
+      },
+      {
+        "step": 4,
+        "system": "MovementSystem (Physics Path)",
+        "file": "js/systems/movement-system.js:311-320",
+        "action": "IF CONFIG.physics.enabled: Calls physicsBody.wakeUp(), sets physicsBody.body.velocity from Transform.velocity",
+        "data_modified": "PhysicsBody.body.velocity (CANNON.Body)"
+      },
+      {
+        "step": 5,
+        "system": "PhysicsSystem",
+        "file": "js/systems/physics/physics-system.js",
+        "action": "Calls physicsWorld.step() to run CANNON physics simulation (collision detection, resolution, integration)",
+        "data_modified": "All CANNON.Body positions and velocities"
+      },
+      {
+        "step": 6,
+        "system": "PhysicsSync",
+        "file": "js/systems/physics/physics-sync.js",
+        "action": "Copies physicsBody.body.position -> transform.position, physicsBody.body.velocity -> transform.velocity (physics is source of truth)",
+        "data_modified": "Transform.position, Transform.velocity"
+      },
+      {
+        "step": 7,
+        "system": "MovementSystem (Rendering)",
+        "file": "js/systems/movement-system.js:139-147",
+        "action": "Updates renderable.mesh.position and mesh.rotation from Transform (visual sync)",
+        "data_modified": "THREE.Mesh position/rotation"
+      },
+      {
+        "step": 8,
+        "system": "Main Game Loop",
+        "file": "js/main.js:264",
+        "action": "renderer.render(scene, camera) - renders Three.js scene to screen",
+        "data_modified": "Screen pixels"
+      }
+    ],
+    "legacy_fallback": {
+      "description": "If CONFIG.physics.enabled = false, movement-system.js uses legacy collision (line 321-344)",
+      "steps": [
+        "MovementSystem applies Transform.velocity to Transform.position directly",
+        "Calls checkObstacleCollision() for manual collision detection/response",
+        "Clamps position to arena bounds",
+        "No physics simulation - direct position manipulation"
+      ]
+    }
+  },
+  "spawn_flow": {
+    "player": {
+      "trigger": "GameLifecycle.createLocalPlayer() called from GameLifecycle.startNewGame()",
+      "sequence": [
+        {
+          "step": 1,
+          "file": "js/managers/game-lifecycle.js:164",
+          "action": "PlayerManager.addLocalPlayer(localPlayerId) called"
+        },
+        {
+          "step": 2,
+          "file": "js/managers/player-manager.js:39",
+          "action": "Calls gameEngine.gameState.addPlayer(playerId, true)"
+        },
+        {
+          "step": 3,
+          "file": "js/core/game-state.js:42",
+          "action": "Reads spawn position from CONFIG.player.spawnPosition = (-10, 0.5, -10)"
+        },
+        {
+          "step": 4,
+          "file": "js/core/game-state.js:44",
+          "action": "Creates entity with Transform(-10, 0.5, -10), Player, Movement, PlayerInput components"
+        },
+        {
+          "step": 5,
+          "file": "js/core/game-state.js:61",
+          "action": "IF physics enabled: BodyFactory.createPlayerBody(spawnPos) creates CANNON.Body at same position"
+        },
+        {
+          "step": 6,
+          "file": "js/core/game-state.js:62",
+          "action": "physicsSystem.addBody(playerPhysicsBody) adds body to physics world"
+        },
+        {
+          "step": 7,
+          "file": "js/core/game-state.js:63",
+          "action": "entity.addComponent(new PhysicsBody(playerPhysicsBody)) links body to entity"
+        },
+        {
+          "step": 8,
+          "file": "js/managers/player-manager.js:28-37",
+          "action": "Creates THREE.Mesh with blue color, adds to scene, adds Renderable component to entity"
+        }
+      ],
+      "final_position": "(-10, 0.5, -10) as defined in CONFIG.player.spawnPosition",
+      "components_added": [
+        "Transform",
+        "Player",
+        "Movement",
+        "PlayerInput",
+        "PhysicsBody",
+        "Renderable"
+      ]
+    },
+    "ai": {
+      "trigger": "GameLifecycle.createLocalPlayer() spawns AI hunters based on difficulty",
+      "sequence": [
+        {
+          "step": 1,
+          "file": "js/managers/game-lifecycle.js:167-175",
+          "action": "Gets numHunters from difficulty config, loops to create each hunter at CENTER (0, 0.5, 0)"
+        },
+        {
+          "step": 2,
+          "file": "js/managers/player-manager.js:110-123",
+          "action": "addAIHunter() reads difficulty settings for speeds and vision parameters"
+        },
+        {
+          "step": 3,
+          "file": "js/managers/player-manager.js:133-135",
+          "action": "Uses provided position (0, 0.5, 0) or CONFIG.ai.spawnPosition as fallback"
+        },
+        {
+          "step": 4,
+          "file": "js/managers/player-manager.js:146-167",
+          "action": "Creates entity with Transform, Movement, Renderable, AIHunter, VisionCone components"
+        },
+        {
+          "step": 5,
+          "file": "js/managers/player-manager.js:154",
+          "action": "IF physics enabled: BodyFactory.createAIBody(spawnPos) creates CANNON.Body"
+        },
+        {
+          "step": 6,
+          "file": "js/managers/player-manager.js:155-157",
+          "action": "Adds physics body to world and PhysicsBody component to entity"
+        },
+        {
+          "step": 7,
+          "file": "js/managers/player-manager.js:171-174",
+          "action": "Registers entity with AISystem for behavior updates"
+        }
+      ],
+      "final_position": "HARDCODED (0, 0.5, 0) CENTER in game-lifecycle.js:174",
+      "components_added": [
+        "Transform",
+        "Movement",
+        "Renderable",
+        "AIHunter",
+        "VisionCone",
+        "PhysicsBody"
+      ],
+      "notes": "AI spawn position is ALWAYS center (0, 0.5, 0) regardless of CONFIG.ai.spawnPosition"
+    }
+  },
+  "conflicts": [
+    {
+      "severity": "CRITICAL",
+      "issue": "Dual movement systems - Physics-based AND legacy collision system coexist",
+      "files": [
+        "js/systems/movement-system.js:311-320 (physics path)",
+        "js/systems/movement-system.js:321-344 (legacy path)"
+      ],
+      "description": "MovementSystem has two code paths: if physics enabled, uses PhysicsBody; else uses manual collision. This creates complexity and potential for bugs.",
+      "recommendation": "Remove legacy collision system entirely once physics is proven stable. Keep only physics path. Add feature flag to easily disable if needed."
+    },
+    {
+      "severity": "CRITICAL",
+      "issue": "PhysicsBody component created in TWO places for player",
+      "files": [
+        "js/core/game-state.js:61-64",
+        "js/managers/player-factory.js:26-31"
+      ],
+      "description": "Both GameState.addPlayer() and PlayerFactory.createPlayer() create PhysicsBody components. PlayerFactory is NOT used in current flow, but creates confusion.",
+      "recommendation": "DELETE PlayerFactory.js entirely - it's not used. PlayerManager + GameState handle all player creation."
+    },
+    {
+      "severity": "HIGH",
+      "issue": "AI spawn position HARDCODED instead of using config",
+      "files": [
+        "js/managers/game-lifecycle.js:174",
+        "js/core/config.js:156-160 (CONFIG.ai.spawnPosition defined but not used)"
+      ],
+      "description": "Game lifecycle spawns ALL hunters at hardcoded (0, 0.5, 0) instead of using CONFIG.ai.spawnPosition. Config value is ignored.",
+      "recommendation": "Either use CONFIG.ai.spawnPosition or remove it. Current behavior: spawn at center for multiple hunters (reasonable). Document this in config."
+    },
+    {
+      "severity": "MEDIUM",
+      "issue": "Transform.velocity potentially overwritten by PhysicsSync",
+      "files": [
+        "js/systems/movement-system.js:317-318 (sets physicsBody.body.velocity from transform.velocity)",
+        "js/systems/physics/physics-sync.js:56-58 (syncs transform.velocity FROM physicsBody.body.velocity)"
+      ],
+      "description": "MovementSystem writes to physicsBody.body.velocity, PhysicsSync reads back to transform.velocity. Works correctly due to system order, but fragile.",
+      "recommendation": "Document this circular dependency clearly. Consider having MovementSystem write ONLY to physicsBody, skip Transform.velocity entirely."
+    },
+    {
+      "severity": "LOW",
+      "issue": "Player spawn position defined in config but could spawn in collision with can",
+      "files": [
+        "js/core/config.js:132-136 (spawnPosition: {x: -10, y: 0.5, z: -10})",
+        "js/core/config.js:226 (can position: {x: 0, y: 0.8, z: 0})"
+      ],
+      "description": "Player spawns at (-10, -10), can at (0, 0). Distance ~14 units, safe. But no validation prevents config changes that could cause spawn collision.",
+      "recommendation": "Add spawn position validation - ensure minimum distance from can (e.g., > 5 units)"
+    }
+  ],
+  "redundancies": [],
+  "architecture_summary": {
+    "pattern": "Entity-Component-System (ECS) with CANNON.js physics integration",
+    "phases": {
+      "GUBBAR_Phase_1": "Physics bodies for characters (player/AI), no gravity, 2D-style movement",
+      "GUBBAR_Future": "Physics for obstacles, gravity, ragdoll, destructibles"
+    },
+    "system_execution_order": [
+      "1. InputSystem - Capture user input",
+      "2. AISystem - Calculate AI steering",
+      "3. MovementSystem - Apply velocities to physics bodies",
+      "4. PhysicsSystem - Step simulation and sync positions",
+      "5. UISystem - Update HUD",
+      "6. AudioSystem - Play sounds",
+      "7. NetworkSystem - Sync multiplayer",
+      "8. InteractionSystem - Handle interactions"
+    ],
+    "data_flow": "Input -> ECS Components -> Physics Bodies -> Physics Simulation -> ECS Components -> Rendering",
+    "physics_integration": "PhysicsBody component links ECS entities to CANNON.Body. MovementSystem writes velocity, PhysicsSync reads position."
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "action": "Remove PlayerFactory.js - it's unused and creates confusion about spawn flow",
+      "files": [
+        "js/managers/player-factory.js"
+      ]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Remove legacy collision system from MovementSystem - keep only physics path",
+      "files": [
+        "js/systems/movement-system.js:321-503"
+      ],
+      "notes": "Requires thorough testing to ensure physics handles all collision cases"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Document AI spawn behavior - clarify that multiple hunters spawn at center, not CONFIG.ai.spawnPosition",
+      "files": [
+        "js/core/config.js",
+        "js/managers/game-lifecycle.js"
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Add spawn position validation to prevent can collision",
+      "files": [
+        "js/core/config.js",
+        "js/core/game-state.js"
+      ]
+    },
+    {
+      "priority": "LOW",
+      "action": "Consider simplifying velocity flow - MovementSystem could write ONLY to PhysicsBody, not Transform.velocity",
+      "files": [
+        "js/systems/movement-system.js"
+      ],
+      "notes": "Would eliminate circular dependency between MovementSystem and PhysicsSync"
+    }
+  ]
+}

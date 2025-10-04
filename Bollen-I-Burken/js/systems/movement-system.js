@@ -228,7 +228,7 @@
         updatePlayerMovement(transform, input, entity) {
             // Get physics body if available
             const physicsBody = entity ? entity.getComponent('PhysicsBody') : null;
-            const velocityScale = this.physicsVelocityScale;
+
             if (transform.updatePrevious) {
                 transform.updatePrevious();
             } else {
@@ -269,6 +269,7 @@
                 const accelForce = this.playerAcceleration * dt;
                 transform.velocity.x += desiredX * accelForce;
                 transform.velocity.z += desiredZ * accelForce;
+                console.log(`[MOVE DEBUG] input:(${desiredX.toFixed(2)}, ${desiredZ.toFixed(2)}), accel:${accelForce.toFixed(3)}, velocity:(${transform.velocity.x.toFixed(3)}, ${transform.velocity.z.toFixed(3)})`);
             }
 
             // Always apply friction/deceleration to current velocity
@@ -308,14 +309,18 @@
 
             transform.velocity.y = 0;
 
-            if (physicsBody && physicsBody.body) {
+            if (CONFIG.physics.enabled && physicsBody && physicsBody.body) {
                 // PHYSICS-BASED MOVEMENT (GUBBAR Phase 1)
+                // Wake up body if sleeping (important for player movement!)
+                physicsBody.wakeUp();
+
                 // Apply velocity to physics body - physics handles collision
+                const velocityScale = this.physicsVelocityScale || 1;
                 physicsBody.body.velocity.x = transform.velocity.x * velocityScale;
                 physicsBody.body.velocity.z = transform.velocity.z * velocityScale;
                 physicsBody.body.velocity.y = 0;
                 // Physics sync will update transform.position in next frame
-            } else {
+            } else if (!CONFIG.physics.enabled) {
                 // FALLBACK: Old collision system (no physics)
                 transform.position.x += transform.velocity.x;
                 transform.position.z += transform.velocity.z;
@@ -338,8 +343,11 @@
                 const limit = this.arenaSize - 0.5;
                 transform.position.x = Math.max(-limit, Math.min(limit, transform.position.x));
                 transform.position.z = Math.max(-limit, Math.min(limit, transform.position.z));
+            } else {
+                // Physics should be enabled, but no body found - minimal fallback to avoid freezing
+                transform.position.x += transform.velocity.x;
+                transform.position.z += transform.velocity.z;
             }
-
             // Rotate player to face INPUT direction (not velocity/drift direction!)
             if (isMoving) {
                 // Instantly face the direction player is pressing
@@ -353,19 +361,19 @@
         updateAIMovement(transform, entity) {
             // Get physics body if available
             const physicsBody = entity ? entity.getComponent('PhysicsBody') : null;
-            const velocityScale = this.physicsVelocityScale;
 
-            if (physicsBody && physicsBody.body) {
+            if (CONFIG.physics.enabled && physicsBody && physicsBody.body) {
                 // PHYSICS-BASED MOVEMENT (GUBBAR Phase 1)
                 // Wake up body if sleeping (important for AI movement!)
                 physicsBody.wakeUp();
 
                 // Set velocity directly on physics body (AI uses velocity-based steering)
+                const velocityScale = this.physicsVelocityScale || 1;
                 physicsBody.body.velocity.x = transform.velocity.x * velocityScale;
                 physicsBody.body.velocity.z = transform.velocity.z * velocityScale;
                 physicsBody.body.velocity.y = 0;  // No vertical movement
                 // Physics sync will update transform.position in next frame
-            } else {
+            } else if (!CONFIG.physics.enabled) {
                 // FALLBACK: Old collision system (no physics)
                 if (transform.updatePrevious) {
                     transform.updatePrevious();
@@ -394,8 +402,11 @@
                 const limit = this.arenaSize - 0.5;
                 transform.position.x = Math.max(-limit, Math.min(limit, transform.position.x));
                 transform.position.z = Math.max(-limit, Math.min(limit, transform.position.z));
+            } else {
+                // Physics should be enabled, but no body found - minimal fallback to avoid freezing
+                transform.position.x += transform.velocity.x;
+                transform.position.z += transform.velocity.z;
             }
-
             // NOTE: AI rotation is handled by AISystem via steering behaviors (aiComponent.heading)
             // Do NOT override it here based on velocity - causes vision cone desync!
         }

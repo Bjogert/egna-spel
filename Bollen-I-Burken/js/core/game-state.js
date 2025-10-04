@@ -38,14 +38,30 @@
         addPlayer(playerId, isLocal = false) {
             const playerEntity = this.createEntity();
 
-            // Add core components
-            playerEntity.addComponent(new Transform(0, 0.5, 0));
+            // Add core components (use config spawn position to avoid spawning in can) - v2
+            const spawnPos = CONFIG.player.spawnPosition;
+            Utils.log(`Creating player at spawn position: (${spawnPos.x}, ${spawnPos.y}, ${spawnPos.z})`);
+            playerEntity.addComponent(new Transform(spawnPos.x, spawnPos.y, spawnPos.z));
             playerEntity.addComponent(new Player(playerId, isLocal));
             playerEntity.addComponent(new Movement(0.1)); // Player movement speed
 
             if (isLocal) {
                 playerEntity.addComponent(new PlayerInput());
                 this.localPlayerId = playerId;
+            }
+
+            // Add physics body (GUBBAR Phase 1)
+            if (CONFIG.physics.enabled && typeof BodyFactory !== 'undefined' && global.physicsSystem) {
+                const transform = playerEntity.getComponent('Transform');
+                const spawnPos = {
+                    x: transform.position.x,
+                    y: transform.position.y,
+                    z: transform.position.z
+                };
+                const playerPhysicsBody = BodyFactory.createPlayerBody(spawnPos);
+                global.physicsSystem.addBody(playerPhysicsBody);
+                playerEntity.addComponent(new PhysicsBody(playerPhysicsBody));
+                Utils.log(`Physics body added to player ${playerId} at (${spawnPos.x}, ${spawnPos.y}, ${spawnPos.z}): group=1, mask=12`);
             }
 
             this.players.set(playerId, playerEntity.id);

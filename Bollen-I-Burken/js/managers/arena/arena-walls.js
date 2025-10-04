@@ -48,6 +48,21 @@
 
             builder.scene.add(wall);
             builder.arenaObjects.push(wall);
+
+            if (CONFIG.physics.enabled && typeof BodyFactory !== 'undefined' && global.physicsSystem) {
+                const [width, height, depth] = wallData.size;
+                const [x, y, z] = wallData.pos;
+                const wallBody = BodyFactory.createStaticBox({
+                    width: width,
+                    height: height,
+                    depth: depth,
+                    position: { x: x, y: y, z: z },
+                    bodyType: 'wall'
+                });
+                builder.registerPhysicsBody(wallBody);
+                wall.userData = wall.userData || {};
+                wall.userData.physicsBody = wallBody;
+            }
         });
 
         Utils.log('Arena walls created with ResourceManager tracking');

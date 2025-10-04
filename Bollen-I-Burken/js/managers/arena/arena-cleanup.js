@@ -8,6 +8,19 @@
         const resourceManager = builder.resourceManager;
         Utils.log('Clearing arena using ResourceManager...');
 
+        if (builder.physicsBodies && builder.physicsBodies.length > 0) {
+            const physicsSystem = global.physicsSystem;
+            builder.physicsBodies.forEach(body => {
+                try {
+                    if (physicsSystem && body) {
+                        physicsSystem.removeBody(body);
+                    }
+                } catch (error) {
+                    console.warn('Failed to remove physics body during arena cleanup', error);
+                }
+            });
+            builder.physicsBodies = [];
+        }
         if (!builder.arenaObjects || builder.arenaObjects.length === 0) {
             builder.arenaObjects = [];
             return;

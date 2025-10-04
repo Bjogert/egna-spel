@@ -130,7 +130,7 @@
             const mesh = new THREE.Mesh(geometry, material);
             mesh.castShadow = true;
 
-            const spawnPos = position || { x: 0, y: 0.5, z: 0 };  // Spawn in middle with player
+            const spawnPos = position || CONFIG.ai.hunter.spawnPosition;  // Default AI spawn from config (avoid can!)
             mesh.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
             this.scene.add(mesh);
 

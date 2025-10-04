@@ -45,6 +45,19 @@
 
         resourceManager.track(floor, 'mesh', 'arena-floor-mesh');
 
+        if (CONFIG.physics.enabled && typeof BodyFactory !== 'undefined' && global.physicsSystem) {
+            const floorBody = BodyFactory.createStaticBox({
+                width: floorSize,
+                height: 0.5,
+                depth: floorSize,
+                position: { x: 0, y: -0.25, z: 0 },
+                bodyType: 'obstacle'
+            });
+            builder.registerPhysicsBody(floorBody);
+            floor.userData = floor.userData || {};
+            floor.userData.physicsBody = floorBody;
+        }
+
         builder.scene.add(floor);
         builder.arenaObjects.push(floor);
 
