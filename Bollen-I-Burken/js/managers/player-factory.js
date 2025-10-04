@@ -23,6 +23,14 @@
             entity.addComponent(new Renderable(mesh));
             entity.addComponent(new Player(playerId, isLocal));
 
+            // Add physics body (GUBBAR Phase 1)
+            if (CONFIG.physics.enabled && typeof BodyFactory !== 'undefined' && global.physicsSystem) {
+                const physicsBody = BodyFactory.createPlayerBody({ x: 0, y: 0.5, z: 0 });
+                global.physicsSystem.addBody(physicsBody);
+                entity.addComponent(new PhysicsBody(physicsBody));
+                Utils.log(`  Physics body added to player ${playerId}`);
+            }
+
             if (isLocal) {
                 entity.addComponent(new PlayerInput());
                 material.color.setHex(0x00ff00);

@@ -445,3 +445,9 @@ Located in `movement-system.js checkPlayerWinCondition()`:
 **Development Process:** Start with basic setup, implement core mechanics, add polish and features, then test across platforms.
 
 **Remember**: KISS over enterprise patterns, direct imports over aggregators, simple CONFIG over ConfigManager, 500-line file limit enforced!
+### Project Vision Update (2025-10-04)
+- Owner wants to keep the architecture open and future-proof, leaving room for ragdolls, destructible environments, and weapon systems (bows, guns, etc.).
+- Short term: keep the existing no-build workflow with the classic `cannon.js` while gameplay prototypes mature.
+- Mid term: adopt a lightweight bundler (e.g. Vite/Rollup) and swap to `cannon-es` or another maintained physics engine when ready to lean into advanced physics features.
+- Long term: plan physics abstractions (compound bodies, joints, destruction, continuous collision) so future features can drop in without reworking the core.
+

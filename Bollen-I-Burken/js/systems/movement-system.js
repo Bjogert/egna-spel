@@ -30,6 +30,14 @@
             this.momentumFactor = 0.85;  // How much old velocity carries over (0-1, higher = more drift)
             this.driftFriction = 0.2;  // How quickly drift decays (higher = less slide)
 
+            // Pre-compute conversion between per-tick (ECS) and per-second (physics) velocities
+            const defaultTickRate = (CONFIG.game && CONFIG.game.tickRate) || 60;
+            const fallbackTimeStep = 1 / defaultTickRate;
+            const physicsEnabled = CONFIG.physics && CONFIG.physics.enabled;
+            const configuredTimeStep = physicsEnabled && CONFIG.physics.timeStep ? CONFIG.physics.timeStep : null;
+            this.physicsTimeStep = (configuredTimeStep && configuredTimeStep > 0) ? configuredTimeStep : fallbackTimeStep;
+            this.physicsVelocityScale = physicsEnabled ? (1 / this.physicsTimeStep) : 1;
+
             this.registerTweaks();
         }
 
@@ -123,9 +131,9 @@
                 const input = entity.getComponent('PlayerInput');
 
                 if (transform && input) {
-                    this.updatePlayerMovement(transform, input);
+                    this.updatePlayerMovement(transform, input, entity);
                 } else if (transform && entity.getComponent('AIHunter')) {
-                    this.updateAIMovement(transform);
+                    this.updateAIMovement(transform, entity);
                 }
 
                 const renderable = entity.getComponent('Renderable');
@@ -217,7 +225,10 @@
             }
         }
 
-        updatePlayerMovement(transform, input) {
+        updatePlayerMovement(transform, input, entity) {
+            // Get physics body if available
+            const physicsBody = entity ? entity.getComponent('PhysicsBody') : null;
+            const velocityScale = this.physicsVelocityScale;
             if (transform.updatePrevious) {
                 transform.updatePrevious();
             } else {
@@ -297,27 +308,37 @@
 
             transform.velocity.y = 0;
 
-            transform.position.x += transform.velocity.x;
-            transform.position.z += transform.velocity.z;
+            if (physicsBody && physicsBody.body) {
+                // PHYSICS-BASED MOVEMENT (GUBBAR Phase 1)
+                // Apply velocity to physics body - physics handles collision
+                physicsBody.body.velocity.x = transform.velocity.x * velocityScale;
+                physicsBody.body.velocity.z = transform.velocity.z * velocityScale;
+                physicsBody.body.velocity.y = 0;
+                // Physics sync will update transform.position in next frame
+            } else {
+                // FALLBACK: Old collision system (no physics)
+                transform.position.x += transform.velocity.x;
+                transform.position.z += transform.velocity.z;
 
-            const newPosition = {
-                x: transform.position.x,
-                y: transform.position.y,
-                z: transform.position.z
-            };
+                const newPosition = {
+                    x: transform.position.x,
+                    y: transform.position.y,
+                    z: transform.position.z
+                };
 
-            const correctedPosition = this.checkObstacleCollision(
-                transform.previousPosition || transform.position,
-                newPosition,
-                this.playerBounds
-            );
+                const correctedPosition = this.checkObstacleCollision(
+                    transform.previousPosition || transform.position,
+                    newPosition,
+                    this.playerBounds
+                );
 
-            transform.position.x = correctedPosition.x;
-            transform.position.z = correctedPosition.z;
+                transform.position.x = correctedPosition.x;
+                transform.position.z = correctedPosition.z;
 
-            const limit = this.arenaSize - 0.5;
-            transform.position.x = Math.max(-limit, Math.min(limit, transform.position.x));
-            transform.position.z = Math.max(-limit, Math.min(limit, transform.position.z));
+                const limit = this.arenaSize - 0.5;
+                transform.position.x = Math.max(-limit, Math.min(limit, transform.position.x));
+                transform.position.z = Math.max(-limit, Math.min(limit, transform.position.z));
+            }
 
             // Rotate player to face INPUT direction (not velocity/drift direction!)
             if (isMoving) {
@@ -329,34 +350,51 @@
             }
         }
 
-        updateAIMovement(transform) {
-            if (transform.updatePrevious) {
-                transform.updatePrevious();
+        updateAIMovement(transform, entity) {
+            // Get physics body if available
+            const physicsBody = entity ? entity.getComponent('PhysicsBody') : null;
+            const velocityScale = this.physicsVelocityScale;
+
+            if (physicsBody && physicsBody.body) {
+                // PHYSICS-BASED MOVEMENT (GUBBAR Phase 1)
+                // Wake up body if sleeping (important for AI movement!)
+                physicsBody.wakeUp();
+
+                // Set velocity directly on physics body (AI uses velocity-based steering)
+                physicsBody.body.velocity.x = transform.velocity.x * velocityScale;
+                physicsBody.body.velocity.z = transform.velocity.z * velocityScale;
+                physicsBody.body.velocity.y = 0;  // No vertical movement
+                // Physics sync will update transform.position in next frame
             } else {
-                transform.previousPosition = { ...transform.position };
+                // FALLBACK: Old collision system (no physics)
+                if (transform.updatePrevious) {
+                    transform.updatePrevious();
+                } else {
+                    transform.previousPosition = { ...transform.position };
+                }
+
+                transform.position.x += transform.velocity.x;
+                transform.position.z += transform.velocity.z;
+
+                const newPosition = {
+                    x: transform.position.x,
+                    y: transform.position.y,
+                    z: transform.position.z
+                };
+
+                const correctedPosition = this.checkObstacleCollision(
+                    transform.previousPosition || transform.position,
+                    newPosition,
+                    this.aiBounds
+                );
+
+                transform.position.x = correctedPosition.x;
+                transform.position.z = correctedPosition.z;
+
+                const limit = this.arenaSize - 0.5;
+                transform.position.x = Math.max(-limit, Math.min(limit, transform.position.x));
+                transform.position.z = Math.max(-limit, Math.min(limit, transform.position.z));
             }
-
-            transform.position.x += transform.velocity.x;
-            transform.position.z += transform.velocity.z;
-
-            const newPosition = {
-                x: transform.position.x,
-                y: transform.position.y,
-                z: transform.position.z
-            };
-
-            const correctedPosition = this.checkObstacleCollision(
-                transform.previousPosition || transform.position,
-                newPosition,
-                this.aiBounds
-            );
-
-            transform.position.x = correctedPosition.x;
-            transform.position.z = correctedPosition.z;
-
-            const limit = this.arenaSize - 0.5;
-            transform.position.x = Math.max(-limit, Math.min(limit, transform.position.x));
-            transform.position.z = Math.max(-limit, Math.min(limit, transform.position.z));
 
             // NOTE: AI rotation is handled by AISystem via steering behaviors (aiComponent.heading)
             // Do NOT override it here based on velocity - causes vision cone desync!
@@ -574,3 +612,5 @@
         global.MovementSystem = MovementSystem;
     }
 })(typeof window !== 'undefined' ? window : globalThis);
+
+

@@ -18,6 +18,7 @@
     let networkSystem;
     let aiSystem;
     let interactionSystem;
+    let physicsSystem;  // GUBBAR Phase 1
 
     // Performance tracking
     let lastTime = 0;
@@ -186,13 +187,32 @@
         aiSystem = new AISystem();
         interactionSystem = new InteractionSystem();
 
-        // Add systems to game engine
+        // Initialize physics system (GUBBAR Phase 1)
+        if (CONFIG.physics.enabled && typeof PhysicsSystem !== 'undefined') {
+            physicsSystem = new PhysicsSystem();
+            physicsSystem.initialize();
+            global.physicsSystem = physicsSystem;  // Expose globally
+            Utils.log('PhysicsSystem initialized (will be added to engine in correct order)');
+        } else {
+            Utils.log('PhysicsSystem disabled or not loaded');
+        }
+
+        // Add systems to game engine in correct order:
+        // 1. Input - collect user input
+        // 2. AI - calculate steering and velocities
+        // 3. Movement - apply velocities to physics bodies
+        // 4. Physics - step simulation and sync positions back
+        // 5. UI/Audio/Network/Interaction - render and respond
         gameEngine.addSystem(inputSystem);
+        gameEngine.addSystem(aiSystem);
         gameEngine.addSystem(movementSystem);
+        if (CONFIG.physics.enabled && physicsSystem) {
+            gameEngine.addSystem(physicsSystem);
+            Utils.log('PhysicsSystem added to game engine');
+        }
         gameEngine.addSystem(uiSystem);
         gameEngine.addSystem(audioSystem);
         gameEngine.addSystem(networkSystem);
-        gameEngine.addSystem(aiSystem);
         gameEngine.addSystem(interactionSystem);
 
         // Initialize networking in local mode

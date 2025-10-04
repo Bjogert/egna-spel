@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(curl -L \"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.cjs.js\" -o \"C:\\Users\\robert\\egna-spel\\Bollen-I-Burken\\js\\libs\\cannon-es.js\")",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

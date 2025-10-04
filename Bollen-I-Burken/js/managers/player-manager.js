@@ -149,6 +149,14 @@
             aiEntity.addComponent(new Movement(patrolSpeed));
             aiEntity.addComponent(new Renderable(mesh));
 
+            // Add physics body to AI (GUBBAR Phase 1)
+            if (CONFIG.physics.enabled && typeof BodyFactory !== 'undefined' && global.physicsSystem) {
+                const aiPhysicsBody = BodyFactory.createAIBody(spawnPos);
+                global.physicsSystem.addBody(aiPhysicsBody);
+                aiEntity.addComponent(new PhysicsBody(aiPhysicsBody));
+                Utils.log(`  Physics body added to AI hunter ${hunterId}`);
+            }
+
             // Create AI Hunter component with difficulty-based speeds
             const aiHunter = new AIHunter();
             aiHunter.speed = patrolSpeed;

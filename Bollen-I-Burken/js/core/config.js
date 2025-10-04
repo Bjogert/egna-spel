@@ -507,6 +507,63 @@ CONFIG.obstacles.maxPlacementAttempts = 100;
 CONFIG.obstacles.material = 'standard';  // 'standard', 'phong', 'lambert'
 
 // ==========================================
+// PHYSICS SETTINGS (GUBBAR Phase 1)
+// ==========================================
+CONFIG.physics = {
+    enabled: true,              // Enable/disable physics (feature flag)
+
+    // World settings
+    gravity: 0,                 // NO gravity in Phase 1 (keep 2D movement)
+    timeStep: 1/60,             // Fixed timestep (60 FPS)
+    maxSubSteps: 3,             // Max physics sub-steps per frame
+
+    // Solver settings
+    iterations: 10,             // Constraint solver iterations (quality vs speed)
+    tolerance: 0.001,           // Solver tolerance
+
+    // Body properties
+    player: {
+        mass: 70,               // 70kg human
+        radius: 0.4,            // Collision radius (box half-extent)
+        height: 1.0,            // Character height
+        linearDamping: 0.01,    // Minimal air resistance (was 0.9, too high!)
+        angularDamping: 0.99,   // Rotation damping (prevent spinning)
+        fixedRotation: true,    // Lock rotation (stay upright)
+        sleepSpeedLimit: 0.01   // Speed below which body sleeps (was 0.1, too high!)
+    },
+
+    ai: {
+        mass: 75,               // Slightly heavier
+        radius: 0.45,
+        height: 1.1,
+        linearDamping: 0.01,    // Minimal air resistance (was 0.9, too high!)
+        angularDamping: 0.99,
+        fixedRotation: true,
+        sleepSpeedLimit: 0.01   // Speed below which body sleeps (was 0.1, too high!)
+    },
+
+    obstacle: {
+        mass: 0,                // Static (infinite mass)
+        friction: 0.3,          // Surface friction
+        restitution: 0.1        // Bounciness (low)
+    },
+
+    // Movement forces
+    movement: {
+        forceMultiplier: 800,   // Force strength for movement
+        maxVelocity: 0.15,      // Maximum velocity cap
+        sneakMultiplier: 0.4    // Sneak speed reduction
+    },
+
+    // Debug options
+    debug: {
+        visualizeColliders: false,  // Show physics shapes (future)
+        logCollisions: false,       // Log collision events
+        showStats: false            // Show physics performance
+    }
+};
+
+// ==========================================
 // SIMPLE HELPER FUNCTIONS
 // ==========================================
 

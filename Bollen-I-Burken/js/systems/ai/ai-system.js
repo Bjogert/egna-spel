@@ -182,9 +182,9 @@
             if (distance <= effectiveRange && playerSpeed > 0.01) {
                 // AI hears player!
                 if (aiComponent) {
-                    // Update heard position - allow hearing to interrupt RACE when AI loses sight of player
-                    if (aiComponent.state === AI_STATES.PATROL || aiComponent.state === 'PATROL' ||
-                        aiComponent.state === AI_STATES.INVESTIGATE || aiComponent.state === AI_STATES.RACE) {
+                    // Update heard position unless we're reacting or racing to the can
+                    if (!aiComponent.reactionState && (aiComponent.state === AI_STATES.PATROL || aiComponent.state === 'PATROL' ||
+                        aiComponent.state === AI_STATES.INVESTIGATE)) {
 
                         // Update the position where we heard the player (always use latest)
                         aiComponent.lastHeardPosition = {

@@ -20,5 +20,12 @@
     "workbench.editor.pinnedTabsOnSeparateRow": false,
     "workbench.editor.restoreViewState": true,
     "workbench.editor.showTabIndex": false,
-    "workbench.editor.showTabs": "multiple"
+    "workbench.editor.showTabs": "multiple",
+    "workbench.layoutControl.enabled": true,
+    "workbench.navigationControl.enabled": true,
+    "workbench.secondarySideBar.defaultVisibility": "visibleInWorkspace",
+    "accessibility.verbosity.debug": true,
+    "debug.toolBarLocation": "floating",
+    "terminal.integrated.enableImages": true,
+    "workbench.preferredDarkColorTheme": "Default Dark Modern"
 }
