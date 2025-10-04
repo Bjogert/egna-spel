@@ -77,13 +77,17 @@
                 walkTime: 0,
                 isMoving: false,
                 lastPosition: { x: 0, y: 0, z: 0 },
+                velocity: { x: 0, z: 0 },           // Current velocity
+                acceleration: { x: 0, z: 0 },       // Current acceleration
+                currentLean: { x: 0, z: 0 },        // Current body lean
                 restRotation: {
                     left: { x: 0, y: 0, z: 0 },
-                    right: { x: 0, y: 0, z: 0 }
+                    right: { x: 0, y: 0, z: 0 },
+                    body: { x: 0, y: 0, z: 0 }      // Store body rest rotation
                 }
             });
 
-            // Store initial leg rotations as rest pose
+            // Store initial rotations as rest pose
             const data = this.characters.get(playerId);
             data.restRotation.left = {
                 x: leftLegMesh.rotation.x,
@@ -95,6 +99,16 @@
                 y: rightLegMesh.rotation.y,
                 z: rightLegMesh.rotation.z
             };
+            data.restRotation.body = {
+                x: characterMesh.rotation.x,
+                y: characterMesh.rotation.y,
+                z: characterMesh.rotation.z
+            };
+
+            // Initialize position tracking
+            data.lastPosition.x = characterMesh.position.x;
+            data.lastPosition.y = characterMesh.position.y;
+            data.lastPosition.z = characterMesh.position.z;
 
             Utils.log(`🦵 Registered character for leg animation: ${playerId}`);
         }
@@ -140,9 +154,25 @@
                 return;
             }
 
-            // Check if character is moving by comparing position
+            // Calculate velocity and acceleration for body leaning
             const currentPos = data.mesh.position;
             const lastPos = data.lastPosition;
+            
+            // Calculate current velocity
+            const newVelocity = {
+                x: (currentPos.x - lastPos.x) / deltaTime,
+                z: (currentPos.z - lastPos.z) / deltaTime
+            };
+            
+            // Calculate acceleration (change in velocity)
+            const acceleration = {
+                x: (newVelocity.x - data.velocity.x) / deltaTime,
+                z: (newVelocity.z - data.velocity.z) / deltaTime
+            };
+            
+            // Store velocity and acceleration
+            data.velocity = newVelocity;
+            data.acceleration = acceleration;
             
             const moved = Math.abs(currentPos.x - lastPos.x) > ANIMATION_CONFIG.movementThreshold || 
                          Math.abs(currentPos.z - lastPos.z) > ANIMATION_CONFIG.movementThreshold;
@@ -162,8 +192,53 @@
             data.lastPosition.y = currentPos.y;
             data.lastPosition.z = currentPos.z;
 
+            // Calculate and apply body leaning based on acceleration
+            this.updateBodyLean(data, deltaTime);
+
+            // Sync ragdoll physics with visual meshes (for articulated legs)
+            if (global.CharacterBuilder && global.CharacterBuilder.syncRagdollPhysics) {
+                global.CharacterBuilder.syncRagdollPhysics(data.mesh);
+            }
+
             // Calculate leg rotations
             this.animateLegs(data);
+        }
+
+        /**
+         * Update body lean based on acceleration forces
+         * @param {Object} data - Character animation data
+         * @param {number} deltaTime - Time since last frame
+         */
+        updateBodyLean(data, deltaTime) {
+            // Calculate target lean based on acceleration
+            // Forward acceleration -> lean forward (negative X rotation)
+            // Backward acceleration -> lean backward (positive X rotation)
+            // Left acceleration -> lean left (negative Z rotation) - MIRRORED
+            // Right acceleration -> lean right (positive Z rotation) - MIRRORED
+            
+            const targetLean = {
+                x: -data.acceleration.z * ANIMATION_CONFIG.leanSensitivity, // Forward/backward lean
+                z: -data.acceleration.x * ANIMATION_CONFIG.leanSensitivity  // Left/right lean (MIRRORED)
+            };
+            
+            // Clamp lean angles to maximum values
+            targetLean.x = Math.max(-ANIMATION_CONFIG.maxLeanAngle, 
+                          Math.min(ANIMATION_CONFIG.maxLeanAngle, targetLean.x));
+            targetLean.z = Math.max(-ANIMATION_CONFIG.maxLeanAngle, 
+                          Math.min(ANIMATION_CONFIG.maxLeanAngle, targetLean.z));
+            
+            // Smoothly interpolate current lean toward target lean
+            data.currentLean.x += (targetLean.x - data.currentLean.x) * ANIMATION_CONFIG.leanSmoothness;
+            data.currentLean.z += (targetLean.z - data.currentLean.z) * ANIMATION_CONFIG.leanSmoothness;
+            
+            // Apply lean to character body rotation
+            data.mesh.rotation.x = data.restRotation.body.x + data.currentLean.x;
+            data.mesh.rotation.z = data.restRotation.body.z + data.currentLean.z;
+            
+            // Debug output (remove this later if too spammy)
+            if (Math.abs(data.acceleration.x) > 0.1 || Math.abs(data.acceleration.z) > 0.1) {
+                console.log(`🎯 Lean - Accel: (${data.acceleration.x.toFixed(2)}, ${data.acceleration.z.toFixed(2)}) -> Lean: (${data.currentLean.x.toFixed(3)}, ${data.currentLean.z.toFixed(3)})`);
+            }
         }
 
         /**

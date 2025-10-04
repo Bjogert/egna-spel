@@ -69,13 +69,13 @@
         ragdoll: {
             enabled: true,        // Enable ragdoll physics for legs
             upperLeg: {
-                length: 0.4,      // LONGER upper leg (was 0.25) - more visible!
-                radius: 0.12,     // Slightly thicker for visibility
+                length: 0.4,      // Half of total leg height (0.8/2)
+                radius: 0.15,     // MATCH simple leg radius for consistent size
                 mass: 3.0,        // Physics mass
             },
             lowerLeg: {
-                length: 0.4,      // LONGER lower leg (was 0.25) - more visible! 
-                radius: 0.1,      // Slightly thicker (was 0.08)
+                length: 0.4,      // Half of total leg height (0.8/2)
+                radius: 0.15,     // MATCH simple leg radius for consistent size
                 mass: 2.0,        // Physics mass (lighter than thigh)
             },
             joints: {
@@ -130,6 +130,12 @@
             
             // Create visual group
             const legGroup = new THREE.Group();
+            
+            // Position visual meshes relative to their physics bodies
+            // Since physics bodies are in world space, we need to position meshes relatively
+            upperLegMesh.position.set(-legSeparation, baseY + CHARACTER_CONFIG.ragdoll.upperLeg.length * 0.5, 0);
+            lowerLegMesh.position.set(-legSeparation, baseY - CHARACTER_CONFIG.ragdoll.lowerLeg.length * 0.5, 0);
+            
             legGroup.add(upperLegMesh);
             legGroup.add(lowerLegMesh);
             legGroup.name = 'articulated_left_leg';
@@ -462,6 +468,33 @@
                 visualGroup: characterGroup,
                 physicsData: physicsData
             };
+        }
+
+        /**
+         * Sync ragdoll visual meshes with their physics bodies
+         * Call this each frame for characters with articulated parts
+         * @param {THREE.Group} characterMesh - Character mesh with userData.parts
+         */
+        static syncRagdollPhysics(characterMesh) {
+            if (!characterMesh.userData || !characterMesh.userData.parts) {
+                return;
+            }
+
+            const parts = characterMesh.userData.parts;
+            
+            // Sync articulated left leg if it exists
+            if (parts.articulatedLeftLeg && parts.articulatedLeftLeg.visualGroup) {
+                const legGroup = parts.articulatedLeftLeg.visualGroup;
+                
+                // Sync each child mesh with its physics body
+                legGroup.children.forEach(mesh => {
+                    if (mesh.userData.physicsBody) {
+                        // Copy position and rotation from physics body to visual mesh
+                        mesh.position.copy(mesh.userData.physicsBody.position);
+                        mesh.quaternion.copy(mesh.userData.physicsBody.quaternion);
+                    }
+                });
+            }
         }
 
         /**
