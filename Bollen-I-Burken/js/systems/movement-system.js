@@ -18,7 +18,7 @@
             // Player acceleration tracking
             this.playerCurrentSpeed = 0;
             this.playerMaxSpeed = 0.16;
-            this.playerAcceleration = 0.15;
+            this.playerAcceleration = 0.23;
             this.playerDeceleration = 0.35;
             this.playerDirection = { x: 0, z: 0 };  // Last movement direction (for sliding)
 
@@ -556,12 +556,84 @@
                         Utils.log('Calling window.showStartMenu directly');
                         window.showStartMenu({
                             gameOver: true,
-                            message: 'DUNK FÖR DIG!',
+                            message: 'DUNK FÖR MIG!',
                             reason: 'won',
                             elapsedMs: 0
                         });
                     }
                 }
+            }
+        }
+
+        applyPlayerPush(gameState, playerEntity) {
+            if (!playerEntity) {
+                return;
+            }
+
+            const pushStrength = (CONFIG.player && typeof CONFIG.player.pushStrength === 'number') ? CONFIG.player.pushStrength : 0.6;
+            const pushRadius = (CONFIG.player && typeof CONFIG.player.pushRadius === 'number') ? CONFIG.player.pushRadius : 1.0;
+
+            if (pushStrength <= 0 || pushRadius <= 0) {
+                return;
+            }
+
+            const playerPhysics = playerEntity.getComponent('PhysicsBody');
+            const playerTransform = playerEntity.getComponent('Transform');
+
+            if (!playerPhysics || !playerPhysics.body || !playerTransform) {
+                return;
+            }
+
+            const velocity = playerPhysics.body.velocity;
+            const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+            if (speed < 0.05) {
+                return;
+            }
+
+            const dirX = velocity.x / speed;
+            const dirZ = velocity.z / speed;
+            const impulseBase = pushStrength * speed;
+
+            for (const entity of gameState.entities.values()) {
+                if (entity === playerEntity || !entity.getComponent('AIHunter')) {
+                    continue;
+                }
+
+                const aiPhysics = entity.getComponent('PhysicsBody');
+                const aiTransform = entity.getComponent('Transform');
+
+                if (!aiPhysics || !aiPhysics.body || !aiTransform) {
+                    continue;
+                }
+
+                const dx = aiTransform.position.x - playerTransform.position.x;
+                const dz = aiTransform.position.z - playerTransform.position.z;
+                const distance = Math.sqrt(dx * dx + dz * dz);
+
+                if (distance > pushRadius) {
+                    continue;
+                }
+
+                const separation = Math.max(0, pushRadius - distance);
+                aiPhysics.body.velocity.x += dirX * impulseBase;
+                aiPhysics.body.velocity.z += dirZ * impulseBase;
+
+                if (distance > 0.0001 && separation > 0) {
+                    const awayX = dx / distance;
+                    const awayZ = dz / distance;
+                    const separationImpulse = separation * pushStrength * 2;
+                    aiPhysics.body.velocity.x += awayX * separationImpulse;
+                    aiPhysics.body.velocity.z += awayZ * separationImpulse;
+                }
+
+                aiPhysics.body.velocity.y = 0;
+
+                if (aiTransform.velocity) {
+                    aiTransform.velocity.x = aiPhysics.body.velocity.x * this.physicsTimeStep;
+                    aiTransform.velocity.z = aiPhysics.body.velocity.z * this.physicsTimeStep;
+                }
+
+                aiPhysics.body.wakeUp();
             }
         }
 

@@ -121,7 +121,7 @@ const CONFIG = {
     player: {
         speed: 0.15,            // Movement speed (units per frame)
         maxSpeed: 0.2,          // Maximum velocity
-        acceleration: 0.01,     // How fast player speeds up
+        acceleration: 0.23,     // How fast player speeds up
         friction: 0.9,          // How fast player slows down (0-1)
         size: {                 // Player bounding box
             width: 0.8,
@@ -135,7 +135,13 @@ const CONFIG = {
             z: -4
         },
         pullDistance: 2.0,      // How close to pull hunter's shirt
-        pullSlowdown: 0.5       // Speed multiplier when pulling (0.5 = 50% speed)
+        pullSlowdown: 0.5,      // Speed multiplier when pulling (0.5 = 50% speed)
+        pullTetherStrength: 4.5, // How strongly the hunter follows when being dragged
+        pullAttraction: 6.0,     // Additional attraction toward the player during pull
+        pushRadius: 1.0,         // Contact radius for pushing AI hunters
+        pushStrength: 0.6,       // Strength of push impulse
+        autoWinOnContact: true,  // Player wins automatically when reaching the can
+        requireActionToWin: false // If true, requires action key even when auto win enabled
     },
 
     // ========== AI SETTINGS ==========

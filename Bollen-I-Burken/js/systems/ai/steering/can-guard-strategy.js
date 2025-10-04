@@ -54,6 +54,7 @@
 
         const state = ai.guardState;
         const turnSpeedBase = ai.guardTurnSpeedBase || 1.0;
+        const stateTurnBase = state.baseTurnSpeed || turnSpeedBase;
 
         // Apply reckless radius override if provided (AI ventures further over time)
         if (recklessRadiusOverride !== null) {
@@ -190,7 +191,7 @@
             // Change scan direction periodically - RANDOMIZED per hunter
             const baseScanInterval = state.scanIntervalBase || (ai.guardScanIntervalBase || 800);
             const scanRandomFactor = state.scanIntervalRandomFactor || 1;
-            const actualTurnSpeed = Math.max(0.1, (state.turnSpeedMultiplier || 1) * turnSpeedBase);
+            const actualTurnSpeed = Math.max(0.1, (state.turnSpeedMultiplier || 1) * stateTurnBase);
             const scanInterval = (baseScanInterval * scanRandomFactor) / actualTurnSpeed;
 
             if (state.scanDuration > scanInterval) {

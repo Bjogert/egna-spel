@@ -21,7 +21,7 @@ class AudioSystem extends System {
         // Tweak-able settings
         this.stepInterval = 120;  // Single interval for all footsteps
         this.stepVolume = 0.20;
-        this.sneakVolumeMultiplier = 0.3;  // 30% volume when sneaking
+        this.sneakVolumeMultiplier = 0.45;  // 45% volume when sneaking
         this.sneakIntervalMultiplier = 1.8;  // 1.8x slower steps when sneaking
 
         this.initializeAudio();

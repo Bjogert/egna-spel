@@ -21,7 +21,7 @@
             this.maxSpeed = 0.12;                        // Max speed during patrol
             this.maxSpeedHunting = 0.20;                 // Max speed during hunting
             this.acceleration = 0.15;                    // Acceleration rate (units/sec²)
-            this.maxAccel = 0.15;                        // Linear acceleration
+            this.maxAccel = 0.12;                        // Linear acceleration
             this.maxAngularAccel = 4.5;                  // Angular acceleration (rad/sec)
 
             // Wander behavior state (used by can-guard patrol)
@@ -38,6 +38,10 @@
 
             // Wall collision cooldown (for obstacle handling)
             this.wallCollisionCooldown = 0;
+            this.guardTurnSpeedBase = 1.6;               // Base turn speed multiplier for scanning
+            this.guardScanIntervalBase = 800;             // Base scan interval in ms
+            this.visionCloseThreshold = 0.79;             // Threshold for wide vision
+            this.visionFarThreshold = 0.84;               // Threshold for focused vision
         }
     }
 

@@ -212,7 +212,7 @@
             if (typeof global !== 'undefined' && typeof global.showStartMenu === 'function') {
                 global.showStartMenu({
                     gameOver: true,
-                    message: 'DUNK FÖR MIG!',
+                    message: 'DUNK FÃ–R MIG!',
                     reason: 'won',
                     elapsedMs: elapsedTime
                 });

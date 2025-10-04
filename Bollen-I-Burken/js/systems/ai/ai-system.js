@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ==========================================
    AI SYSTEM
    Manages hunter behaviour and vision checks
@@ -28,7 +29,7 @@
             super('AISystem');
             this.hunters = new Set();
             this.aiFrozen = false;  // Debug toggle to freeze AI
-            this.hearingRange = 19.0;  // How far AI can hear
+            this.hearingRange = 10.0;  // How far AI can hear
             this.gameStartTime = null;  // Track when game started for recklessness
 
             const difficulty = (typeof CONFIG !== 'undefined' && CONFIG.difficulties && CONFIG.difficulties[CONFIG.currentDifficulty])
@@ -38,7 +39,7 @@
 
             this.patrolMaxSpeed = (typeof difficultyAI.patrolSpeed === 'number') ? difficultyAI.patrolSpeed : 0.12;
             this.chaseMaxSpeed = (typeof difficultyAI.chaseSpeed === 'number') ? difficultyAI.chaseSpeed : 0.20;
-            this.accelerationRate = 0.15;
+            this.accelerationRate = 0.12;
             this.maxAngularAcceleration = 4.5;
             this.investigateDuration = 8000;
             this.reactionDuration = 800;
@@ -48,10 +49,10 @@
             this.recklessMaxRadius = DEFAULT_RECKLESS_MAX_RADIUS;
             this.visionBaseAngle = (typeof difficultyAI.visionAngle === 'number') ? difficultyAI.visionAngle : 85;
             this.visionBaseRange = (typeof difficultyAI.visionRange === 'number') ? difficultyAI.visionRange : 13;
-            this.visionCloseThreshold = 0.45;
-            this.visionFarThreshold = 0.7;
+            this.visionCloseThreshold = 0.79;
+            this.visionFarThreshold = 0.84;
             this.guardTurnSpeed = 2.0;
-            this.guardScanInterval = 700;
+            this.guardScanInterval = 550;
 
             this._tweakOverrides = {
                 patrolMaxSpeed: false,
@@ -73,7 +74,7 @@
             };
 
             // Apply default tuning so tweak panel reflects desired baseline values
-            this.setHearingRange(19.0);
+            this.setHearingRange(10);
             this.setPatrolMaxSpeed(0.12);
             this.setChaseMaxSpeed(0.20);
             this.setAccelerationRate(0.15);
@@ -749,7 +750,7 @@
 
                             const targetType = lookAtResult.isCorner ? 'CORNER' : 'SOUND';
                             const angleDeg = (angleToTarget * 180 / Math.PI).toFixed(0);
-                            console.log(`?? AI HEARD PLAYER at ${distance.toFixed(2)}m! Looking at ${targetType} (angle ${angleDeg}°)`);
+                            console.log(`?? AI HEARD PLAYER at ${distance.toFixed(2)}m! Looking at ${targetType} (angle ${angleDeg}ï¿½)`);
                             Utils.log(`?? AI state changed: ${aiComponent.state}`);
                         } else {
                             // Already investigating - update target and reset timer
@@ -768,7 +769,7 @@
             }
         }
 
-        updatePatrolBehavior(aiComponent, transform, movement, deltaTime, gameState) {
+    updatePatrolBehavior(aiComponent, transform, movement, deltaTime, gameState) {
             const dt = deltaTime / 1000;  // Convert to seconds
 
             // Handle reaction sequence if player was spotted
@@ -1105,9 +1106,9 @@
                         aiComponent.reactionState = 'SPOTTED';
                         aiComponent.reactionStartTime = Date.now();
                         Utils.log('AI spotted player! Reacting...');
+                    } else {
+                        Utils.log('Player in vision cone but line of sight blocked by obstacle');
                     }
-                } else {
-                    Utils.log('Player in vision cone but line of sight blocked by obstacle');
                 }
             }
         }
@@ -1164,7 +1165,8 @@
         checkShirtPull(hunter, gameState) {
             const aiTransform = hunter.getComponent('Transform');
             const aiMovement = hunter.getComponent('Movement');
-            if (!aiTransform || !aiMovement) {
+            const aiComponent = hunter.getComponent('AIHunter');
+            if (!aiTransform || !aiMovement || !aiComponent) {
                 return;
             }
 
@@ -1193,11 +1195,47 @@
                 const slowdownMultiplier = CONFIG.player.pullSlowdown || 0.5;
                 aiMovement.speed = aiMovement.baseSpeed * slowdownMultiplier;
 
+                const aiPhysics = hunter.getComponent('PhysicsBody');
+                const playerPhysics = localPlayer.getComponent('PhysicsBody');
+
+                if (aiPhysics && aiPhysics.body && playerPhysics && playerPhysics.body) {
+                    const tetherStrength = (CONFIG.player && typeof CONFIG.player.pullTetherStrength === 'number') ? CONFIG.player.pullTetherStrength : 4.5;
+                    const attraction = (CONFIG.player && typeof CONFIG.player.pullAttraction === 'number') ? CONFIG.player.pullAttraction : 6.0;
+
+                    const playerVel = playerPhysics.body.velocity;
+                    const safeDistance = Math.max(distance, 0.0001);
+                    const towardPlayerX = (playerTransform.position.x - aiTransform.position.x) / safeDistance;
+                    const towardPlayerZ = (playerTransform.position.z - aiTransform.position.z) / safeDistance;
+
+                    const followVelX = playerVel.x * slowdownMultiplier + towardPlayerX * attraction + playerVel.x * tetherStrength * 0.1;
+                    const followVelZ = playerVel.z * slowdownMultiplier + towardPlayerZ * attraction + playerVel.z * tetherStrength * 0.1;
+
+                    aiPhysics.body.velocity.x = followVelX;
+                    aiPhysics.body.velocity.z = followVelZ;
+                    aiPhysics.body.velocity.y = 0;
+
+                    if (aiTransform.velocity) {
+                        const timeStep = (window.movementSystem && window.movementSystem.physicsTimeStep) ? window.movementSystem.physicsTimeStep : 1 / 60;
+                        aiTransform.velocity.x = followVelX * timeStep;
+                        aiTransform.velocity.z = followVelZ * timeStep;
+                    }
+
+                    aiPhysics.body.wakeUp();
+                }
+
+                if (!aiComponent.isBeingPulled) {
+                    aiComponent.isBeingPulled = true;
+                    Utils.log('[PULL] Player grabbed hunter\'s shirt');
+                }
+
                 if (AI_DEBUG) {
                     Utils.log(`?? Player pulling hunter's shirt! Speed: ${aiMovement.speed.toFixed(2)}`);
                 }
             } else {
-                // Restore normal speed
+                if (aiComponent.isBeingPulled) {
+                    aiComponent.isBeingPulled = false;
+                    Utils.log('[PULL] Player released hunter');
+                }
                 aiMovement.speed = aiMovement.baseSpeed;
             }
         }
@@ -1293,6 +1331,7 @@
         }
     }
 
+    // Export modules
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = { AI_STATES, AISystem };
     } else {

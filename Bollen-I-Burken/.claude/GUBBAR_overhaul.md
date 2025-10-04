@@ -898,3 +898,7 @@ js/core/config.js                          - Motor/IK parameters
 
 *End of GUBBAR Overhaul Plan*
 
+### 2025-10-05 - Player Visual Upgrade Planning Kickoff
+- Investigated player visuals: PlayerManager builds single `THREE.BoxGeometry` for all players; AI uses similar block with additional overlays.
+- Confirmed movement/physics unaffected by visual mesh change because collisions rely on Cannon bodies.
+- Next actions: implement modular character builder returning grouped mesh (torso, head, limbs), integrate into PlayerManager for players/hunters, ensure colors configurable, validate physics alignment.
