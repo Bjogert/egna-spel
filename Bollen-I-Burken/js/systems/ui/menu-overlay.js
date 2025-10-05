@@ -214,4 +214,4 @@
         global.showStartMenu = (opts) => instance.showStartMenu(opts);
         global.hideStartMenu = () => instance.hideStartMenu();
     }
-})(typeof window !== 'undefined' ? window : globalThis);
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

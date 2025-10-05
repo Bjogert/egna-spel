@@ -13,7 +13,16 @@ class InputSystem extends System {
         this.pendingInput = false;
         this.currentGameState = null;
 
+        // Mouse input tracking
+        this.mouseInput = {
+            isLocked: false,
+            totalRotationX: 0,  // Accumulated horizontal rotation
+            totalRotationY: 0,  // Accumulated vertical rotation (for future use)
+            sensitivity: 0.002  // Mouse sensitivity multiplier
+        };
+
         this.setupKeyboardControls();
+        this.setupMouseControls();
         this.setupTouchControls();
         this.setupGamepadControls();
 
@@ -43,6 +52,7 @@ class InputSystem extends System {
             'Escape': 'pause',
             'KeyP': 'menu',
             'KeyM': 'mute',
+            'KeyV': 'camera_toggle',  // V key for camera mode switching
             'ShiftLeft': 'sneak',
             'ShiftRight': 'sneak'
         };
@@ -60,6 +70,65 @@ class InputSystem extends System {
                 event.preventDefault();
             }
         });
+    }
+
+    setupMouseControls() {
+        // Mouse movement tracking
+        this.boundMouseMove = this.handleMouseMove.bind(this);
+        this.boundPointerLockChange = this.handlePointerLockChange.bind(this);
+        this.boundClick = this.handleClick.bind(this);
+
+        // Add event listeners
+        document.addEventListener('mousemove', this.boundMouseMove);
+        document.addEventListener('pointerlockchange', this.boundPointerLockChange);
+        document.addEventListener('pointerlockerror', this.handlePointerLockError.bind(this));
+        document.addEventListener('click', this.boundClick);
+    }
+
+    handleMouseMove(event) {
+        if (this.mouseInput.isLocked) {
+            // Accumulate mouse rotation when pointer is locked
+            this.mouseInput.totalRotationX += event.movementX * this.mouseInput.sensitivity;
+            this.mouseInput.totalRotationY += event.movementY * this.mouseInput.sensitivity;
+            
+            // Keep rotations within reasonable bounds
+            this.mouseInput.totalRotationX = this.mouseInput.totalRotationX % (2 * Math.PI);
+        }
+    }
+
+    handlePointerLockChange() {
+        this.mouseInput.isLocked = document.pointerLockElement === document.body;
+        if (this.mouseInput.isLocked) {
+            Utils.log('🖱️ Mouse locked - camera control enabled');
+        } else {
+            Utils.log('🖱️ Mouse unlocked - camera control disabled');
+        }
+    }
+
+    handlePointerLockError() {
+        Utils.warn('🖱️ Pointer lock failed');
+        this.mouseInput.isLocked = false;
+    }
+
+    handleClick() {
+        // Request pointer lock on click (if not already locked)
+        if (!this.mouseInput.isLocked && document.pointerLockElement !== document.body) {
+            document.body.requestPointerLock();
+        }
+    }
+
+    isMouseLocked() {
+        return this.mouseInput.isLocked;
+    }
+
+    /**
+     * Get current mouse rotation values for camera control
+     */
+    getMouseRotation() {
+        return {
+            x: this.mouseInput.totalRotationX,
+            y: this.mouseInput.totalRotationY
+        };
     }
 
     setupTouchControls() {
@@ -91,22 +160,22 @@ class InputSystem extends System {
     }
 
     handleKeyDown(event) {
-        console.log('🔧 INPUT DEBUG: Key down detected:', event.code);
+        // Debug: Key down detected (log removed to prevent spam)
         const action = this.keyMappings[event.code];
         if (action) {
-            console.log('🔧 INPUT DEBUG: Mapped to action:', action);
+            // Debug: Mapped to action (log removed to prevent spam)
             this.keys.set(action, true);
             this.updatePlayerInput();
         } else {
-            console.log('🔧 INPUT DEBUG: No mapping for key:', event.code);
+            // Debug: No mapping for key (log removed to prevent spam)
         }
     }
 
     handleKeyUp(event) {
-        console.log('🔧 INPUT DEBUG: Key up detected:', event.code);
+        // Debug: Key up detected (log removed to prevent spam)
         const action = this.keyMappings[event.code];
         if (action) {
-            console.log('🔧 INPUT DEBUG: Released action:', action);
+            // Debug: Released action (log removed to prevent spam)
             this.keys.set(action, false);
             this.updatePlayerInput();
         }
@@ -297,6 +366,17 @@ class InputSystem extends System {
             window.movementSystem.isSneaking = this.keys.get('sneak') || false;
         }
 
+        // Handle camera mode toggle (V key)
+        if (this.keys.get('camera_toggle')) {
+            this.keys.set('camera_toggle', false); // Prevent repeat
+            console.log('🎥 INPUT SYSTEM: V key pressed - dispatching camera-mode-toggle event');
+            // Dispatch custom event for camera mode toggle
+            const event = new CustomEvent('camera-mode-toggle', {
+                detail: { timestamp: Utils.now() }
+            });
+            window.dispatchEvent(event);
+        }
+
         // Allow input during COUNTDOWN and PLAYING
         if (!gameState || (gameState.gamePhase !== GAME_STATES.PLAYING && gameState.gamePhase !== GAME_STATES.COUNTDOWN)) {
             return;
@@ -362,6 +442,11 @@ class InputSystem extends System {
         // Clean up event listeners
         document.removeEventListener('keydown', this.handleKeyDown);
         document.removeEventListener('keyup', this.handleKeyUp);
+        
+        // Clean up mouse event listeners
+        document.removeEventListener('mousemove', this.boundMouseMove);
+        document.removeEventListener('pointerlockchange', this.boundPointerLockChange);
+        document.removeEventListener('click', this.boundClick);
 
         // Remove touch controls
         const touchControls = document.querySelector('.touch-controls');

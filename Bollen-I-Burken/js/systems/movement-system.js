@@ -251,33 +251,59 @@
             let desiredX = 0;
             let desiredZ = 0;
 
-
-
             if (input.keys.forward) desiredZ -= 1;
             if (input.keys.backward) desiredZ += 1;
             if (input.keys.left) desiredX -= 1;
             if (input.keys.right) desiredX += 1;
 
-            // Check if player is trying to move
-            const isMoving = desiredX !== 0 || desiredZ !== 0;
+            // CAMERA-RELATIVE MOVEMENT: Transform input based on camera direction
+            let finalDesiredX = desiredX;
+            let finalDesiredZ = desiredZ;
             
-            if (isMoving) {
-                console.log('🔄 MOVEMENT SYSTEM: Player is moving! Direction:', { desiredX, desiredZ });
-            } else {
-                console.log('🔄 MOVEMENT SYSTEM: Player is NOT moving. Keys detected:', input.keys);
+            // Get camera facing angle for movement direction
+            const camManager = window.cameraManager;
+            if (camManager && (desiredX !== 0 || desiredZ !== 0)) {
+                let cameraFacingAngle = 0;
+                
+                if (camManager.isFirstPerson()) {
+                    // FIRST-PERSON: Use camera rotation directly  
+                    const camera = window.camera;
+                    if (camera) {
+                        cameraFacingAngle = camera.rotation.y;
+                    }
+                } else {
+                    // THIRD-PERSON: Use mouse rotation for consistent behavior
+                    const inputSystem = window.inputSystem;
+                    if (inputSystem && inputSystem.getMouseRotation) {
+                        const mouseRotation = inputSystem.getMouseRotation();
+                        cameraFacingAngle = mouseRotation.x;
+                    }
+                }
+                
+                // Transform movement relative to camera direction
+                const cos = Math.cos(cameraFacingAngle);
+                const sin = Math.sin(cameraFacingAngle);
+                
+                finalDesiredX = desiredX * cos - desiredZ * sin;
+                finalDesiredZ = desiredX * sin + desiredZ * cos;
             }
+
+            // Check if player is trying to move
+            const isMoving = finalDesiredX !== 0 || finalDesiredZ !== 0;
+            
+            // Debug: Movement state (logs removed to prevent spam)
 
             // 🦵 SIMPLE LEG ANIMATION (DIRECT APPROACH)
             // Skip complex ragdoll system - use direct leg animation
             const playerId = entity.getComponent('Player')?.playerId;
             if (playerId && global.simpleLegAnimator) {
-                console.log('🔄 MOVEMENT SYSTEM: Using simple leg animator for player:', playerId);
+                // Debug: Using simple leg animator
                 
                 if (isMoving) {
                     // Normalize direction and trigger walking
-                    const magnitude = Math.sqrt(desiredX * desiredX + desiredZ * desiredZ);
+                    const magnitude = Math.sqrt(finalDesiredX * finalDesiredX + finalDesiredZ * finalDesiredZ);
                     if (magnitude > 0) {
-                        const direction = { x: desiredX / magnitude, z: desiredZ / magnitude };
+                        const direction = { x: finalDesiredX / magnitude, z: finalDesiredZ / magnitude };
                         const isRunning = input.keys.action2 || false; // Shift to run
                         console.log('🔄 MOVEMENT SYSTEM: Calling simpleLegAnimator.startWalking!');
                         global.simpleLegAnimator.startWalking(playerId, direction, isRunning);
@@ -290,7 +316,7 @@
 
             // 🦵 OLD RAGDOLL LOCOMOTION INTEGRATION (GUBBAR Phase 2) - DISABLED FOR NOW
             const ragdollPhysics = entity ? entity.getComponent('RagdollPhysics') : null;
-            console.log('🔄 MOVEMENT SYSTEM: Checking ragdoll physics component:', !!ragdollPhysics);
+            // Debug: Checking ragdoll physics component
             
             if (false && ragdollPhysics && global.ragdollLocomotion) { // DISABLED
                 console.log('🔄 MOVEMENT SYSTEM: Found ragdoll physics AND locomotion system!');
@@ -301,9 +327,9 @@
                 if (playerId) {
                     if (isMoving) {
                         // Normalize direction and trigger walking
-                        const magnitude = Math.sqrt(desiredX * desiredX + desiredZ * desiredZ);
+                        const magnitude = Math.sqrt(finalDesiredX * finalDesiredX + finalDesiredZ * finalDesiredZ);
                         if (magnitude > 0) {
-                            const direction = { x: desiredX / magnitude, z: desiredZ / magnitude };
+                            const direction = { x: finalDesiredX / magnitude, z: finalDesiredZ / magnitude };
                             const isRunning = input.keys.action2 || false; // Shift to run
                             console.log('🔄 MOVEMENT SYSTEM: Calling ragdollLocomotion.startWalking!');
                             global.ragdollLocomotion.startWalking(playerId, direction, isRunning);
@@ -317,15 +343,15 @@
                 }
             }
 
-            // Normalize input direction
+            // Normalize input direction (use camera-transformed direction)
             if (isMoving) {
-                const magnitude = Math.sqrt(desiredX * desiredX + desiredZ * desiredZ);
+                const magnitude = Math.sqrt(finalDesiredX * finalDesiredX + finalDesiredZ * finalDesiredZ);
                 if (magnitude > 0) {
-                    desiredX /= magnitude;
-                    desiredZ /= magnitude;
+                    finalDesiredX /= magnitude;
+                    finalDesiredZ /= magnitude;
                 }
-                this.playerDirection.x = desiredX;
-                this.playerDirection.z = desiredZ;
+                this.playerDirection.x = finalDesiredX;
+                this.playerDirection.z = finalDesiredZ;
             }
 
             // DRIFT MECHANICS: Add acceleration forces to existing velocity
@@ -335,11 +361,11 @@
                 : this.playerMaxSpeed;
 
             if (isMoving) {
-                // Add acceleration force in input direction (builds speed in new direction)
+                // Add acceleration force in camera-relative direction
                 const accelForce = this.playerAcceleration * dt;
-                transform.velocity.x += desiredX * accelForce;
-                transform.velocity.z += desiredZ * accelForce;
-                console.log(`[MOVE DEBUG] input:(${desiredX.toFixed(2)}, ${desiredZ.toFixed(2)}), accel:${accelForce.toFixed(3)}, velocity:(${transform.velocity.x.toFixed(3)}, ${transform.velocity.z.toFixed(3)})`);
+                transform.velocity.x += finalDesiredX * accelForce;
+                transform.velocity.z += finalDesiredZ * accelForce;
+                // Debug: Movement velocity (log removed to prevent spam)
             }
 
             // Always apply friction/deceleration to current velocity
@@ -418,13 +444,60 @@
                 transform.position.x += transform.velocity.x;
                 transform.position.z += transform.velocity.z;
             }
-            // Rotate player to face INPUT direction (not velocity/drift direction!)
-            if (isMoving) {
-                // Instantly face the direction player is pressing
-                transform.rotation.y = Math.atan2(desiredX, desiredZ);
-            } else if (this.playerDirection.x !== 0 || this.playerDirection.z !== 0) {
-                // When stopped, keep facing last input direction
-                transform.rotation.y = Math.atan2(this.playerDirection.x, this.playerDirection.z);
+            // NEW CAMERA-DRIVEN MOVEMENT SYSTEM
+            // Camera controls head/look direction, body follows with delay
+            const cameraManager = window.cameraManager;
+            let cameraFacingAngle = 0;
+            
+            if (cameraManager) {
+                if (cameraManager.isFirstPerson()) {
+                    // FIRST-PERSON: Get camera rotation directly  
+                    const camera = window.camera; // Access main camera
+                    if (camera) {
+                        cameraFacingAngle = camera.rotation.y;
+                    }
+                } else {
+                    // THIRD-PERSON: Get mouse rotation directly for consistent behavior
+                    const inputSystem = window.inputSystem;
+                    if (inputSystem && inputSystem.getMouseRotation) {
+                        const mouseRotation = inputSystem.getMouseRotation();
+                        cameraFacingAngle = mouseRotation.x;
+                    }
+                }
+                
+                // MOUSE CONTROLS HEAD ONLY: Camera rotation is independent of body
+                // Body does NOT rotate based on mouse movement
+                // Body only rotates based on movement direction (WASD)
+                
+                // Get current body angle (don't change it based on camera)
+                const bodyAngle = transform.rotation.y;
+                
+                // For movement calculation, use BODY facing direction
+                // This ensures WASD moves relative to where the body is pointing
+                const forward = {
+                    x: Math.sin(bodyAngle),
+                    z: Math.cos(bodyAngle)
+                };
+                
+                const right = {
+                    x: Math.cos(bodyAngle),
+                    z: -Math.sin(bodyAngle)
+                };
+                
+                // Transform WASD input relative to body direction
+                const originalX = desiredX;
+                const originalZ = desiredZ;
+                
+                desiredX = (originalX * right.x) + (originalZ * forward.x);
+                desiredZ = (originalX * right.z) + (originalZ * forward.z);
+                
+                this.playerDirection.x = desiredX;
+                this.playerDirection.z = desiredZ;
+                
+            } else {
+                // FALLBACK: Old behavior when camera manager not available
+                // NOTE: We don't rotate the body anymore - mouse controls head only
+                // Body stays in its current direction
             }
         }
 

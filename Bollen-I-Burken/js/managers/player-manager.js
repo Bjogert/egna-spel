@@ -571,4 +571,4 @@
         global.GameManagers.PlayerManager = PlayerManager;
         global.PlayerManager = PlayerManager;
     }
-})(typeof window !== 'undefined' ? window : globalThis);
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

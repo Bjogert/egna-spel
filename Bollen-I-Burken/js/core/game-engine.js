@@ -91,6 +91,17 @@
 
             // Update all systems during countdown and playing phases
             if (this.gameStatus === 'countdown' || this.gameStatus === 'playing') {
+                // DEBUG: Check gameState before calling systems
+                if (!this.debugCounter) this.debugCounter = 0;
+                if (this.debugCounter % 60 === 0) {
+                    console.log('🎮 GAME ENGINE: Updating systems', {
+                        gameState: this.gameState ? 'defined' : 'undefined',
+                        gamePhase: this.gameState?.gamePhase,
+                        systemCount: this.systems.length
+                    });
+                }
+                this.debugCounter++;
+                
                 for (const system of this.systems) {
                     if (system.enabled && typeof system.update === 'function') {
                         try {

@@ -76,7 +76,7 @@
             }
             const contactCount = this.physicsWorld.world ? this.physicsWorld.world.contacts.length : 0;
             if (contactCount > 0 && this.frameCount % 30 === 0) {
-                Utils.log(`Physics contacts this frame: ${contactCount}`);
+                // Debug: Physics contacts this frame (log removed to prevent spam)
             }
             // Sync Transform components from physics bodies
             this.physicsSync.update(gameState);

@@ -779,4 +779,4 @@
 
     console.log('[CharacterBuilder] CharacterBuilder module loaded - ready to build GUBBAR!');
 
-})(typeof window !== 'undefined' ? window : globalThis);
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

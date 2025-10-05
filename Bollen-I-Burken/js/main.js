@@ -12,7 +12,12 @@
 
     // Game systems
     let inputSystem;
-    let movementSystem;
+    let cameraManager;
+    // New Four-System Architecture
+    let playerMovementSystem;
+    let aiVisualizationSystem;
+    let animationIntegrationSystem;
+    let collisionDetectionSystem;
     let uiSystem;
     let audioSystem;
     let networkSystem;
@@ -182,12 +187,19 @@
         // Initialize all systems
         inputSystem = new InputSystem();
         
-        // Clear any leftover movement/animation state from previous session
-        if (typeof movementSystem !== 'undefined' && movementSystem && movementSystem.legAnimator) {
-            movementSystem.legAnimator.clear();
-        }
+        // Initialize camera mode system
+        cameraManager = new CameraModeSystem(scene, camera);
         
-        movementSystem = new MovementSystem();
+        // Clear any leftover movement/animation state from previous session
+        if (typeof animationIntegrationSystem !== 'undefined' && animationIntegrationSystem && animationIntegrationSystem.getLegAnimator) {
+            animationIntegrationSystem.getLegAnimator().clear();
+        }
+
+        // Initialize new four-system architecture
+        playerMovementSystem = new PlayerMovementSystem();
+        aiVisualizationSystem = new AIVisualizationSystem();
+        animationIntegrationSystem = new AnimationIntegrationSystem();
+        collisionDetectionSystem = new CollisionDetectionSystem();
         uiSystem = new UISystem();
         audioSystem = new AudioSystem();
         networkSystem = new NetworkSystem();
@@ -227,8 +239,13 @@
         // 4. Physics - step simulation and sync positions back
         // 5. UI/Audio/Network/Interaction - render and respond
         gameEngine.addSystem(inputSystem);
+        gameEngine.addSystem(cameraManager);
         gameEngine.addSystem(aiSystem);
-        gameEngine.addSystem(movementSystem);
+        // Add new four-system architecture
+        gameEngine.addSystem(playerMovementSystem);
+        gameEngine.addSystem(aiVisualizationSystem);
+        gameEngine.addSystem(animationIntegrationSystem);
+        gameEngine.addSystem(collisionDetectionSystem);
         if (CONFIG.physics.enabled && physicsSystem) {
             gameEngine.addSystem(physicsSystem);
             Utils.log('PhysicsSystem added to game engine');
@@ -241,10 +258,8 @@
         // Initialize networking in local mode
         networkSystem.initializeNetwork('local');
 
-        // Initialize MovementSystem config after ConfigManager is available
-        if (movementSystem && typeof movementSystem.initializeConfig === 'function') {
-            movementSystem.initializeConfig();
-        }
+        // Systems are now initialized with their own configuration
+        console.log('🔄 MAIN: New four-system architecture initialized successfully');
 
         // Set up GameLifecycle dependencies
         if (global.GameLifecycle) {
@@ -257,7 +272,15 @@
 
         // Expose system globals AFTER initialization (so they're not undefined)
         global.inputSystem = inputSystem;
-        global.movementSystem = movementSystem;
+        window.inputSystem = inputSystem;  // Also expose as window.inputSystem for camera mode system
+        global.cameraManager = cameraManager;
+        // Expose new systems globally
+        global.playerMovementSystem = playerMovementSystem;
+        global.aiVisualizationSystem = aiVisualizationSystem;
+        global.animationIntegrationSystem = animationIntegrationSystem;
+        global.collisionDetectionSystem = collisionDetectionSystem;
+        // Legacy compatibility
+        global.movementSystem = playerMovementSystem;
         global.uiSystem = uiSystem;
         global.audioSystem = audioSystem;
         global.networkSystem = networkSystem;
@@ -288,8 +311,10 @@
             // �🦴 Update ragdoll physics visuals (GUBBAR Phase 1A)
             updateRagdollCharacters();
 
-            // Update dynamic camera zoom based on player distance from center
-            updateDynamicCamera();
+            // Update camera (third-person dynamic zoom OR first-person positioning)
+            if (cameraManager) {
+                cameraManager.update(gameEngine.gameState);
+            }
 
             // Render the Three.js scene
             renderer.render(scene, camera);
@@ -537,6 +562,10 @@
             global.MenuOverlay.showErrorMessage('An unexpected error occurred. Please reload the game.');
         }
     });
+
+    // Expose camera functions for camera mode system
+    window.updateDynamicCamera = updateDynamicCamera;
+    window.camera = camera;  // Expose main camera for movement system
 
     // Debug functions (available in console)
     window.debugGame = function () {

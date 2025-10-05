@@ -259,4 +259,4 @@
     // Create global instance
     global.TweakPanel = new TweakPanel();
 
-})(typeof window !== 'undefined' ? window : globalThis);
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

@@ -251,7 +251,7 @@
             
             // Debug output (remove this later if too spammy)
             if (Math.abs(data.acceleration.x) > 0.1 || Math.abs(data.acceleration.z) > 0.1) {
-                console.log(`🎯 Lean - Accel: (${data.acceleration.x.toFixed(2)}, ${data.acceleration.z.toFixed(2)}) -> Lean: (${data.currentLean.x.toFixed(3)}, ${data.currentLean.z.toFixed(3)})`);
+                // console.log(`🎯 Lean - Accel: (${data.acceleration.x.toFixed(2)}, ${data.acceleration.z.toFixed(2)}) -> Lean: (${data.currentLean.x.toFixed(3)}, ${data.currentLean.z.toFixed(3)})`);
             }
         }
 
