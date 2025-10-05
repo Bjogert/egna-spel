@@ -40,6 +40,20 @@
         }
 
         cleanupGameWorld() {
+            Utils.log('🧹 Cleaning up game world for new session...');
+            
+            // Clear leg animation system
+            if (global.movementSystem && global.movementSystem.legAnimator) {
+                global.movementSystem.legAnimator.clear();
+                Utils.log('🦵 Cleared leg animation system');
+            }
+            
+            // Clear physics world
+            if (global.physicsSystem && global.physicsSystem.physicsWorld) {
+                global.physicsSystem.physicsWorld.clear();
+                Utils.log('🔬 Cleared physics world');
+            }
+
             if (this.playerManager && typeof this.playerManager.clearAll === 'function') {
                 this.playerManager.clearAll();
             }

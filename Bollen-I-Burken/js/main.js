@@ -181,6 +181,12 @@
 
         // Initialize all systems
         inputSystem = new InputSystem();
+        
+        // Clear any leftover movement/animation state from previous session
+        if (typeof movementSystem !== 'undefined' && movementSystem && movementSystem.legAnimator) {
+            movementSystem.legAnimator.clear();
+        }
+        
         movementSystem = new MovementSystem();
         uiSystem = new UISystem();
         audioSystem = new AudioSystem();
@@ -192,6 +198,13 @@
         if (CONFIG.physics.enabled && typeof PhysicsSystem !== 'undefined') {
             physicsSystem = new PhysicsSystem();
             physicsSystem.initialize();
+            
+            // Clear any leftover physics bodies/constraints from previous game sessions
+            if (physicsSystem.physicsWorld) {
+                physicsSystem.physicsWorld.clear();
+                Utils.log('🧹 Cleared physics world from previous session');
+            }
+            
             global.physicsSystem = physicsSystem;  // Expose globally
             Utils.log('PhysicsSystem initialized (will be added to engine in correct order)');
         } else {

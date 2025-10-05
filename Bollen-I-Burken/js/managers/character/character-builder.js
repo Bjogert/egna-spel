@@ -489,9 +489,22 @@
                 // Sync each child mesh with its physics body
                 legGroup.children.forEach(mesh => {
                     if (mesh.userData.physicsBody) {
-                        // Copy position and rotation from physics body to visual mesh
-                        mesh.position.copy(mesh.userData.physicsBody.position);
-                        mesh.quaternion.copy(mesh.userData.physicsBody.quaternion);
+                        try {
+                            // Check if physics body is still valid (not cleared)
+                            if (mesh.userData.physicsBody.position && mesh.userData.physicsBody.quaternion) {
+                                // Copy position and rotation from physics body to visual mesh
+                                mesh.position.copy(mesh.userData.physicsBody.position);
+                                mesh.quaternion.copy(mesh.userData.physicsBody.quaternion);
+                            } else {
+                                // Physics body is invalid - clear the reference
+                                console.warn('[CharacterBuilder] Invalid physics body detected, clearing reference');
+                                mesh.userData.physicsBody = null;
+                            }
+                        } catch (error) {
+                            // Physics body is corrupted - clear the reference
+                            console.warn('[CharacterBuilder] Physics body sync error, clearing reference:', error);
+                            mesh.userData.physicsBody = null;
+                        }
                     }
                 });
             }

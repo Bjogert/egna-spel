@@ -197,7 +197,21 @@
 
             // Sync ragdoll physics with visual meshes (for articulated legs)
             if (global.CharacterBuilder && global.CharacterBuilder.syncRagdollPhysics) {
-                global.CharacterBuilder.syncRagdollPhysics(data.mesh);
+                try {
+                    global.CharacterBuilder.syncRagdollPhysics(data.mesh);
+                } catch (error) {
+                    // Physics sync failed - likely due to invalid physics bodies
+                    console.warn('🚨 Physics sync failed, disabling for this character:', error);
+                    // Clear the physics references to prevent further errors
+                    if (data.mesh && data.mesh.userData && data.mesh.userData.parts && data.mesh.userData.parts.articulatedLeftLeg) {
+                        const legGroup = data.mesh.userData.parts.articulatedLeftLeg.visualGroup;
+                        if (legGroup) {
+                            legGroup.children.forEach(mesh => {
+                                mesh.userData.physicsBody = null;
+                            });
+                        }
+                    }
+                }
             }
 
             // Calculate leg rotations
@@ -286,11 +300,41 @@
         }
 
         /**
-         * Clear all registered characters
+         * Clear all registered characters and reset state
          */
         clear() {
+            Utils.log('🦵 Clearing leg animation data...');
+            
+            // Clean up any physics references in character meshes
+            this.characters.forEach((data, playerId) => {
+                if (data.mesh && data.mesh.userData && data.mesh.userData.parts) {
+                    const parts = data.mesh.userData.parts;
+                    
+                    // Clear physics references from articulated leg
+                    if (parts.articulatedLeftLeg && parts.articulatedLeftLeg.visualGroup) {
+                        parts.articulatedLeftLeg.visualGroup.children.forEach(mesh => {
+                            if (mesh.userData.physicsBody) {
+                                mesh.userData.physicsBody = null;
+                                console.log(`🧹 Cleared physics reference from leg mesh: ${mesh.name}`);
+                            }
+                        });
+                    }
+                }
+            });
+            
+            // Clear character animation data
             this.characters.clear();
+            
             Utils.log('🦵 Cleared all leg animation data');
+        }
+
+        /**
+         * Reset and cleanup - called when game restarts
+         */
+        reset() {
+            Utils.log('🦵 Resetting LegAnimator for new game session');
+            this.clear();
+            this.enabled = true;
         }
     }
 
